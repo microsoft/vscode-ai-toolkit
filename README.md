@@ -48,7 +48,7 @@ Start by selecting a project name and location.
 Next, select a model from the model catalog. You will be prompted to download the project template. You can then click "Configure Project" to adjust various settings. 
 We use [Olive](https://microsoft.github.io/Olive/overview/olive.html) to run QLoRA fine-tuning on a PyTorch model from our catalog. All of the settings are preset with the default values to optimize to run the fine-tuning process locally with optimized use of memory, but it can be adjusted for your scenario.
 
-![Configure the model](/Images/finetune.jpg)
+![Configure the model](/Images/fineTune.jpg)
 
 | Settings                       | Data Type | Default Value | Description |
 | ----------------------------- | --------- | --------------| ----------- |
@@ -104,7 +104,6 @@ the rights to use your contribution. For details, visit https://cla.opensource.m
 When you submit a pull request, a CLA bot will automatically determine whether you need to provide
 a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
 provided by the bot. You will only need to do this once across all repos using our CLA.
-
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
