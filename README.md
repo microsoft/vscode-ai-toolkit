@@ -48,7 +48,7 @@ Start by selecting a project name and location.
 Next, select a model from the model catalog. You will be prompted to download the project template. You can then click "Configure Project" to adjust various settings. 
 We use [Olive](https://microsoft.github.io/Olive/overview/olive.html) to run QLoRA fine-tuning on a PyTorch model from our catalog. All of the settings are preset with the default values to optimize to run the fine-tuning process locally with optimized use of memory, but it can be adjusted for your scenario.
 
-![Configure the model](/Images/finetune.jpg)
+![Configure the model](/Images/fineTune.jpg)
 
 | Settings                       | Data Type | Default Value | Description |
 | ----------------------------- | --------- | --------------| ----------- |
