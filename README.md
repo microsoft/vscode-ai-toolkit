@@ -79,7 +79,8 @@ This will:
 When the model is downloaded, you can launch the project from Windows AI Studio.
 You can now fine-tune and test the model by following the instructions from Readme page in the project folder.
 
-For more detailed walkthrough go [here](walkthrough-simple-dataset.md). 
+- For a default dataset walkthrough go [here](walkthrough-simple-dataset.md). 
+- For a Hugging Face dataset walkthrough go [here](walkthrough-hf-dataset.md). 
 
 ### RAG Project
 
