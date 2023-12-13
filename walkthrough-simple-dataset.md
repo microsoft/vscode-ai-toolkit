@@ -54,7 +54,7 @@ Explore the project structure, including folders like 'finetuning', 'dataset', '
 
 ![Project Layout](Images/12-project-layout.png)
 
-Start a terminal in VSCode, which opens with a base Conda shell. Activate the environment (default name: `phi-2-env`) with `conda activate phi-2-env`.
+Start a terminal in VSCode, which opens with a base Conda shell. Activate the environment (default name: `phi-2-env`) with `conda activate phi-2-env`. If you changed the environment name in the configuration make sure to use your name in the command. 
 
 ![Start Terminal](Images/13-start-terminal.png)
 
@@ -78,7 +78,7 @@ This process will use QLoRA for fine-tuning and generate LoRA adapters for the m
 
 Now that we have the adapters trained in the workspace we can try some of the test apps. First let's take a look at the console test application. `cd inference` once you are in the inference folder you can run `python console_chat.py` this will load the model and the adapter. 
 
-![Console Chat](Images/19-fine-tune-complete.png)
+![Console Chat](Images/19-console-test.png)
 
 We also have a simple gradio application available to chat with the model. From the same folder `cd inference` you can run `python gradio_chat.py` this will lauch the Gradio server and you can start the app from the link in the terminal.
 
