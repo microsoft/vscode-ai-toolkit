@@ -11,7 +11,7 @@ In this section you will learn how to quickly start with Windows AI Studio.
 ### Prerequisites
 
 Windows AI Studio will run only on NVIDIA GPUs for the preview, so please make sure to check your device spec prior to installing it.
-WSL Ubuntu distro 18.4 or greater should be installed and is set to default prior to using Windows AI Studio. [learn more how to install Windows subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/install) and [changing default distribution](https://learn.microsoft.com/en-us/windows/wsl/install#change-the-default-linux-distribution-installed)
+WSL Ubuntu distro 18.4 or greater should be installed and is set to default prior to using Windows AI Studio. [Learn more how to install Windows subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/install) and [changing default distribution](https://learn.microsoft.com/en-us/windows/wsl/install#change-the-default-linux-distribution-installed)
 
 ### Install Windows AI Studio Preview
 
