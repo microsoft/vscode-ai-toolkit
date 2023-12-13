@@ -70,8 +70,24 @@ Finally, start fine-tuning with `python finetuning/invoke_olive.py`. Monitor the
 
 ![Start Fine-Tuning](Images/16-start-fine-tuning.png)
 
-This process will use QLoRA for fine-tuning and generate LoRA adapters for the model to use while inferencing. For how to use the LoRA adapters follow these. 
+This process will use QLoRA for fine-tuning and generate LoRA adapters for the model to use while inferencing.
+
+## Inferencing with the fine-tuned model
+
+![Fine-tune complete](Images/18-fine-tune-complete.png)
+
+Now that we have the adapters trained in the workspace we can try some of the test apps. First let's take a look at the console test application. `cd inference` once you are in the inference folder you can run `python console_chat.py` this will load the model and the adapter. 
+
+![Console Chat](Images/19-fine-tune-complete.png)
+
+We also have a simple gradio application available to chat with the model. From the same folder `cd inference` you can run `python gradio_chat.py` this will lauch the Gradio server and you can start the app from the link in the terminal.
+
+![Gradio Chat launch](Images/20-gradio-test-launch.png)
+
+![Gradio Chat](Images/21-gradio-ui.png)
+
+Here you can test the model. If you used the simple dataset you can write things like `Walking down the road cheering.`
 
 **Troubleshooting and Further Assistance:**
 - If you encounter issues during any step, refer to the VSCode output logs for detailed error messages.
-- For further guidance or to provide feedback on this walkthrough, feel free to reach out through [Add link to issues]
+- For further guidance or to provide feedback on this walkthrough, feel free to reach out through our [repo](https://github.com/microsoft/windows-ai-studio/issues) or [Q&A](https://github.com/microsoft/windows-ai-studio/blob/main/QA.md)
