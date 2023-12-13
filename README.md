@@ -1,7 +1,7 @@
 # Windows AI Studio Preview
 
 ## Overview
-[Windows AI Studio](https://aka.ms/AIforWindows) simplifies generative AI app development by bringing together cutting-edge AI development tools and models from Azure AI Studio Catalog and other catalogs like Hugging Face. You will be able browse the AI models catalog powered by Azure ML and Hugging Face, download them locally, fine-tune, test and use them in your Windows application.
+[Windows AI Studio](https://aka.ms/WindowsAI-Studio) simplifies generative AI app development by bringing together cutting-edge AI development tools and models from Azure AI Studio Catalog and other catalogs like Hugging Face. You will be able browse the AI models catalog powered by Azure ML and Hugging Face, download them locally, fine-tune, test and use them in your Windows application.
 As all of the computation happens locally, please make sure your device can handle the load.
 In the future, we plan to integrate ORT/DML into the Windows AI Studio workflow so developers can run AI models on any Windows Hardware. 
 
