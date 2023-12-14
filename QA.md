@@ -12,7 +12,7 @@ If you have the NVIDIA GPU device but the prerequisites check fails with "GPU is
 
 There might have been an issue setting the environment you can manually initialize the environment using `bash /mnt/[PROJECT_PATH]/setup/first_time_setup.sh` from inside the workspace.
 
-### When using a Huggin Face dataset how to I get it?
+### When using a Hugging Face dataset how to I get it?
 
 Make sure before you start the `python finetuning/invoke_olive.py` command you run `huggingface-cli login` this will ensure the dataset can be downloaded on your behalf.
 
