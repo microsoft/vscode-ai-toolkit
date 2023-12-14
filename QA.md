@@ -34,12 +34,12 @@ To disable the conda install in WSL you can run `conda config --set auto_activat
 
 ### Do you support containers today?
 
-We are currently working on the continer support it will be enable in a future release. We currently use WSL as the location to run the pipeline and we install the pre-requisites there for you. 
+We are currently working on the container support and it will be enable in a future release. We currently use WSL as the location to run the pipeline and we install the pre-requisites there for you. 
 
 ### Why do you need GitHub and Hugging Face credentials?
 
-We host all the project templates in GitHub and the base models are hoster in Azure or Hugging Face which requieres accounts to get access to them from the APIs.
+We host all the project templates in GitHub and the base models are hosted in Azure or Hugging Face which requires accounts to get access to them from the APIs.
 
 ### I am getting an error downloading Llama2
 
-Please ensure you request access to Llama thru this form [Llama 2 sign up page](https://github.com/llama2-onnx/signup) this is needed to comply with Meta's trade compliance.
+Please ensure you request access to Llama through this form [Llama 2 sign up page](https://github.com/llama2-onnx/signup) this is needed to comply with Meta's trade compliance.
