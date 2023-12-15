@@ -3,6 +3,7 @@
 ### Do I need to fine-tune to test Phi-2?
 
 No, you can generate a Phi-2 project and just try out the base model by running only inference. After the project is generated follow these steps:
+
 ```bash 
 conda activate phi-2-env # or the name you created.
 
@@ -16,7 +17,7 @@ python gradio_chat.py --baseonly
 
 ### There are too many fine-tune settings do I need to worry about all of them?
 
-No, you can just run with the default settings and our current dataset in the project to test. If you want you can also pick your own dataset but you will need to tweak some setting see [this](walkthrough-hf-dataset.md) tutorial for more info.
+No, you can just run with the default settings and our current dataset in the project to test. If you want you can also pick your own dataset but you will need to tweak some settings. See [this](walkthrough-hf-dataset.md) tutorial for more info.
 
 ### Windows AI Studio Preview would not start
 
