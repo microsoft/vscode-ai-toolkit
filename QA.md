@@ -61,3 +61,6 @@ We host all the project templates in GitHub and the base models are hosted in Az
 ### I am getting an error downloading Llama2
 
 Please ensure you request access to Llama through this form [Llama 2 sign up page](https://github.com/llama2-onnx/signup) this is needed to comply with Meta's trade compliance.
+
+### Can't save project inside WSL instance
+Because the remote sessions are currently not supported when running the Windows AI Studio Actions, you cannot save your project while being connected to WSL. To close remote connections, click on "WSL" at the bottom left of the screen and choose "Close Remote Connections".
