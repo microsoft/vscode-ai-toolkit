@@ -25,6 +25,7 @@ Make sure to check for the prerequisites before installing the extension. More d
 ### I have the NVIDIA GPU device but the prerequisites check fails
 
 If you have the NVIDIA GPU device but the prerequisites check fails with "GPU is not detected", make sure that the latest driver is installed. You can check and download the driver at [NVIDIA site](https://www.nvidia.com/Download/index.aspx?lang=en-us).
+Also, make sure that it is installed in the path. To check, run run nvidia-smi from the command line.
 
 ### I generated the project but Conda activate fails to find the environment
 
