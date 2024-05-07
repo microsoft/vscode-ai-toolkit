@@ -21,7 +21,7 @@ Upon running this command, the extension will do the following operations:
 1. Start the ACA job using the commands specified in `./infra/fintuning.config.json`.
 1. Display the job streaming log if the job has started running. 
     ![Run Log](Images/remote/run-log.png)
-    > **Note:** the job might be queued if there are insufficient resources available.
+    > **Note:** The job might be queued if there are insufficient resources available. If the log fails to display when the job starts, you can wait for a while and then execute the `Windows AI Studio Tools: Show the running fine-tuning job streaming logs` command to re-connect to the streaming log.
     
 During this process, QLoRA will be used for fine-tuning, and will create LoRA adapters for the model to use during inference.
 The results of the fine-tuning will be stored in the Azure Files.
