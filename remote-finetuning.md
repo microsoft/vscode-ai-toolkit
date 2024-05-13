@@ -2,7 +2,10 @@
 Model fine-tuning in machine learning involves subtly adjusting a pre-existing model, which was initially trained on a larger dataset, to perform a similar but new task using a smaller dataset. If you lack local computing resources, such as a GPU, you can perform this fine-tuning remotely using AI Toolkit and Azure Container App.
 
 ## Prerequisites
-To run the model fine-tuning in your remote Azure Container App Environment, you need to make sure your subscription have enough GPU capacity amount. Submit a [support ticket](https://azure.microsoft.com/support/create-ticket/) to request the capacity amount required for your application. [Learn More about GPU capacity](https://learn.microsoft.com/en-us/azure/container-apps/workload-profiles-overview)
+1. To run the model fine-tuning in your remote Azure Container App Environment, you need to make sure your subscription have enough GPU capacity amount. Submit a [support ticket](https://azure.microsoft.com/support/create-ticket/) to request the capacity amount required for your application. [Learn More about GPU capacity](https://learn.microsoft.com/en-us/azure/container-apps/workload-profiles-overview)
+2. Make sure you have a [HuggingFace account](https://huggingface.co/) and [generate an access token](https://huggingface.co/docs/hub/security-tokens) if you are using private dataset on HuggingFace or your base model needs access control.
+3. Accept the LICENSE on HuggingFace if you are fine-tuning Mistral or Llama. 
+4. If you enable [Weights & Biases](https://wandb.ai/site), make sure you have a Weights & Biases account and [retrieve your API Key](https://wandb.ai/authorize)
 
 ## Provision Azure Resources
 To get started, you need provision the Azure Resource for remote fine-tuning. This can be done by running the `AI Toolkit: Provision Azure Container Apps job for fine-tuning.` from command palette. During this process, you will be prompted to select your Azure Subscription and resource group.
@@ -58,7 +61,7 @@ You can find configuration parameters in `./infra/provision/finetuning.parameter
 | --------- |------------ |
 | `defaultCommands` | This is the default command to start a fine-tuning job. It can be overwritten in `./infra/finetuning.config.json`. |
 | `maximumInstanceCount` | This parameter sets the maximum capacity of GPU instances. |
-| `timeout` | This sets the timeout for the ACA fine-tuning job in seconds. The default value is 10800, which equals to 3 hours. |
+| `timeout` | This sets the timeout for the ACA fine-tuning job in seconds. The default value is 10800, which equals to 3 hours. If the ACA job reaches this timeout, the fine-tuning process halts. However, checkpoints are saved by default, allowing the fine-tuning process to resume from the last checkpoint instead of starting over if it is run again. |
 | `location` | This is the location where Azure resources are provisioned. The default value is the same as the chosen resource group's location. |
 | `storageAccountName`, `fileShareName` `acaEnvironmentName`, `acaEnvironmentStorageName`, `acaJobName`,  `acaLogAnalyticsName` | These parameters are used to name the Azure resources for provision. You can input a new, unused resource name to create your own custom-named resources, or you can input the name of an already existing Azure resource if you'd prefer to use that. For details, refer to the section [Using existing Azure Resources](#using-existing-azure-resources). |
 
