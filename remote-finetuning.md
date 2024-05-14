@@ -29,6 +29,25 @@ Upon running this command, the extension will do the following operations:
 During this process, QLoRA will be used for fine-tuning, and will create LoRA adapters for the model to use during inference.
 The results of the fine-tuning will be stored in the Azure Files.
 
+## View and Query Logs on Azure
+
+After fine-tuning job was triggered, you can also view logs on Azure by clicking the "*Open Logs in Azure Portal*" button from the VSCode notification.
+
+Or, if you already opened the Azure Portal, you can find job history from the "*Execution history*" panel to the Azure Container Apps job.
+
+![Job Execution History](Images/remote/finetune-job-history.png)
+
+There are two types of logs, "*Console*" and "*System*".
+- Console logs, which are emitted by your app, including `stderr` and `stdout` messages. That's also what you may already see in previous section's streaming logs.
+- System logs, which are emitted by the Container Apps service, including the status of service level events.
+
+To view and query you logs, clicking the "*Console*" button and you will be navigated to the Log Analytics page. There you can view all the logs and write your own queries.
+
+![Job Log Analytics](Images/remote/finetune-job-log-query.png)
+
+
+> For more information about Azure Container App Logs, see [Application Logging in Azure Container Apps](https://learn.microsoft.com/azure/container-apps/logging).
+
 ## Provisioning Components Included in the Template
  
 | Folder | Contents |
