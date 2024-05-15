@@ -2,38 +2,45 @@
 Model fine-tuning in machine learning involves subtly adjusting a pre-existing model, which was initially trained on a larger dataset, to perform a similar but new task using a smaller dataset. If you lack local computing resources, such as a GPU, you can perform this fine-tuning remotely using AI Toolkit and Azure Container App.
 
 ## Prerequisites
-1. To run the model fine-tuning in your remote Azure Container App Environment, you need to make sure your subscription have enough GPU capacity amount. Submit a [support ticket](https://azure.microsoft.com/support/create-ticket/) to request the capacity amount required for your application. [Learn More about GPU capacity](https://learn.microsoft.com/en-us/azure/container-apps/workload-profiles-overview)
+1. To run the model fine-tuning in your remote Azure Container App Environment, your subscription has enough GPU capacity. Submit a [support ticket](https://azure.microsoft.com/support/create-ticket/) to request the required capacity for your application. [Get More Info about GPU capacity](https://learn.microsoft.com/en-us/azure/container-apps/workload-profiles-overview)
 2. Make sure you have a [HuggingFace account](https://huggingface.co/) and [generate an access token](https://huggingface.co/docs/hub/security-tokens) if you are using private dataset on HuggingFace or your base model needs access control.
 3. Accept the LICENSE on HuggingFace if you are fine-tuning Mistral or Llama. 
-4. If you enable [Weights & Biases](https://wandb.ai/site), make sure you have a Weights & Biases account and [retrieve your API Key](https://wandb.ai/authorize)
 
 ## Provision Azure Resources
-To get started, you need provision the Azure Resource for remote fine-tuning. This can be done by running the `AI Toolkit: Provision Azure Container Apps job for fine-tuning.` from command palette. During this process, you will be prompted to select your Azure Subscription and resource group.
+To get started, you need to provision the Azure Resource for remote fine-tuning. Do this by running the `AI Toolkit: Provision Azure Container Apps job for fine-tuning` from the command palette. During this process, you will be prompted to select your Azure Subscription and resource group.
 
-![Provision Fine-Tuning](Images/remote/provision-finetune.png)
+![Provision Fine-Tuning](Images/remote/command-provision-finetune.png)
 
-You can monitor the progress of the provision via the link that is displayed in the output channel.
-![Provision Progress](Images/remote/provision-progress.png)
+Monitor the progress of the provision through the link displayed in the output channel.
+![Provision Progress](Images/remote/log-provision-progress.png)
 
 ## Run
 To start the remote fine-tuning job, execute the `AI Toolkit: Run fine-tuning` command.
-![Run Fine-tuning](Images/remote/run-finetuning.png)
+![Run Fine-tuning](Images/remote/command-run-finetuning.png)
 
 Upon running this command, the extension will do the following operations:
 1. Synchronize your workspace with Azure Files.
-1. Start the ACA job using the commands specified in `./infra/fintuning.config.json`.
-1. Display the job streaming log if the job has started running. 
-    ![Run Log](Images/remote/run-log.png)
-    > **Note:** The job might be queued if there are insufficient resources available. If the log fails to display when the job starts, you can wait for a while and then execute the `AI Toolkit: Show the running fine-tuning job streaming logs` command to re-connect to the streaming log.
-    
+1. Trigger the ACA job using the commands specified in `./infra/fintuning.config.json`.
+
 During this process, QLoRA will be used for fine-tuning, and will create LoRA adapters for the model to use during inference.
+
 The results of the fine-tuning will be stored in the Azure Files.
+To explore the output files in the Azure File share, you can navigate to the Azure portal using the link provided in the output panel. Alternatively, you can directly access the Azure portal and locate the storage account named `STORAGE_ACCOUNT_NAME` as defined in `./infra/fintuning.config.json` and the file share named `FILE_SHARE_NAME` as defined in `./infra/fintuning.config.json`.  
 
-## View and Query Logs on Azure
+![file-share](Images/remote/log-finetuning-files.png)
 
-After fine-tuning job was triggered, you can also view logs on Azure by clicking the "*Open Logs in Azure Portal*" button from the VSCode notification.
+### View Logs
+Once the fine-tuning job has been started, you can access the system and console logs by visiting the Azure portal. 
+Alternatively, you can view the console logs directly in the VSCode output panel.
+> **Note:** The job might take a few minutes to initiate. If there is already a running job, the current one may be queued to start later.
 
-Or, if you already opened the Azure Portal, you can find job history from the "*Execution history*" panel to the Azure Container Apps job.
+![log-button](Images/remote/notification-finetune.png)
+
+#### View and Query Logs on Azure
+
+After fine-tuning job was triggered, you can view logs on Azure by clicking the "*Open Logs in Azure Portal*" button from the VSCode notification.
+
+Or, if you already opened the Azure Portal, you can find job history from the "*Execution history*" panel to the Azure Container Apps job. The link to this portal is provided in the output panel.
 
 ![Job Execution History](Images/remote/finetune-job-history.png)
 
@@ -48,7 +55,21 @@ To view and query you logs, clicking the "*Console*" button and you will be navi
 
 > For more information about Azure Container App Logs, see [Application Logging in Azure Container Apps](https://learn.microsoft.com/azure/container-apps/logging).
 
-## Provisioning Components Included in the Template
+
+#### View streaming logs in VSCode
+After initiating the fine-tuning job, you can also view logs on Azure by clicking on the "*Show Streaming Logs in VS Code*" button in the VSCode notification.
+Alternatively, you can execute the command `AI Toolkit: Show the running fine-tuning job streaming logs`.
+![Streaming Log Command](Images/remote/command-show-streaming-log.png)
+
+The streaming log of the running fine-tuning job will be displayed in the output panel.
+
+![Streaming Log Output](Images/remote/log-finetuning-res.png)
+
+> **Note:** 
+> 1. The job might be queued due to insufficient resources. If the log is not displayed, wait for a while and then execute the command to re-connect to the streaming log.
+> 2. The streaming log may timeout and disconnect. However, it can be reconnected by execute the command again.
+
+## Fine-tuning Components Included in the Template
  
 | Folder | Contents |
 | ------ |--------- |
@@ -62,18 +83,18 @@ To view and query you logs, clicking the "*Console*" button and you will be navi
 Azure Container App Secrets offer a secure way to store and manage sensitive data within Azure Container Apps. This feature fulfills the need for a secure environment to handle sensitive data such as HuggingFace tokens and Weights & Biases API keys. If you need to set these values, AI Toolkit provides a command palette to input the secrets into the provisioned Azure container app job (as stored in `./finetuning.config.json`). These secrets are then set as **environment variables** in all the containers.
 
 #### Steps:
-1. In the Command Palette, type and select `AI Toolkit: Add Azure Container Apps Job secret for fine-tuning.`
-![Add secret](Images/remote/add-secret.png)
+1. In the Command Palette, type and select `AI Toolkit: Add Azure Container Apps Job secret for fine-tuning`
+![Add secret](Images/remote/command-add-secret.png)
 
 1. Input Secret Name and Value: You'll be prompted to input the name and value of the secret.
    ![Input secret name](Images/remote/input-secret-name.png)
    ![Input secret](Images/remote/input-secret.png)
-   For example, [HF_TOKEN](https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables#hftoken) is used to authenticate the user to the Hugging Face Hub, removing the need for manual user login. If your project contains datasets or models that need Hugging Face access control, set the secret name to be `HF_TOKEN` and the secret value to be your Hugging Face token.
+   For example, if you're using private HuggingFace dataset or models that need Hugging Face access control, set your HuggingFace token as an environment variable [`HF_TOKEN`](https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables#hftoken) to avoid the need for manual login on the Hugging Face Hub.
 
 After you've set up the secret, you can now use it in your Azure Container App. The secret will be set in the environment variables of your container app.
 
 ### Configuring Azure Resource Provision
-This guide will help you configure the `AI Toolkit: Provision Azure Container Apps job for fine-tuning.` command.
+This guide will help you configure the `AI Toolkit: Provision Azure Container Apps job for fine-tuning` command.
 
 You can find configuration parameters in `./infra/provision/finetuning.parameters.json` file. Here are the details:
 | Parameter | Description |
@@ -85,7 +106,7 @@ You can find configuration parameters in `./infra/provision/finetuning.parameter
 | `storageAccountName`, `fileShareName` `acaEnvironmentName`, `acaEnvironmentStorageName`, `acaJobName`,  `acaLogAnalyticsName` | These parameters are used to name the Azure resources for provision. You can input a new, unused resource name to create your own custom-named resources, or you can input the name of an already existing Azure resource if you'd prefer to use that. For details, refer to the section [Using existing Azure Resources](#using-existing-azure-resources). |
 
 #### Using existing Azure Resources
-If you have existing Azure resources that need to be configured for fine-tuning, you can specify their names in the `./infra/provision/finetuning.parameters.json` file and then run the `AI Toolkit: Provision Azure Container Apps job for fine-tuning.` from the command palette. This will update the resources you've specified and create any that are missing.
+If you have existing Azure resources that need to be configured for fine-tuning, you can specify their names in the `./infra/provision/finetuning.parameters.json` file and then run the `AI Toolkit: Provision Azure Container Apps job for fine-tuning` from the command palette. This will update the resources you've specified and create any that are missing.
 
 For example, if you have an existing Azure container environment, your `./infra/finetuning.parameters.json` should look like this:
 
