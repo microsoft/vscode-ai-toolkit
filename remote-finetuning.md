@@ -1,8 +1,8 @@
 # Fine-Tuning models remotely
-Model fine-tuning in machine learning involves subtly adjusting a pre-existing model, which was initially trained on a larger dataset, to perform a similar but new task using a smaller dataset. If you lack local computing resources, such as a GPU, you can perform this fine-tuning remotely using AI Toolkit and Azure Container App.
+Model fine-tuning in machine learning involves subtly adjusting an existing model, originally trained on a larger dataset, to perform a similar but new task using a smaller dataset. If you don't have local computing resources like a GPU, you can do this fine tuning remotely with AI Toolkit and Azure Container App.
 
 ## Prerequisites
-1. To run the model fine-tuning in your remote Azure Container App Environment, your subscription has enough GPU capacity. Submit a [support ticket](https://azure.microsoft.com/support/create-ticket/) to request the required capacity for your application. [Get More Info about GPU capacity](https://learn.microsoft.com/en-us/azure/container-apps/workload-profiles-overview)
+1. To run the model fine-tuning in your remote Azure Container Apps Environment, make sure your subscription has enough GPU capacity. Submit a [support ticket](https://azure.microsoft.com/support/create-ticket/) to request the required capacity for your application. [Get More Info about GPU capacity](https://learn.microsoft.com/en-us/azure/container-apps/workload-profiles-overview)
 2. Make sure you have a [HuggingFace account](https://huggingface.co/) and [generate an access token](https://huggingface.co/docs/hub/security-tokens) if you are using private dataset on HuggingFace or your base model needs access control.
 3. Accept the LICENSE on HuggingFace if you are fine-tuning Mistral or Llama. 
 
@@ -20,7 +20,7 @@ To start the remote fine-tuning job, execute the `AI Toolkit: Run fine-tuning` c
 
 Upon running this command, the extension will do the following operations:
 1. Synchronize your workspace with Azure Files.
-1. Trigger the ACA job using the commands specified in `./infra/fintuning.config.json`.
+1. Trigger the Azure Container Appjob using the commands specified in `./infra/fintuning.config.json`.
 
 During this process, QLoRA will be used for fine-tuning, and will create LoRA adapters for the model to use during inference.
 
@@ -40,25 +40,25 @@ Alternatively, you can view the console logs directly in the VSCode output panel
 
 After fine-tuning job was triggered, you can view logs on Azure by clicking the "*Open Logs in Azure Portal*" button from the VSCode notification.
 
-Or, if you already opened the Azure Portal, you can find job history from the "*Execution history*" panel to the Azure Container Apps job. The link to this portal is provided in the output panel.
+Or, if you've already opened the Azure Portal, find job history from the "*Execution history*" panel to the Azure Container Apps job.
 
 ![Job Execution History](Images/remote/finetune-job-history.png)
 
 There are two types of logs, "*Console*" and "*System*".
-- Console logs, which are emitted by your app, including `stderr` and `stdout` messages. That's also what you may already see in previous section's streaming logs.
-- System logs, which are emitted by the Container Apps service, including the status of service level events.
+- Console logs are messages from your app, including `stderr` and `stdout` messages. This is what you might have already seen in the streaming logs section.
+- System logs are messages from the Container Apps service, including the status of service-level events.
 
-To view and query you logs, clicking the "*Console*" button and you will be navigated to the Log Analytics page. There you can view all the logs and write your own queries.
+To view and query your logs, click the "*Console*" button and navigate to the Log Analytics page where you can view all logs and write your queries.
 
 ![Job Log Analytics](Images/remote/finetune-job-log-query.png)
 
 
-> For more information about Azure Container App Logs, see [Application Logging in Azure Container Apps](https://learn.microsoft.com/azure/container-apps/logging).
+> For more information about Azure Container Apps Logs, see [Application Logging in Azure Container Apps](https://learn.microsoft.com/azure/container-apps/logging).
 
 
 #### View streaming logs in VSCode
 After initiating the fine-tuning job, you can also view logs on Azure by clicking on the "*Show Streaming Logs in VS Code*" button in the VSCode notification.
-Alternatively, you can execute the command `AI Toolkit: Show the running fine-tuning job streaming logs`.
+Or you can execute the command `AI Toolkit: Show the running fine-tuning job streaming logs`.
 ![Streaming Log Command](Images/remote/command-show-streaming-log.png)
 
 The streaming log of the running fine-tuning job will be displayed in the output panel.
@@ -80,7 +80,7 @@ The streaming log of the running fine-tuning job will be displayed in the output
 
 ## Advanced usage
 ### Configuring Secrets for fine-tuning in Azure Container Apps
-Azure Container App Secrets offer a secure way to store and manage sensitive data within Azure Container Apps. This feature fulfills the need for a secure environment to handle sensitive data such as HuggingFace tokens and Weights & Biases API keys. If you need to set these values, AI Toolkit provides a command palette to input the secrets into the provisioned Azure container app job (as stored in `./finetuning.config.json`). These secrets are then set as **environment variables** in all the containers.
+Azure Container App Secrets provide a secure way to store and manage sensitive data within Azure Container Apps, like HuggingFace tokens and Weights & Biases API keys. Using AI toolkit's command palette, you can input the secrets into the provisioned Azure container app job(as stored in `./finetuning.config.json`). These secrets are then set as **environment variables** in all containers.
 
 #### Steps:
 1. In the Command Palette, type and select `AI Toolkit: Add Azure Container Apps Job secret for fine-tuning`
@@ -101,7 +101,7 @@ You can find configuration parameters in `./infra/provision/finetuning.parameter
 | --------- |------------ |
 | `defaultCommands` | This is the default command to start a fine-tuning job. It can be overwritten in `./infra/finetuning.config.json`. |
 | `maximumInstanceCount` | This parameter sets the maximum capacity of GPU instances. |
-| `timeout` | This sets the timeout for the ACA fine-tuning job in seconds. The default value is 10800, which equals to 3 hours. If the ACA job reaches this timeout, the fine-tuning process halts. However, checkpoints are saved by default, allowing the fine-tuning process to resume from the last checkpoint instead of starting over if it is run again. |
+| `timeout` | This sets the timeout for the Azure Container Appfine-tuning job in seconds. The default value is 10800, which equals to 3 hours. If the Azure Container Appjob reaches this timeout, the fine-tuning process halts. However, checkpoints are saved by default, allowing the fine-tuning process to resume from the last checkpoint instead of starting over if it is run again. |
 | `location` | This is the location where Azure resources are provisioned. The default value is the same as the chosen resource group's location. |
 | `storageAccountName`, `fileShareName` `acaEnvironmentName`, `acaEnvironmentStorageName`, `acaJobName`,  `acaLogAnalyticsName` | These parameters are used to name the Azure resources for provision. You can input a new, unused resource name to create your own custom-named resources, or you can input the name of an already existing Azure resource if you'd prefer to use that. For details, refer to the section [Using existing Azure Resources](#using-existing-azure-resources). |
 

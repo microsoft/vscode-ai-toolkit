@@ -9,7 +9,7 @@ Similar to the fine-tuning process, you need to set up the Azure Resources for r
    
 By default, the subscription and the resource group for inference should match those used for fine-tuning. The inference will use the same Azure Container App Environment and access the model and model adapter stored in Azure Files, which were generated during the fine-tuning step. 
 
-### Deployment for Inference  
+## Deployment for Inference  
 If you wish to revise the inference code or reload the inference model, please execute the `AI Toolkit: Deploy for inference` command. This will synchronize your latest code with ACA and restart the replica.  
 
 ![Update code for inference](./Images/remote/command-deploy.png)
