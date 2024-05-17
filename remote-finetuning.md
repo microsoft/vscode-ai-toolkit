@@ -1,11 +1,6 @@
 # Fine-Tuning models remotely
 Model fine-tuning in machine learning involves subtly adjusting an existing model, originally trained on a larger dataset, to perform a similar but new task using a smaller dataset. If you don't have local computing resources like a GPU, you can do this fine tuning remotely with AI Toolkit and Azure Container App.
 
-## Prerequisites
-1. To run the model fine-tuning in your remote Azure Container Apps Environment, make sure your subscription has enough GPU capacity. Submit a [support ticket](https://azure.microsoft.com/support/create-ticket/) to request the required capacity for your application. [Get More Info about GPU capacity](https://learn.microsoft.com/en-us/azure/container-apps/workload-profiles-overview)
-2. Make sure you have a [HuggingFace account](https://huggingface.co/) and [generate an access token](https://huggingface.co/docs/hub/security-tokens) if you are using private dataset on HuggingFace or your base model needs access control.
-3. Accept the LICENSE on HuggingFace if you are fine-tuning Mistral or Llama. 
-
 ## Provision Azure Resources
 To get started, you need to provision the Azure Resource for remote fine-tuning. Do this by running the `AI Toolkit: Provision Azure Container Apps job for fine-tuning` from the command palette. During this process, you will be prompted to select your Azure Subscription and resource group.
 
