@@ -12,7 +12,7 @@ By default, the subscription and the resource group for inference should match t
 ## Deployment for Inference  
 If you wish to revise the inference code or reload the inference model, please execute the `AI Toolkit: Deploy for inference` command. This will synchronize your latest code with ACA and restart the replica.  
 
-![Update code for inference](./Images/remote/command-deploy.png)
+![Deploy for inference](./Images/remote/command-deploy.png)
 
 After the successful completion of the deployment, the model is now ready for evaluation using this endpoint.
 You can access the inference API by clicking on the "*Go to Inference Endpoint*" button displayed in the VSCode notification. Alternatively, the web API endpoint can be found under `ACA_APP_ENDPOINT` in `./infra/inference.config.json` and in the output panel.

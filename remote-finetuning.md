@@ -138,7 +138,7 @@ For example:
     "cd /mount",
     "pip install -r ./setup/requirements.txt",
     "huggingface-cli download <your-model-name> --local-dir ./model-cache/<your-model-name> --local-dir-use-symlinks False",
-    "python3 ./finetuning/invoke_olive.py"
+    "python3 ./finetuning/invoke_olive.py && find models/ -print | grep adapter/adapter"
   ]
 }
 ```
