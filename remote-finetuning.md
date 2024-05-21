@@ -7,7 +7,7 @@ To get started, you need to provision the Azure Resource for remote fine-tuning.
 ![Provision Fine-Tuning](Images/remote/command-provision-finetune.png)
 
 Monitor the progress of the provision through the link displayed in the output channel.
-![Provision Progress](Images/remote/log-provision-progress.png)
+![Provision Progress](Images/remote/log-finetining-progress.png)
 
 ## Run
 To start the remote fine-tuning job, execute the `AI Toolkit: Run fine-tuning` command.
@@ -136,8 +136,9 @@ For example:
   "ACA_JOB_NAME": "<your-aca-job-name>",
   "COMMANDS": [
     "cd /mount",
-    "pip install -r ./setup/requirements.txt",
+    "pip install huggingface-hub==0.22.2",
     "huggingface-cli download <your-model-name> --local-dir ./model-cache/<your-model-name> --local-dir-use-symlinks False",
+    "pip install -r ./setup/requirements.txt",
     "python3 ./finetuning/invoke_olive.py && find models/ -print | grep adapter/adapter"
   ]
 }
