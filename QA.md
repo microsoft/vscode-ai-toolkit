@@ -1,24 +1,10 @@
-# Windows AI Studio Q&A
-
-### Do I need to fine-tune to test Phi-2?
-
-No, you can generate a Phi-2 project and just try out the base model by running only inference. After the project is generated follow these steps:
-```bash 
-conda activate phi-2-env # or the name you created.
-
-cd inference
-
-# Web browser interface allows to adjust a few parameters like max new token length, temperature and so on.
-
-# User has to manually open the link (e.g. http://127.0.0.1:7860) in a browser after gradio initiates the connections.
-python gradio_chat.py --baseonly
-```
+# AI Toolkit Q&A
 
 ### There are too many fine-tune settings do I need to worry about all of them?
 
 No, you can just run with the default settings and our current dataset in the project to test. If you want you can also pick your own dataset but you will need to tweak some setting see [this](walkthrough-hf-dataset.md) tutorial for more info.
 
-### Windows AI Studio Preview would not start
+### AI Toolkit Preview would not scaffold the fine-tuning project
 
 Make sure to check for the prerequisites before installing the extension. More details at [Prerequisites](README.md#prerequisites).
 
@@ -41,7 +27,7 @@ Not at this time but we are working to expand the list of models.
 
 ### Does the extension work in Linux or other systems?
 
-At this time we only support running the extension in Windows we are currently planning for other platform support. The extension uses WSL but will not run within the environment.
+At this time we only support running the extension in Windows and Linux but we are currently planning for other platform support. The extension uses WSL but will not run within the environment.
 
 ### Can I use the extension on an Azure VM?
 
@@ -64,4 +50,4 @@ We host all the project templates in GitHub and the base models are hosted in Az
 Please ensure you request access to Llama through this form [Llama 2 sign up page](https://github.com/llama2-onnx/signup) this is needed to comply with Meta's trade compliance.
 
 ### Can't save project inside WSL instance
-Because the remote sessions are currently not supported when running the Windows AI Studio Actions, you cannot save your project while being connected to WSL. To close remote connections, click on "WSL" at the bottom left of the screen and choose "Close Remote Connections".
+Because the remote sessions are currently not supported when running the AI Toolkit Actions, you cannot save your project while being connected to WSL. To close remote connections, click on "WSL" at the bottom left of the screen and choose "Close Remote Connections".
