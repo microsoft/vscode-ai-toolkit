@@ -4,7 +4,7 @@
 
 No, you can just run with the default settings and our current dataset in the project to test. If you want you can also pick your own dataset but you will need to tweak some setting see [this](walkthrough-hf-dataset.md) tutorial for more info.
 
-### AI Toolkit Preview would not scaffold the fine tunning project
+### AI Toolkit Preview would not scaffold the fine-tuning project
 
 Make sure to check for the prerequisites before installing the extension. More details at [Prerequisites](README.md#prerequisites).
 
