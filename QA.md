@@ -1,4 +1,4 @@
-# Windows AI Studio Q&A
+# AI Toolkit Q&A
 
 ### Do I need to fine-tune to test Phi-2?
 
@@ -18,7 +18,7 @@ python gradio_chat.py --baseonly
 
 No, you can just run with the default settings and our current dataset in the project to test. If you want you can also pick your own dataset but you will need to tweak some setting see [this](walkthrough-hf-dataset.md) tutorial for more info.
 
-### Windows AI Studio Preview would not start
+### AI Toolkit Preview would not start
 
 Make sure to check for the prerequisites before installing the extension. More details at [Prerequisites](README.md#prerequisites).
 
@@ -41,7 +41,7 @@ Not at this time but we are working to expand the list of models.
 
 ### Does the extension work in Linux or other systems?
 
-At this time we only support running the extension in Windows we are currently planning for other platform support. The extension uses WSL but will not run within the environment.
+At this time we only support running the extension in Windows and Linux but we are currently planning for other platform support. The extension uses WSL but will not run within the environment.
 
 ### Can I use the extension on an Azure VM?
 
@@ -64,4 +64,4 @@ We host all the project templates in GitHub and the base models are hosted in Az
 Please ensure you request access to Llama through this form [Llama 2 sign up page](https://github.com/llama2-onnx/signup) this is needed to comply with Meta's trade compliance.
 
 ### Can't save project inside WSL instance
-Because the remote sessions are currently not supported when running the Windows AI Studio Actions, you cannot save your project while being connected to WSL. To close remote connections, click on "WSL" at the bottom left of the screen and choose "Close Remote Connections".
+Because the remote sessions are currently not supported when running the AI Toolkit Actions, you cannot save your project while being connected to WSL. To close remote connections, click on "WSL" at the bottom left of the screen and choose "Close Remote Connections".
