@@ -12,7 +12,7 @@ In this section you will learn how to quickly start with AI Toolkit.
 
 ### Prerequisites
 
-AI Toolkit will run locally on NVIDIA GPUs for the preview, or run remotely via cloud resource with GPU, so please make sure to check your environment. For local run, WSL Ubuntu distro 18.4 or greater should be installed and is set to default prior to using AI Toolkit.
+AI Toolkit Preview will run locally. Depends on the model you selected, some tasks have Windows and Linux support only, MacOS support is coming soon. For local inference or fine-tune, depends on the model you selected, you may need to have GPU such as NVIDIA GPUs for the preview. If you run remotely the cloud resource needs to have GPU, please make sure to check your environment. For local run on Windows + WSL, WSL Ubuntu distro 18.4 or greater should be installed and is set to default prior to using AI Toolkit.
 [Learn more how to install Windows subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/install) and [changing default distribution](https://learn.microsoft.com/en-us/windows/wsl/install#change-the-default-linux-distribution-installed).
 
 ### Install AI Toolkit Preview
@@ -29,12 +29,12 @@ Let's explore the available actions!
 
 ### Available Actions
 
-Upon launching AI Toolkit, you can select from the following options:
+Upon launching AI Toolkit from VS Code side bar, you can select from the following options:
 
-- Find a supported model and download locally
-- Test model inference in the Playground
-- Fine-tune model locally or remotely
-- Deploy fine-tuned models to cloud
+- Find a supported model from **Model Catalog** and download locally
+- Test model inference in the **Model Playground**
+- Fine-tune model locally or remotely in **Model Fine-tuning**
+- Deploy fine-tuned models to cloud via command palette for AI Toolkit
 
 ### Model Fine-tuning
 
@@ -55,11 +55,11 @@ This will:
 
 When the model is downloaded, you can launch the project from AI Toolkit.
 
-> ***Note*** If you want to try preview feature to do fine-tuning remotely, please follow [this guide](https://aka.ms/previewFinetune)
+> ***Note*** If you want to try preview feature to do inference or fine-tuning remotely, please follow [this guide](https://aka.ms/previewFinetune)
 
 ### Windows Optimized Models
 
-This is the collection of publicly available AI models already optimized for Windows. The models are stored in the different locations including Hugging Face, GitHub and others, but you can browse the models and find all of them in one place ready for downloading and using in your Windows application.
+AI Toolkit offers the collection of publicly available AI models already optimized for Windows. The models are stored in the different locations including Hugging Face, GitHub and others, but you can browse the models and find all of them in one place ready for downloading and using in your Windows application.
 
 ### Q&A
 
