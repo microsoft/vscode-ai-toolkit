@@ -1,24 +1,10 @@
 # AI Toolkit Q&A
 
-### Do I need to fine-tune to test Phi-2?
-
-No, you can generate a Phi-2 project and just try out the base model by running only inference. After the project is generated follow these steps:
-```bash 
-conda activate phi-2-env # or the name you created.
-
-cd inference
-
-# Web browser interface allows to adjust a few parameters like max new token length, temperature and so on.
-
-# User has to manually open the link (e.g. http://127.0.0.1:7860) in a browser after gradio initiates the connections.
-python gradio_chat.py --baseonly
-```
-
 ### There are too many fine-tune settings do I need to worry about all of them?
 
 No, you can just run with the default settings and our current dataset in the project to test. If you want you can also pick your own dataset but you will need to tweak some setting see [this](walkthrough-hf-dataset.md) tutorial for more info.
 
-### AI Toolkit Preview would not start
+### AI Toolkit Preview would not scaffold the fine tunning project
 
 Make sure to check for the prerequisites before installing the extension. More details at [Prerequisites](README.md#prerequisites).
 
