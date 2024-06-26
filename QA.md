@@ -51,3 +51,7 @@ Please ensure you request access to Llama through this form [Llama 2 sign up pag
 
 ### Can't save project inside WSL instance
 Because the remote sessions are currently not supported when running the AI Toolkit Actions, you cannot save your project while being connected to WSL. To close remote connections, click on "WSL" at the bottom left of the screen and choose "Close Remote Connections".
+
+### Error: GitHub API forbidden
+
+See [this issue](https://github.com/microsoft/vscode-ai-toolkit/issues/70#issuecomment-2126089884) for workaround. We host the project templates in GitHub repositry *microsoft/windows-ai-studio-templates*, and the extension will call GitHub API to load the repo content. If you are in Microsoft, you may need to authorize Microsoft organization to avoid such forbidden issue.
