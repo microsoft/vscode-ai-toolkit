@@ -58,5 +58,6 @@ We host the project templates in GitHub repositry *microsoft/windows-ai-studio-t
 
 See [this issue](https://github.com/microsoft/vscode-ai-toolkit/issues/70#issuecomment-2126089884) for workaround. The detailed steps are:
 - Sign out GitHub account from VS Code
-- Reload VS Code and AI Toolkit will ask to sign in GitHub again
+- Reload VS Code and AI Toolkit and you will be asked to sign in GitHub again
 - [Important] In browser's authorize page, make sure to authorize the app to access "Microsoft" org
+  ![Authorize Access](./Images/faq-github-api-forbidden.png)
