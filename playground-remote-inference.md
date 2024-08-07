@@ -1,6 +1,6 @@
 # Remote inference in Playground
 
-Remote inference enables users to inference with external language models in playground.
+Users can chat with external language model in playground.
 
 ## Prerequisites
 
