@@ -61,12 +61,12 @@ Here are some examples about how to find your endpoint and authentication header
 
     ![](./Images/playground-remote-inference/8-openai-key.png)
 
-### How to edit endpoint URL or authentication header
+### How to edit endpoint URL or authentication header?
 
-If you enter the wrong endpoint or authenticatin header, you may encounter errors when inferencing. You click "Edit settings.json" to open Visual Studio Code settings, where you can edit the added endpoints or authentication headers. You may also type the command `Open User Settings (JSON)` in Visual Studio Code command palette to open the settings file.
+If you enter the wrong endpoint or authenticatin header, you may encounter errors when inferencing. Click `Edit settings.json` to open Visual Studio Code settings. You may also type the command `Open User Settings (JSON)` in Visual Studio Code command palette to open it and go to the `windowsaistudio.remoteInfereneEndpoints` section.
 
 ![](./Images/playground-remote-inference/9-edit.png)
 
-You can edit or remove existing endpoint URLs or authentication headers by editing the Visual Studio Code settings. After you save the settings, the models list in tree view or playground will automatically refresh.
+Here, you can edit or remove existing endpoint URLs or authentication headers. After you save the settings, the models list in tree view or playground will automatically refresh.
 
 ![](./Images/playground-remote-inference/10-edit-settings.png)
