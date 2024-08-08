@@ -1,6 +1,6 @@
 # Remote inference in Playground
 
-Users can chat with external language model in playground.
+Users can chat with remotely hosted language model in playground.
 
 ## Prerequisites
 
@@ -25,11 +25,11 @@ Users can chat with external language model in playground.
 
     ![](./Images/playground-remote-inference/3-endpoint.png)
 
-4. If your endpoint requires authentication, you can set an authentication header for API key authentication. Otherwise, your can just press Enter to skip this step.
+4. If your endpoint requires authentication, you can set an authentication header for API key. Otherwise, your can just press Enter to skip this step.
 
     ![](./Images/playground-remote-inference/4-auth-header.png)
 
-5. After it is successfully added, the new model will appear in both tree view and playground, and tagged with `Remote`. You can select the model in playground an try inference just like other local models.
+5. After it is successfully added, the new model will appear in tree view, tagged with `Remote`. It will also appear in model drop down in playground. You can select the model in playground an try inference just like other local models.
 
     ![](./Images/playground-remote-inference/5-inference.png)
 
