@@ -29,7 +29,7 @@ Users can chat with remotely hosted language model in playground.
 
     ![](./Images/playground-remote-inference/4-auth-header.png)
 
-5. After it is successfully added, the new model will appear in tree view, tagged with `Remote`. It will also appear in model drop down in playground. You can select the model in playground an try inference just like other local models.
+5. After it is successfully added, the new model will appear in tree view, tagged with `Remote`. It will also appear in model drop down in playground. You can select the model in playground and try inference just like other local models.
 
     ![](./Images/playground-remote-inference/5-inference.png)
 
