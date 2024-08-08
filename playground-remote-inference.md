@@ -15,11 +15,9 @@ Users can chat with remotely hosted language model in playground.
 
     ![](./Images/playground-remote-inference/1-entrypoint-command.png)
 
-2. Enter the model name and press Enter.
+2. Enter the model name and press Enter. For the endpoint you choose, if the [`model` parameter](https://platform.openai.com/docs/api-reference/chat/create#chat-create-model) is required, you need to set the name according to the requirements (For example, you may set it to `gpt-4o`, `gpt-3.5-turbo`, etc. for OpenAI service). Otherwise, it is just an arbitary name for display purpose in AI Toolkit (For example, `model` is ignored for Azure OpenAI).
 
     ![](./Images/playground-remote-inference/2-model-name.png)
-
-    > Note: The model name is sent to the chat completion endpoint as the ["model" parameter](https://platform.openai.com/docs/api-reference/chat/create#chat-create-model) when running inference.
 
 3. Enter OpenAI compatible chat completion endpoint URL.
 
