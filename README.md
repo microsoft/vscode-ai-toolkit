@@ -2,7 +2,7 @@
 
 ## 👋 Introduction
 
-[AI Toolkit for VS Code](https://aka.ms/WindowsAI-Studio) simplifies generative AI app development by bringing together cutting-edge AI development tools and models from Azure AI Studio Catalog and other catalogs like Hugging Face. You will be able browse the AI models catalog powered by Azure ML and Hugging Face, download them locally, fine-tune, test and use them in your application.
+[AI Toolkit for VS Code](https://aka.ms/WindowsAI-Studio) simplifies generative AI app development by bringing together cutting-edge AI development tools and models from Azure AI Studio Catalog and other catalogs like Hugging Face. You will be able browse the AI models catalog powered by Azure ML and Hugging Face, download them locally, fine-tune, test, and use them in your application.
 
 You can also fine-tune and deploy models to the cloud (preview).
 
@@ -13,7 +13,7 @@ In this section you will learn how to quickly start with AI Toolkit.
 ### Prerequisites
 
 - Windows or Linux. *MacOS support is coming soon*.
-- For finetuning on both Windows and Linux, you'll need an Nvidia GPU. In addition, **Windows** requires subsystem for Linux with Ubuntu distro 18.4 or greater. [Learn more how to install Windows subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/install) and [changing default distribution](https://learn.microsoft.com/en-us/windows/wsl/install#change-the-default-linux-distribution-installed).
+- For finetuning on both Windows and Linux, you'll need an Nvidia GPU. In addition, **Windows** requires Windows Subsystem for Linux (WSL) with Ubuntu distro 18.04 or greater. [Learn more how to install Windows Subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/install) and [changing default distribution](https://learn.microsoft.com/en-us/windows/wsl/install#change-the-default-linux-distribution-installed).
 
 ### 💾 Install AI Toolkit (Preview)
 
@@ -33,7 +33,7 @@ The primary sidebar of the AI Toolkit is organized into **Models** and **Resourc
 ![AI toolkit model catalog](Images/model_catalog.png)
 
 > **💡 Tip**<br>
-> You'll notice that the model cards show the model size, the platform and accelerator type (CPU, GPU). For optimized performance on **Windows devices that have at least one GPU**, select model versions that only target Windows. This ensures you have a model optimized for the [DirectML](../directml/dml-intro.md) accelerator. The model names are in the format of `{model_name}-{accelerator}-{quantization}-{format}`.
+> You'll notice that the model cards show the model size, the platform, and accelerator type (CPU, GPU). For optimized performance on **Windows devices that have at least one GPU**, select model versions that only target Windows. This ensures you have a model optimized for the [DirectML](../directml/dml-intro.md) accelerator. The model names are in the format of `{model_name}-{accelerator}-{quantization}-{format}`.
 >
 > To check whether you have a GPU on your Windows device, open **Task Manager** and then select the **Performance** tab. If you have GPU(s), they will be listed under names like "GPU 0" or "GPU 1".
 
