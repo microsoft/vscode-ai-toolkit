@@ -75,4 +75,4 @@ The OpenAI o1 series models are specifically designed to tackle reasoning and pr
 
 IMPORTANT: o1-preview model is available for limited access. To try the model in the playground, registration is required, and access will be granted based on Microsoft’s eligibility criteria.
 
-You can visit the [GitHub model market](https://aka.ms/github-model-marketplace) to find OpenAI o1-mini or OpenAI o1-preview and join the waitlist..
+You can visit the [GitHub model market](https://aka.ms/github-model-marketplace) to find OpenAI o1-mini or OpenAI o1-preview and join the waitlist.
