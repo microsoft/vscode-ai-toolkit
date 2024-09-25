@@ -68,3 +68,11 @@ If you enter the wrong endpoint or authenticatin header, you may encounter error
 Here, you can edit or remove existing endpoint URLs or authentication headers. After you save the settings, the models list in tree view or playground will automatically refresh.
 
 ![](./Images/playground-remote-inference/10-edit-settings.png)
+
+### How can I join the waitlist for OpenAI o1-mini or OpenAI o1-preview?
+
+The OpenAI o1 series models are specifically designed to tackle reasoning and problem-solving tasks with increased focus and capability. These models spend more time processing and understanding the user's request, making them exceptionally strong in areas like science, coding, math and similar fields. For example, o1 can be used by healthcare researchers to annotate cell sequencing data, by physicists to generate complicated mathematical formulas needed for quantum optics, and by developers in all fields to build and execute multi-step workflows.
+
+IMPORTANT: o1-preview model is available for limited access. To try the model in the playground, registration is required, and access will be granted based on Microsoft’s eligibility criteria.
+
+You can visit the [GitHub model market](https://aka.ms/github-model-marketplace) to find OpenAI o1-mini or OpenAI o1-preview and join the waitlist..
