@@ -1,6 +1,6 @@
 # Finetune models
 
-# **[Private Preview]** Introducing Remote Development with AI Toolkit for VS Code
+# **[Preview]** Introducing Remote Development with AI Toolkit for VS Code
 
 In addition to local development, the AI Toolkit for VS Code now supports remote development. This feature enables users to provision for Azure Container Apps to run model fine-tuning and inference endpoint in the cloud.
 
@@ -31,8 +31,8 @@ In addition to local development, the AI Toolkit for VS Code now supports remote
 > **Note:** The project currently works either locally or remotely within the AI Toolkit for VS Code. If you choose *"Fine-tune locally"* during project creation, it will operate exclusively in WSL without remote development capabilities. On the other hand, if you forego enabling *"Fine-tune locally"*, the project will be restricted to the remote Azure Container App environment.
 
 ## What's Next
-Refer to [Fine-Tuning models remotely](./remote-finetuning.md) for instructions on how to fine-tune a model in Azure Container Apps.
-To learn how to create an inference API endpoint in Azure Container Apps, see I[Inferencing with the fine-tuned model](./remote-inference.md).
+Refer to [Fine-Tuning models remotely](#fine-tuning-models-remotely) for instructions on how to fine-tune a model in Azure Container Apps.
+To learn how to create an inference API endpoint in Azure Container Apps, see I[Inferencing with the fine-tuned model](#inferencing-with-the-fine-tuned-model).
 
 # Fine-Tuning models remotely
 Model fine-tuning in machine learning involves subtly adjusting an existing model, originally trained on a larger dataset, to perform a similar but new task using a smaller dataset. If you don't have local computing resources like a GPU, you can do this fine tuning remotely with AI Toolkit and Azure Container App.
@@ -179,6 +179,8 @@ For example:
   ]
 }
 ```
+
+
 # Inferencing with the fine-tuned model
 After the adapters are trained in the remote environment, use a simple Gradio application to interact with the model.
 
