@@ -1,3 +1,11 @@
+# Playground overview
+
+*need to insert the new screenshot for the core playground features.*
+
+# Add attachment for Multi-modal models
+
+*insert MLM support*
+
 # Remote inference in Playground
 
 Users can chat with remotely hosted language model in playground.
