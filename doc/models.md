@@ -49,7 +49,7 @@ On each model card, there are several options:
 ## Bring Your Own Models
 
 AI Toolkit's playground supports remote models. Mouse-over "MY MODELS" on treeview, a "+" sign appears to add a remote model into AI Toolkit. Fill in the requested information on model name, display name, model hosting URL and optional auth string. A remote model is added and shown in treeview as step3.
-![alt text](images/byom.png)
+![alt text](./Images/byom.png)
 ## Ollama models
 
 User needs to install and run the Ollama runtime on local machine properly. Treat it as a "remote model". Use "http://localhost:11434/v1/chat/completions" as URL and leave auth empty. The current Ollama running model will be added as custom model. You can also see it on treeview's "MY MODEL" list. Use it the same way as other models in playground.

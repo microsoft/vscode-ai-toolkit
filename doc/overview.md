@@ -11,7 +11,7 @@ Any developer who wants to explore, test, evaluate, and finetune generative AI m
 ## Install and setup 
 
 Search the Visual Studio Code extension marketplace for "AI Toolkit", install either the formal released version to stable features, or pre-released version for early access of new features. Check What's New during the installation for detailed feature list of each version.
-![alt text](images/install.png)
+![alt text](./Images/install.png)
 
 ## Key features
 
