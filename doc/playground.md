@@ -1,10 +1,10 @@
 # Playground overview
 
-*need to insert the new screenshot for the core playground features.*
+![alt text](./Images/playground.png)
 
 # Add attachment for Multi-modal models
 
-*insert MLM support*
+![alt text](./Images/attachment.png)
 
 # Remote inference in Playground
 
