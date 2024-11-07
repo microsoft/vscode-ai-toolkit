@@ -1,10 +1,19 @@
 # Playground overview
 
+Playground is where developer to interact with AI models of choice, try different prompts with different model parameter settings. For the most recent multi-modal models that supports attachment of different format, developer can also interact through playground.
+
+In AI Toolkit, click the playground or from Model Catalog to load or try in playground, the playground view will display as screenshot:
+
 ![alt text](./Images/playground.png)
+
+User must select a model from the choice to start with. Optionally user can insert context instructions or change model parameters. User prompts or questions are entered from the chat box at the bottom of playground, with options to send, clear chat history, or add attachement for the prompt. 
 
 # Add attachment for Multi-modal models
 
+If the model doesn't support attachment yet, the icon will be disabled. Otherwise click the pin icon, follow the instruction to attach one or more local files and use them together in prompt.
+
 ![alt text](./Images/attachment.png)
+
 
 # Remote inference in Playground
 
