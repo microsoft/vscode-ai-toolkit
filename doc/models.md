@@ -14,20 +14,20 @@ On AI Toolkit, click the "Models" on treeview to open the model catalog, as show
 There are a set of filters on model catalog as shown in step2:
 - Hosted by:
     
-    AI Toolkit now supports GitHub, ONNX, OpenAI, Anthropic, Google.
+    AI Toolkit now supports GitHub, ONNX, OpenAI, Anthropic, Google as model hosting sources.
 - Publisher:
     
-    The publisher for AI models
+    The publisher for AI models. e.g. Microsoft, Meta, Google, OpenAI, Anthropic, Mistral AI, etc.
 
 - Task:
 
-    Now only text generation is for this filter
+    Now only 'text generation' is for this filter.
 
 - Device Type:
 
-    Depends on the local availability, to filter models by CPU, GPU and NPU
+    Depends on the local availability, to filter models by CPU, GPU and NPU.
 
-Additional filters in "All Model Types" to filter modes that can run locally or remotely.
+Additional filters to filter modes that can run locally or remotely, with default to include all model types.
 
 Fine-tuning Support switch filters only the model that can be used to run finetuning.
 
@@ -42,14 +42,14 @@ Click on each model card in model catalog to find more details on the model.
 ## Select a model for test
 
 On each model card, there are several options: 
-- **Try in Playground** link that can load selected model in playground for test.
+- **Try in Playground** link that can load selected model in playground for test without model downloading.
 - **Download** link that will download the model to local first from source like Hugging Face.
-- **Load in Playground** will load the model into playground for chat.
+- **Load in Playground** will load the downloaded model into playground for chat.
 
 ## Bring Your Own Models
 
 AI Toolkit's playground supports remote models. Mouse-over "MY MODELS" on treeview, a "+" sign appears to add a remote model into AI Toolkit. Fill in the requested information on model name, display name, model hosting URL and optional auth string. A remote model is added and shown in treeview as step3.
-
+![alt text](images/byom.png)
 ## Ollama models
 
 User needs to install and run the Ollama runtime on local machine properly. Treat it as a "remote model". Use "http://localhost:11434/v1/chat/completions" as URL and leave auth empty. The current Ollama running model will be added as custom model. You can also see it on treeview's "MY MODEL" list. Use it the same way as other models in playground.
