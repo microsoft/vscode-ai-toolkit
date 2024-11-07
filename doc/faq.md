@@ -61,3 +61,13 @@ See [this issue](https://github.com/microsoft/vscode-ai-toolkit/issues/70#issuec
 - Reload VS Code and AI Toolkit and you will be asked to sign in GitHub again
 - [Important] In browser's authorize page, make sure to authorize the app to access "Microsoft" org
   ![Authorize Access](./Images/faq-github-api-forbidden.png)
+
+### Cannot list, load, or download ONNX model
+
+Check the 'AI Toolkit' log from output panel. If seeing *Agent* error or something like:
+
+![Agent Failure](./Images/faq-onnx-agent.png)
+
+Please close all VS Code instances and reopen VS Code.
+
+(*It's caused by underlying ONNX agent unexpectedly closed and above step is to restart the agent.*)
