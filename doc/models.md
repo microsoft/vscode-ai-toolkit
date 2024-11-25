@@ -50,6 +50,32 @@ On each model card, there are several options:
 
 AI Toolkit's playground supports remote models. Mouse-over "MY MODELS" on treeview, a "+" sign appears to add a remote model into AI Toolkit. Fill in the requested information on model name, display name, model hosting URL and optional auth string. A remote model is added and shown in treeview as step3.
 ![alt text](./Images/byom.png)
+
 ## Ollama models
 
-User needs to install and run the Ollama runtime on local machine properly. Treat it as a "remote model". Use "http://localhost:11434/v1/chat/completions" as URL and leave auth empty. The current Ollama running model will be added as custom model. You can also see it on treeview's "MY MODEL" list. Use it the same way as other models in playground.
+### Prerequisites
+
+- AI Toolkit v0.6.2 or newer.
+- [Ollama](https://ollama.com/download) (Tested on Ollama v0.4.1)
+
+### Steps to add local Ollama into AI Toolkit
+
+1. Click the "+" button while hovering on treeview **MY MODELS** or click the **+ Add model** button in model catalog or playground.
+
+1. Select **Add an Ollama model**
+
+    ![](./Images/ollama/select-type.png)
+
+1. Select **Select models from Ollama library**. Or if you start Ollama runtime at a different address, you can choose "Provide custom Ollama endpoint" to specify Ollama endpoint.
+
+    ![](./Images/ollama/select-ollama.png)
+
+1. Select the models you want to add to AI Toolkit.
+
+    ![](./Images/ollama/select-models.png)
+
+    > Please note that it will only show models that are already downloaded in Ollama and not already added to AI Toolkit. In order to download a model from Ollama you can run `ollama pull <model-name>`. You can see the list of models supported by Ollama in [Ollama library](https://ollama.com/library) or refer to [Ollama documentation](https://github.com/ollama/ollama).
+
+1. You will see it on treeview's **MY MODELS** list. Use it the same way as other models in playground.
+
+    > Attachment is not support yet for Ollama models. Since we connect to Ollama using its [OpenAI compatible endpoint](https://github.com/ollama/ollama/blob/main/docs/openai.md) and it doesn't support attachments yet.
