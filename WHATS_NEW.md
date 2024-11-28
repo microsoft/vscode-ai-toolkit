@@ -1,5 +1,15 @@
 # What's New in AI Toolkit for VS Code Preview
 
+## Version 0.6.2
+This is a patch version to the major milestone release v0.6.0, with some highly demanded feature improvements and bug fixes:
+  - Support Ollama models from more UI entries with improved doc
+  - Support Intel-based Mac (ONNX models support coming next)
+  - Support attachment for selected GitHub multi-modal models: (Llama-3.2-11B-Vision-Instruct / Llama-3.2-90B-Vision-Instruct / gpt-4o / gpt-4o-mini / Phi-3.5-vision-instruct)
+  - Added direct entry of developer documentation from AI Toolkit treeview 
+  - Support responsive UI for attachments
+  - Count the total tokens used in each playground conversation
+  - Multiple bug fixes
+
 ## Version 0.6.0
 This is a major milestone release with significant additions of features and resources.
 
