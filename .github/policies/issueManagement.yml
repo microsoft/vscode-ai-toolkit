@@ -18,31 +18,6 @@ configuration:
           reply: Thank you for contacting us! Any issue or feedback from you is quite important to us. We will do our best to fully respond to your issue as soon as possible. Sometimes additional investigations may be needed, we will usually get back to you within 2 days by adding comments to this issue. Please stay tuned.
       - addLabel:
           label: needs attention
-    - description: "[Issue Management] Add needs attention label to issue if there is a new comment by a non-member"
-      triggerOnOwnActions: false
-      if:
-      - payloadType: Issue_Comment
-      - and:
-        - isOpen
-        - isIssue
-        - not:
-          or:
-          - hasLabel:
-              label: needs attention
-          - activitySenderHasAssociation:
-              association: Member
-          - isActivitySender:
-              user: msftbot[bot]
-              issueAuthor: False
-          - isActivitySender:
-              user: microsoft-github-policy-service[bot]
-              issueAuthor: False
-          - isActivitySender:
-              user: github-actions[bot]
-              issueAuthor: False
-      then:
-      - addLabel:
-          label: needs attention
     - description: "[Idle Issue Management] Remove no recent activity label from issues"
       if:
       - payloadType: Issues
