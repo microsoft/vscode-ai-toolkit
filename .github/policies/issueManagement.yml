@@ -21,7 +21,7 @@ configuration:
     - description: "[Issue Management] Add needs attention label to issue if there is a new comment by a non-member"
       triggerOnOwnActions: false
       if:
-      - payloadType: Issues_Comment
+      - payloadType: Issue_Comment
       - and:
         - isOpen
         - isIssue
