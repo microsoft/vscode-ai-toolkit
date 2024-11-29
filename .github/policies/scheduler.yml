@@ -1,0 +1,171 @@
+id: 
+name: GitOps.PullRequestIssueManagement
+description: GitOps.Schedule.PullRequestIssueManagement
+owner: 
+resource: repository
+disabled: false
+where: 
+configuration:
+  resourceManagementConfiguration:
+    scheduledSearches:
+    - description: "[Idle Issue Management] Add no recent activity label to issues without bug/feature request label"
+      frequencies:
+      - weekday:
+          day: Monday
+          time: 0:0
+      - weekday:
+          day: Tuesday
+          time: 0:0
+      - weekday:
+          day: Wednesday
+          time: 0:0
+      - weekday:
+          day: Thursday
+          time: 0:0
+      - weekday:
+          day: Friday
+          time: 0:0
+      filters:
+      - isIssue
+      - isOpen
+      - hasLabel:
+          label: needs more info
+      - isNotLabeledWith:
+          label: no recent activity
+      - isNotLabeledWith:
+          label: bug
+      - isNotLabeledWith:
+          label: feature request
+      - noActivitySince:
+          days: 7
+      actions:
+      - addLabel:
+          label: no recent activity
+      - addReply:
+          reply: >
+            This issue has been automatically marked as stale because it has been marked as requiring author feedback but has not had any activity for **7 days**. It will be closed if no further activity occurs **within 3 days of this comment**. If it *is* closed, feel free to comment when you are able to provide the additional information and we will re-investigate.
+    - description: "[Idle Issue Management] Close stale issues"
+      frequencies:
+      - weekday:
+          day: Monday
+          time: 0:0
+      - weekday:
+          day: Tuesday
+          time: 0:0
+      - weekday:
+          day: Wednesday
+          time: 0:0
+      - weekday:
+          day: Thursday
+          time: 0:0
+      - weekday:
+          day: Friday
+          time: 0:0
+      filters:
+      - isOpen
+      - isIssue
+      - noActivitySince:
+          days: 3
+      - hasLabel:
+          label: no recent activity
+      - hasLabel:
+          label: needs more info
+      - isNotInAnyMilestone
+      - isNotLabeledWith:
+          label: bug
+      - isNotLabeledWith:
+          label: feature request
+      actions:
+      - closeIssue
+      - addReply:
+          reply: 'Due to lack of details for further investigation, we will archive the issue for now. In case you still have following-up questions on this issue, please always feel free to reopen the issue by clicking ‘reopen issue’ button below the comment box. We will get back to you as soon as possible. '
+    - description: "[Idle Issue Management] Add no recent activity label to issues with bug lable"
+      frequencies:
+      - weekday:
+          day: Monday
+          time: 0:0
+      - weekday:
+          day: Tuesday
+          time: 0:0
+      - weekday:
+          day: Wednesday
+          time: 0:0
+      - weekday:
+          day: Thursday
+          time: 0:0
+      - weekday:
+          day: Friday
+          time: 0:0
+      filters:
+      - isIssue
+      - isOpen
+      - hasLabel:
+          label: needs more info
+      - hasLabel:
+          label: bug
+      - isNotLabeledWith:
+          label: no recent activity
+      - noActivitySince:
+          days: 7
+      actions:
+      - addLabel:
+          label: no recent activity
+      - addReply:
+          reply: >
+            This issue has been automatically marked as stale because it has been marked as requiring author feedback but has not had any activity for **7 days**. As it is labeled with bug, it will be manually handled
+    - description: "[Idle Issue Management] Add no recent activity label to issues with feature request lable"
+      frequencies:
+      - weekday:
+          day: Monday
+          time: 0:0
+      - weekday:
+          day: Tuesday
+          time: 0:0
+      - weekday:
+          day: Wednesday
+          time: 0:0
+      - weekday:
+          day: Thursday
+          time: 0:0
+      - weekday:
+          day: Friday
+          time: 0:0
+      filters:
+      - isIssue
+      - isOpen
+      - hasLabel:
+          label: needs more info
+      - hasLabel:
+          label: feature request
+      - isNotLabeledWith:
+          label: no recent activity
+      - noActivitySince:
+          days: 7
+      actions:
+      - addLabel:
+          label: no recent activity
+      - addReply:
+          reply: >
+            This issue has been automatically marked as stale because it has been marked as requiring author feedback but has not had any activity for **7 days**. As it is labeled with feature request, it will be manually handled
+    - description: "[Close Issue Management] For issue with close-wait label"
+      frequencies:
+      - daily:
+          time: 1:0
+      filters:
+      - isOpen
+      - isIssue
+      - noActivitySince:
+          days: 1
+      - hasLabel:
+          label: close-wait
+      - isNotLabeledWith:
+          label: bug
+      - isNotLabeledWith:
+          label: feature request
+      - isNotInAnyMilestone
+      actions:
+      - closeIssue
+      - removeLabel:
+          label: close-wait
+onFailure: 
+onSuccess: 
