@@ -1,0 +1,82 @@
+id: 
+name: GitOps.PullRequestIssueManagement
+description: GitOps.PullRequestIssueManagement primitive
+owner: 
+resource: repository
+disabled: false
+where: 
+configuration:
+  resourceManagementConfiguration:
+    eventResponderTasks:
+    - description: "[Issue Greeting] Add auto greeting reply when issue opened"
+      if:
+      - payloadType: Issues
+      - isAction:
+          action: Opened
+      then:
+      - addReply:
+          reply: Thank you for contacting us! Any issue or feedback from you is quite important to us. We will do our best to fully respond to your issue as soon as possible. Sometimes additional investigations may be needed, we will usually get back to you within 2 days by adding comments to this issue. Please stay tuned.
+      - addLabel:
+          label: needs attention
+    - description: "[Idle Issue Management] Remove no recent activity label from issues"
+      if:
+      - payloadType: Issues
+      - hasLabel:
+          label: no recent activity
+      - not:
+          isAction:
+            action: Closed
+      then:
+      - removeLabel:
+          label: no recent activity
+    - description: "[Idle Issue Management] Remove no recent activity label when an issue is commented on"
+      if:
+      - payloadType: Issue_Comment
+      - hasLabel:
+          label: no recent activity
+      then:
+      - removeLabel:
+          label: no recent activity
+    - description: "[Idle Issue Management] Replace needs more info label with needs attention label when a non-member comment created on an issue"
+      if:
+      - payloadType: Issue_Comment
+      - isOpen
+      - hasLabel:
+          label: needs more info
+      - isAction:
+          action: Created
+      - not:
+          or:
+            - activitySenderHasAssociation:
+                association: Member
+            - isActivitySender:
+                user: msftbot[bot]
+                issueAuthor: False
+            - isActivitySender:
+                user: microsoft-github-policy-service[bot]
+                issueAuthor: False
+            - isActivitySender:
+                user: github-actions[bot]
+                issueAuthor: False
+      then:
+      - removeLabel:
+          label: needs more info
+      - addLabel:
+          label: needs attention
+    - description: "[Issue Management] Remove close-wait label"
+      if:
+      - payloadType: Issues
+      - hasLabel:
+          label: close-wait
+      - not:
+          isActivitySender:
+            user: github-actions[bot]
+            issueAuthor: False
+      - not:
+          isAction:
+            action: Closed
+      then:
+      - removeLabel:
+          label: close-wait
+onFailure: 
+onSuccess: 

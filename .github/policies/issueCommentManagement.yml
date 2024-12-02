@@ -1,0 +1,34 @@
+id: issueCommentManagement.issueCommentOpened
+name: GitOps.issueCommentManagement
+description: Handlers for when an issue comment is first opened
+owner:
+resource: repository
+disabled: false
+where:
+configuration:
+  resourceManagementConfiguration:
+    eventResponderTasks:
+      - description: "[Issue Management] Add needs attention label to issue if there is a new comment by a non-member"
+        if:
+          - payloadType: Issue_Comment
+          - and:
+            - isOpen
+            - isIssue
+            - not:
+                or:
+                  - hasLabel:
+                      label: needs attention
+                  - activitySenderHasAssociation:
+                      association: Member
+                  - isActivitySender:
+                      user: msftbot[bot]
+                      issueAuthor: False
+                  - isActivitySender:
+                      user: microsoft-github-policy-service[bot]
+                      issueAuthor: False
+                  - isActivitySender:
+                      user: github-actions[bot]
+                      issueAuthor: False
+        then:
+          - addLabel:
+              label: needs attention
