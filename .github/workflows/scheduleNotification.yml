@@ -1,0 +1,20 @@
+on:
+  workflow_dispatch:
+  schedule:
+    # 07:42 Shanghai time zone, every day
+    - cron: "42 23 * * *"
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Check issues that needs attention
+        run: node .github/scripts/notify-issues.js
+        env:
+          MAIL_CLIENT_ID: ${{ secrets.EMAIL_CLIENT_ID }}
+          MAIL_CLIENT_SECRET: ${{ secrets.EMAIL_CLIENT_SECRET }}
+          MAIL_TENANT_ID: ${{ secrets.EMAIL_TENANT_ID }}
