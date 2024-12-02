@@ -1,16 +1,12 @@
 const process = require("process");
 const cp = require("child_process");
-const fs = require("fs");
 
 const Labels = {
   needsAttention: "needs attention",
 };
 
-const workflowMaintainer = "aochengwang@microsoft.com;";
-
-const repoMaintainers = JSON.parse(
-  fs.readFileSync(".github/data/maintainers.json", { encoding: "utf-8" })
-);
+const workflowMaintainer = process.env.WORKFLOW_MAINTAINER_EMAIL;
+const repoMaintainers = JSON.parse(process.env.REPO_MAINTAINERS);
 const repoMaintainersMap = new Map(
   repoMaintainers.maintainers.map((m) => [m.github, m.alias])
 );
