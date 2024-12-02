@@ -15,8 +15,9 @@ jobs:
       - name: Check issues that needs attention
         run: node .github/scripts/notify-issues.js
         env:
-          REPO_MAINTAINERS: ${{ env.REPO_MAINTAINERS }}
-          WORKFLOW_MAINTAINER_EMAIL: ${{ env.SCHEDULED_NOTIFICATION_MAINTAINER_EMAIL }}
-          MAIL_CLIENT_ID: ${{ secrets.EMAIL_CLIENT_ID }}
+          REPO_MAINTAINERS: ${{ vars.REPO_MAINTAINERS }}
+          WORKFLOW_MAINTAINER_EMAIL: ${{ vars.SCHEDULED_NOTIFICATION_MAINTAINER_EMAIL }}
+          MAIL_TENANT_ID: ${{ vars.EMAIL_TENANT_ID }}
+          MAIL_CLIENT_ID: ${{ vars.EMAIL_CLIENT_ID }}
           MAIL_CLIENT_SECRET: ${{ secrets.EMAIL_CLIENT_SECRET }}
-          MAIL_TENANT_ID: ${{ secrets.EMAIL_TENANT_ID }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

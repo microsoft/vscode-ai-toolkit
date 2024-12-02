@@ -12,19 +12,19 @@ configuration:
       frequencies:
       - weekday:
           day: Monday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Tuesday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Wednesday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Thursday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Friday
-          time: 0:0
+          time: 23:00
       filters:
       - isIssue
       - isOpen
@@ -48,19 +48,19 @@ configuration:
       frequencies:
       - weekday:
           day: Monday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Tuesday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Wednesday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Thursday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Friday
-          time: 0:0
+          time: 23:00
       filters:
       - isOpen
       - isIssue
@@ -83,19 +83,19 @@ configuration:
       frequencies:
       - weekday:
           day: Monday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Tuesday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Wednesday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Thursday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Friday
-          time: 0:0
+          time: 23:00
       filters:
       - isIssue
       - isOpen
@@ -117,19 +117,19 @@ configuration:
       frequencies:
       - weekday:
           day: Monday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Tuesday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Wednesday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Thursday
-          time: 0:0
+          time: 23:00
       - weekday:
           day: Friday
-          time: 0:0
+          time: 23:00
       filters:
       - isIssue
       - isOpen
@@ -150,7 +150,7 @@ configuration:
     - description: "[Close Issue Management] For issue with close-wait label"
       frequencies:
       - daily:
-          time: 1:0
+          time: 0:0
       filters:
       - isOpen
       - isIssue

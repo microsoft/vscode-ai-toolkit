@@ -60,7 +60,9 @@ async function main() {
     console.log(`Sending email to ${email} for issue ${JSON.stringify(issues)}`);
     const body = `
 <p>Hi, here are GitHub issues that needs your attention:</p>
-${issues.map((issue) =>`<p><a href="${issue.url}">#${issue.number}</a>: ${issue.title} (${issue.url})</p>`)}
+${issues.map((issue) =>`<p><a href="${issue.url}">#${issue.number}</a>: ${issue.title} (${issue.url})</p>
+<hr />
+<p>* Remove the "needs attention" label or close the issue in order not to receive this notification.</p>`)}
 `;
     await sendEmail(
       email,
