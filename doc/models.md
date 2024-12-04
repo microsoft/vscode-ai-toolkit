@@ -3,7 +3,7 @@
 
 ## Models supported
 
-AI Toolkit support a boradrange of generative AI models. Both Small Language Models (SLM) and Large Language Models (LLM) are supported.
+AI Toolkit supports a broad range of generative AI models. Both Small Language Models (SLM) and Large Language Models (LLM) are supported.
 
 
 ## Find a model
