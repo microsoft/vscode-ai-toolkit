@@ -2,7 +2,7 @@
 
 ## Version 0.8.0
 This is a milestone release with core feature additions and improvements
-  - Support Batch Run that user can run any prompts from imported datasets or run in full batch 
+  - Support Bulk Run that user can run any prompts from imported datasets or run in full bulk 
   - Evaluate a dataset with a set of pre-defined popular evaluators
   - Incremental UI/UX improvements and bug fixes
 
