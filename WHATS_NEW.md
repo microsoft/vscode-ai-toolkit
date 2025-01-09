@@ -1,5 +1,10 @@
 # What's New in AI Toolkit for VS Code Preview
 
+## Version 0.8.3
+This is a patch version to the major milestone release 0.8.0 with some feature improvements and bug fixes:
+   - Support chat history management in Playground.
+   - Support prompt templating with variable in Bulk Run.
+
 ## Version 0.8.0
 This is a milestone release with core feature additions and improvements
   - Support Bulk Run that user can run any prompts from imported datasets or run in full bulk 
