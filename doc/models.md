@@ -55,12 +55,13 @@ AI Toolkit's playground supports remote models. Mouse-over "MY MODELS" on treevi
 
 ### Prerequisites
 
-- AI Toolkit v0.6.2 or newer.
+- [AI Toolkit for VSCode](https://aka.ms/aitoolkit) v0.6.2 or newer. For installation instructions, refer to [Install and Setup](./overview.md#install-and-setup)
 - [Ollama](https://ollama.com/download) (Tested on Ollama v0.4.1)
 
 ### Steps to add local Ollama into AI Toolkit
 
 1. Click the "+" button while hovering on treeview **MY MODELS** or click the **+ Add model** button in model catalog or playground.
+    ![](./Images/ollama/add-model-in-model-catalog.png)
 
 1. Select **Add an Ollama model**
 
