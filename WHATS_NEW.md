@@ -1,4 +1,37 @@
 # What's New in AI Toolkit for VS Code Preview
+## Version 0.10.0
+This is a major milestone release with new feature additions and updates:
+  - More AI Models:
+    - GitHub hosted o3-mini model
+    - Google Gemini 2.0 models
+    - Anthropic Claude 3.5 Haiku model
+    - Nvidia hosted NIM models
+  - Prompt Builder:
+    - Allow easy prompt creating / editing / testing
+    - Generate prompt using AI models
+    - Support structured output
+    - Generate ready code to interact prompts with AI model 
+  - Playground Improvements:
+    - Refined Deepseek-R1 thought UI
+    - Refined Markdown and Latex renderng from model output
+  - Bulk Run Improvements:
+    - Generate dataset using AI models
+    - Support structured output
+  - Custom Evaluator:
+    - Custom evaluator from Python codes
+    - Custom evaluator from LLM prompt
+    
+
+## Version 0.8.6
+This is a patch version to the major milestone release 0.8.0 with feature improvement:
+  - Support DeepSeek R1 Distilled (qwen 1.5B) NPU Model for Copilot+ PCs
+    - Supported SKU:
+      - Qualcomm Snapdragon X   
+      - Intel Core Ultra 200V - coming soon
+
+## Version 0.8.5
+This is a patch version to the major milestone release 0.8.0 with feature improvement:
+  - Support DeepSeek-R1 Model
 
 ## Version 0.8.3
 This is a patch version to the major milestone release 0.8.0 with some feature improvements and bug fixes:
