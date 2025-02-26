@@ -40,7 +40,7 @@ This is a major milestone release with new feature additions and updates:
     - Generate ready code to interact prompts with AI model 
   - Playground Improvements:
     - Refined Deepseek-R1 thought UI
-    - Refined Markdown and Latex renderng from model output
+    - Refined Markdown and Latex rendering from model output
   - Bulk Run Improvements:
     - Generate dataset using AI models
     - Support structured output
@@ -59,11 +59,6 @@ This is a patch version to the major milestone release 0.8.0 with feature improv
 ## Version 0.8.5
 This is a patch version to the major milestone release 0.8.0 with feature improvement:
   - Support DeepSeek-R1 Model
-
-## Version 0.8.3
-This is a patch version to the major milestone release 0.8.0 with some feature improvements and bug fixes:
-   - Support chat history management in Playground.
-   - Support prompt templating with variable in Bulk Run.
 
 ## Version 0.8.3
 This is a patch version to the major milestone release 0.8.0 with some feature improvements and bug fixes:
