@@ -1,4 +1,31 @@
 # What's New in AI Toolkit for VS Code Preview
+
+## Version 0.10.2
+This version is an incremental release with feature improvements and bug fixes:
+- More AI models are supported:
+  - Add support for Anthropic Claude 3.7 Sonnet model (excluding "extended thinking mode")
+- Playground improvements:
+  - Add web search support for models that are capable doing it (e.g., Gemini 2.0)
+  - Add support to extract file content (text, PDF, JSON...) for models lacking native attachment support
+  - Recommend conversation starters when opening Playground
+  - Add default pre-selected model when opening Playground 
+- Prompt Builder improvement:
+  - Improve the UI to help new user get started 
+
+## Version 0.10.1
+This is an incremental release with feature enhancements and bug fixes:
+- Improved model catalog experiences:
+  - Streamline Ollama lifecycle (download, load, multi quantization in one card)
+  - Enable access of popular Ollama models in model catalog
+  - Categorize models for easy model discovery
+  - Search models
+- Playground improvements:
+  - Auto naming the new playground/prompt
+  - New playground carries over the last model selection & preference
+- UI improvements:
+  - Group my models by host in tree view
+  - Support streaming response in Prompt Builder
+
 ## Version 0.10.0
 This is a major milestone release with new feature additions and updates:
   - More AI Models:
