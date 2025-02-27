@@ -3,7 +3,9 @@
 ## Version 0.10.2
 This version is an incremental release with feature improvements and bug fixes:
 - More AI models are supported:
-  - Add support for Anthropic Claude 3.7 Sonnet model (excluding "extended thinking mode")
+  - [Anthropic Claude 3.7 Sonnet](https://www.anthropic.com/news/claude-3-7-sonnet) model (excluding `extended thinking mode`)
+  - [Phi-4-mini-instruct](https://github.com/marketplace/models/azureml/Phi-4-mini-instruct)
+  - [Phi-4-multimodal-instruct](https://github.com/marketplace/models/azureml/Phi-4-multimodal-instruct)
 - Playground improvements:
   - Add web search support for models that are capable doing it (e.g., Gemini 2.0)
   - Add support to extract file content (text, PDF, JSON...) for models lacking native attachment support
