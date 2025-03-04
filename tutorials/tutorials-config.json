@@ -1,0 +1,23 @@
+{
+    "version": "0.4.0",
+    "tutorials": [
+        {
+            "id": "01_question_generator",
+            "title": "Educational Question Generator",
+            "description": "Learn how to create an educational question generator app using prompt builder",
+            "url": "https://github.com/microsoft/vscode-ai-toolkit/tree/dol/tutorials/tutorials/01_question_generator"
+        },
+        {
+            "id": "02_question_generator_structure_output",
+            "title": "Educational Question Generator with Structured Output",
+            "description": "Apply structured output to the educational question generator to generate well-structured responses",
+            "url": "https://github.com/microsoft/vscode-ai-toolkit/tree/dol/tutorials/tutorials/02_question_generator_structure_output"
+        },
+        {
+            "id": "03_question_generator_evaluation",
+            "title": "Educational Question Generator with Evaluation",
+            "description": "Bulk run the dataset and evaluate the generated result using the AI Toolkit",
+            "url": "https://github.com/microsoft/vscode-ai-toolkit/tree/dol/tutorials/tutorials/03_question_generator_evaluation"
+        }
+    ]
+}

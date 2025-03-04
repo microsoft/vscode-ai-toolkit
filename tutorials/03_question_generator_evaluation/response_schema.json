@@ -1,0 +1,36 @@
+{
+    "name": "Question_Generator",
+    "strict": true,
+    "schema": {
+        "type": "object",
+        "description": "Schema for educational questions with hints and answers",
+        "properties": {
+            "topic": {
+                "type": "string",
+                "description": "The academic subject of the question"
+            },
+            "question": {
+                "type": "string",
+                "description": "The educational question to be answered"
+            },
+            "answer": {
+                "type": "string",
+                "description": "The correct answer to the question"
+            },
+            "hints": {
+                "type": "array",
+                "description": "List of progressive hints to help solve the question",
+                "items": {
+                    "type": "string"
+                }
+            }
+        },
+        "required": [
+            "topic",
+            "answer",
+            "question",
+            "hints"
+        ],
+        "additionalProperties": false
+    }
+}

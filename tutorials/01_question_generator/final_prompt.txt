@@ -1,0 +1,61 @@
+Generate a question on a specified topic and provide a question, answer, and a series of increasingly specific hints to guide students toward arriving at the correct answer.
+
+# Guidelines
+
+- Ensure the question is clear and suitable for the intended level of the students.
+- Provide hints gradually, starting with broad clues and narrowing down to specific ones.
+- Confirm that the answer aligns perfectly with the question and hints.
+- Only one question should be generated per request.
+
+# Steps
+
+1. **Formulate the Question**: Develop a unique, engaging question for the specified topic. Ensure the question is educational and contextually relevant.
+2. **Provide the Answer**: Identify the correct answer to the question.
+3. **Create Hints**: 
+   - Hint 1: A broad or general clue related to the topic.
+   - Hint 2: A more specific clue designed to guide the student closer to the answer.
+   - Hint 3: A precise clue that makes the answer more apparent without directly stating it.
+
+# Output Format
+
+The output should use the following format:
+- **Topic**: [specify if provided or inferred from the question] 
+- **Question**: [Write the question here]
+- **Answer**: [Provide the correct answer]
+- **Hints**:
+  - Hint 1: [Provide the broadest, most general hint related to the topic]
+  - Hint 2: [Offer a more specific clue to help narrow down the answer]
+  - Hint 3: [Provide a highly specific and guiding clue to lead to the correct answer]
+
+# Examples
+
+### Example 1:
+- **Topic**: Astronomy
+- **Question**: What is the largest planet in the Solar System?  
+- **Answer**: Jupiter  
+- **Hints**:  
+  1. This planet is known for its massive size and its many moons.  
+  2. It is a gas giant located between Mars and Saturn.  
+  3. It has a famous Great Red Spot, a giant storm visible from Earth.
+
+### Example 2:
+- **Topic**: Mathematics
+- **Question:** What is the smallest prime number?
+- **Answer:** 2
+- **Hints:**
+  1. It is the first even number in the list of prime numbers.
+  2. A prime number can only be divided by 1 and itself, and this number is less than 3.
+  3. It is the only even number that is also a prime.
+
+### Example 3:
+- **Topic**: Chemical Thermodynamics  
+- **Question**: A reaction has a \( \Delta G^\circ = -45.0 \, \text{kJ/mol} \) at \( 298 \, \text{K} \). What is the equilibrium constant (\( K \)) for this reaction? \( R = 8.314 \, \text{J/(mol·K)} \).  
+- **Answer**: Approximately \( 3.9 \times 10^7 \).  
+- **Hints**:
+  1. Recall the relationship between the standard Gibbs free energy change (\( \Delta G^\circ \)) and the equilibrium constant (\( K \)): \( \Delta G^\circ = -RT \ln K \).
+  2. Substitute the values: \( R = 8.314 \, \text{J/(mol·K)} \), \( T = 298 \, \text{K} \), \( \Delta G^\circ = -45.0 \times 10^3 \, \text{J/mol} \). Rearrange the formula to solve for \( K \).
+  3. Solve: First, calculate \( \ln K = -\frac{\Delta G^\circ}{RT} \). Then take the exponential of the result using \( K = e^{\ln K} \). After calculations, you should find \( K \approx 3.9 \times 10^7 \).
+
+# Notes
+- Ensure that the hints do not directly reveal the answer but rather guide the student logically toward it.
+- Questions should vary across disciplines like biology, physics, chemistry, mathematics, history, literature, and other educational subjects unless otherwise specified.
