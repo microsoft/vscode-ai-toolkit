@@ -1,5 +1,30 @@
 # What's New in AI Toolkit for VS Code Preview
 
+## Version 0.10.5
+This version is an incremental release with feature improvements and bug fixes:
+
+- **Tutorials**: Introduce first set of tutorials for common prompt engineering practices. Start one with **CATALOG** > **Tutorials**  
+  ![tutorials](https://github.com/user-attachments/assets/240d4034-7731-4975-905d-3241e97293a1)
+
+- **Compare** model responses in Playground  
+  ![compare](https://github.com/user-attachments/assets/8144c63a-3f1f-4a5a-948b-916dff07512d)
+
+- **Think Mode** for Claude 3.7 Sonnet model in **Playground** and **Prompt Builder**  
+  ![think_in_pb](https://github.com/user-attachments/assets/b42dce7d-2f12-4531-9658-0d1d0079276a)
+
+- **Model Additions**:
+  - [QwQ](https://qwenlm.github.io/blog/qwq-32b/) via Ollama: Thinking and reasoning model of the Qwen series.
+  - [GPT-4.5](https://openai.com/index/introducing-gpt-4-5/) from OpenAI: A general-purpose LLM targeted at providing more natural, fluid interactions that are humanlike.
+  - [DeepSeek v3](https://github.blog/changelog/2025-03-07-deepseek-v3-is-now-generally-available-in-github-models/) via GitHub: Strong performance in coding, math and reasoning tasks.
+
+- Incremental feature enhancements:
+  - **Playground** improvements:
+    - Copy model response
+    - Regenerate response with the same or a different model
+  - **Model Catalog** improvements:
+    - Quick access to `Claude 3.7 Sonnet`, `GPT-4.5` and `QwQ` model via `Popular Models`
+    - Filter models by features such as Web Search, Attachment and Structured Outputs
+
 ## Version 0.10.2
 This version is an incremental release with feature improvements and bug fixes:
 - More AI models are supported:
