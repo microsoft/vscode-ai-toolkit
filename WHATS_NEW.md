@@ -1,5 +1,92 @@
 # What's New in AI Toolkit for VS Code Preview
 
+## Version 0.14.0
+This is a major milestone release with significant updates and new features:
+
+- **Integrated Evaluation for Agent Builders**: Streamlined testing and evaluation capabilities for AI agents:
+![Evaluation UI showcasing prompt and evaluation tabs](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0519/Eval_2.png)
+  - Seamlessly switch between the `Prompt` and `Evaluation` tabs for single or batch agent evaluations.
+  - Utilize variables within prompts and evaluations using the `{{}}` syntax.
+  - Generate synthetic data using LLMs based on provided prompts and variables.
+  - Customize data generation logic directly within the interface.
+  - Import and export evaluation datasets in CSV or JSONL formats.
+  - Access detailed and expanded views of evaluation results.
+  ![Detailed view of evaluation results](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0519/Detail.png)
+  - Manually add or modify evaluation data entries.
+  - Provide quick feedback on evaluation outcomes with thumbs-up and thumbs-down indicators.
+
+- **Built-in [Evaluators for AI Agents](https://learn.microsoft.com/azure/ai-foundry/concepts/evaluation-metrics-built-in?tabs=warning#key-dimensions-of-evaluation)**: Added predefined evaluators to enhance agent assessment:
+![Agent evaluation metrics interface](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0519/Agent_Eval.png)
+  - `Intent Resolution`: measures how well the agent identifies and clarifies user intent, including asking for clarifications and staying within scope.
+  - `Tool Call Accuracy`: measures the agent’s proficiency in selecting appropriate tools, and accurately extracting and processing inputs.
+  - `Task Adherence`: measures how well the agent’s final response meets the predefined goal or request specified in the task.
+
+- **Model Conversion and Optimization Tools**: Simplified processes for model conversion, quantization, optimization, and evaluation.
+![Model conversion and optimization tools interface](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0519/ModelConversion.gif)
+  - **Quantization Recipes for NPUs**: Support for Intel, AMD, and Qualcomm NPU devices.
+  - **Integrated Inference**: Python notebooks provided for convenient model inference within the toolkit.
+  - **Workspace Management**: Customizable workflows and efficient management of model workspaces.
+  - **Dedicated Python Environments**: Automatically configured standalone Python environments with all necessary dependencies for each workflow execution.
+
+- **LoRA Adapter Training for Phi Silica**:
+  - Easily initiate fine-tuning jobs on Azure directly from AI Toolkit by providing your training dataset.
+  - Upon completion (typically around one hour), download your trained LoRA adapter for immediate integration into your applications via Windows AI APIs.
+  - LoRA inferencing support within AI Toolkit will be available soon; meanwhile, explore LoRA capabilities through the AI Dev Gallery during Build by visiting the LoRA sample page.
+
+- Onboarded new models from GitHub:
+  - [DeepSeek-V3-0324](https://github.com/marketplace/models/azureml-deepseek/DeepSeek-V3-0324): Demonstrates notable improvements over its predecessor, DeepSeek-V3, in several key aspects, including enhanced reasoning, improved function calling, and superior code generation capabilities.
+  - [Llama-4-Maverick-17B-128E-Instruct-FP8](https://github.com/marketplace/models/azureml-meta/Llama-4-Maverick-17B-128E-Instruct-FP8): Great at precise image understanding and creative writing, offering high quality at a lower price compared to Llama 3.3 70B
+  - [Llama-4-Scout-17B-16E-Instruct](https://github.com/marketplace/models/azureml-meta/Llama-4-Scout-17B-16E-Instruct): Great at multi-document summarization, parsing extensive user activity for personalized tasks, and reasoning over vast codebases.
+  - [MAI-DS-R1](https://github.com/marketplace/models/azureml/MAI-DS-R1): A DeepSeek-R1 reasoning model that has been post-trained by the Microsoft AI team to fill in information gaps in the previous version of the model and improve its harm protections while maintaining R1 reasoning capabilities.
+  - [Phi-4-mini-reasoning](https://github.com/marketplace/models/azureml/Phi-4-mini-reasoning): Lightweight math reasoning model optimized for multi-step problem solving.
+  - [Phi-4-reasoning](https://github.com/marketplace/models/azureml/Phi-4-reasoning): State-of-the-art open-weight reasoning model.
+  - [cohere-command-a](https://github.com/marketplace/models/azureml-cohere/cohere-command-a): A highly efficient generative model that excels at agentic and multilingual use cases.
+  - [mistral-medium-2505](https://github.com/marketplace/models/azureml-mistral/mistral-medium-2505): Mistral Medium 3 is an advanced Large Language Model (LLM) with state-of-the-art reasoning, knowledge, coding and vision capabilities.
+  - [mistral-small-2503](https://github.com/marketplace/models/azureml-mistral/mistral-small-2503): Enhanced Mistral Small 3 with multimodal capabilities and a 128k context length.
+  - [o3](https://github.com/marketplace/models/azure-openai/o3): o3 includes significant improvements on quality and safety while supporting the existing features of o1 and delivering comparable or better performance.
+  - [o4-mini](https://github.com/marketplace/models/azure-openai/o4-mini): o4-mini includes significant improvements on quality and safety while supporting the existing features of o3-mini and delivering comparable or better performance.
+
+## Version 0.12.0
+This is a major milestone release with significant updates and new features:
+
+- **Agent Development**: Introducing **Agent (Prompt) Builder**, evolved from the **Prompt Builder**. The new Agent (Prompt) Builder allows you to create and manage agents with a more intuitive interface. You can now easily create, edit, and test agents in a user-friendly environment. Key features include:
+![Agent Builder](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0421/Agent_Builder_2.png)
+  - **Refreshed User Interface**: The new Agent (Prompt) Builder offers a refreshed user interface, making it easier to create, edit, and test agents.
+    - Restructured the UI to use a input and output panel design
+    - Move `Structure output` from right output panel to left input panel
+    - Move `Run` button to the bottom of input panel
+    - Move `View Code` button to the bottom of output panel
+  - **Quick Starter**: The `Web Developer` agent on quick starter can use a file system MCP tool to store assets in local disk.
+  - **MCP Tool Integration**: Build an agent that can use various MCP tools. AI Toolkit enables you to:
+    - Connect to an existing MCP server via `stdio` or `sse`.
+    - Create your own MCP server from `Weather MCP Server` scaffold using your preferred programming language, either TypeScript or Python.
+    - Test and debug your MCP server in AI Toolkit Agent Builder or using the MCP Inspector.
+    - Discover and configure the featured MCP server built by MCP Reference implementations, Microsoft and communities.
+    
+- **Models Enhancements**: We are continuing to refresh the collections of models and the experience of using them:
+  - Onboarded [GPT-4.1](https://openai.com/index/gpt-4-1/): A new series of GPT models featuring major improvements on coding, instruction following, and long context.
+  - Enhanced onboarding experience for prompting to use a default model `GPT-4o` when there is no explicit model selected.
+  - Refreshed the Popular Models section:
+    - Added `Phi-4 (via ONNX)`
+    - Added `GPT-4.1 (via GitHub)`
+    - Added `GPT-o1 (via GitHub)`
+    - Removed `QwQ (via Ollama)`
+    - Removed `Claude 3.7 Sonnet (via Anthropic)`
+    - Removed `GPT-4.5 Preview (via OpenAI)`
+
+## Version 0.10.9
+This version is an incremental release with feature improvements:
+- Improved the **Tutorial** with richer user interface so that you can easily browse and start a tutorial.
+  ![Tutorial](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0331/Tutorial.gif)
+- Added Starter Prompts in **Prompt Builder** for quick getting started with building prompts.
+  ![Starter](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0331/Starter.gif)
+
+## Version 0.10.7
+
+This version is an incremental release with feature improvements and bug fixes:
+- Support Nvida NIM models running on Windows AI PCs.
+  ![NIM](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0331/NIM.png)
+
 ## Version 0.10.5
 This version is an incremental release with feature improvements and bug fixes:
 
