@@ -1,5 +1,28 @@
 # What's New in AI Toolkit for VS Code Preview
 
+## Version 0.16.0
+This is a major milestone release featuring significant enhancements and exciting new capabilities:
+
+- **Agent Builder Enhancements**:
+  - **Function Calling Support**: You can now define and invoke custom functions directly within agent prompts, enabling more powerful and flexible agent interactions.
+    ![Function calling](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0701/function_calling.png)
+  - **Version Management**: Easily manage and compare different versions of your agents, simplifying iteration and improvement processes.
+    ![Version management](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0701/compare.png)
+  - **Usability Improvements**:
+    - The divider between input and output panels is now resizable, allowing you to customize the workspace layout to your preference.
+    - The evaluation results table has been optimized for a more compact and user-friendly viewing experience.
+
+- **Model Catalog Enhancements**:
+  ![Catalog](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0701/catalog.png)
+  - **Expanded Model Selection**: Over 100 new models from Azure AI Foundry have been added, significantly broadening your options for model selection.
+  - **Direct Deployment**: Deploy models directly to Azure AI Foundry from within the model catalog, streamlining your workflow.
+  - **Improved Popular Models Section**: Popular models from multiple providers are now grouped together, making it easier to discover and access models from various sources.
+
+- **Playground Enhancements**:
+  - **Simplified Deployment Guidance**: AI Toolkit now proactively assists you in deploying models to Azure AI Foundry when encountering rate limits or other errors, ensuring smoother development experiences.
+    ![Upsell](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0701/upsell.png)
+
+
 ## Version 0.14.0
 This is a major milestone release with significant updates and new features:
 
@@ -111,6 +134,10 @@ This version is an incremental release with feature improvements and bug fixes:
   - **Model Catalog** improvements:
     - Quick access to `Claude 3.7 Sonnet`, `GPT-4.5` and `QwQ` model via `Popular Models`
     - Filter models by features such as Web Search, Attachment and Structured Outputs
+
+## Version 0.10.4
+This version is an incremental release with feature improvements and bug fixes:
+ - Support DeepSeek-R1 Model 7B and 14B 
 
 ## Version 0.10.2
 This version is an incremental release with feature improvements and bug fixes:
