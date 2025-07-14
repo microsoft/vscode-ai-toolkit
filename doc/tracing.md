@@ -4,14 +4,14 @@
 
 AI Toolkit hosts a local HTTP and gRPC server to collect trace data. The collector server is compatible with OTLP (OpenTelemetry Protocol) and most lanaguage model SDKs either directly support OTLP or have third-party instrumentation libraries to support it. After collecting the instrumentation data, AI Toolkit provides a friendly UI to visualize the data.
 
-**Supported languages and SDKs**
+All frameworks or SDKs that support OTLP and follow [Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/) are supported. The following table contains common AI SDKs that we have tested to work.
 
 | | Azure AI Inference | Azure AI Foundry Agents Service | Anthropic | Gemini | LangChain | OpenAI SDK | OpenAI Agents SDK |
 |---|---|---|---|---|---|---|---|
-| **Python** | ✅ | ✅ | ✅ (traceloop)<sup>2</sup> | ✅  | ✅ (langsmith) <sup>2</sup> | ✅ (opentelemetry-python-contrib) | ✅ (logfire) <sup>2</sup>  |
-| **TS/JS** | ✅ | ✅ | ✅ (traceloop)<sup>2</sup>| ❌ |✅ (traceloop) <sup>2</sup> |✅ (traceloop) <sup>2</sup>|❌|
+| **Python** | ✅ | ✅ | ✅ ([traceloop](https://github.com/traceloop/openllmetry))<sup>2</sup> | ✅  | ✅ ([LangSmith](https://github.com/langchain-ai/langsmith-sdk)) <sup>2</sup> | ✅ ([opentelemetry-python-contrib](https://github.com/open-telemetry/opentelemetry-python-contrib)) | ✅ ([Logfire](https://github.com/pydantic/logfire)) <sup>2</sup>  |
+| **TS/JS** | ✅ | ✅ | ✅ ([traceloop](https://github.com/traceloop/openllmetry))<sup>2</sup>| ❌ |✅ ([traceloop](https://github.com/traceloop/openllmetry)) <sup>2</sup> |✅ ([traceloop](https://github.com/traceloop/openllmetry)) <sup>2</sup>|❌|
 
-> 1. Since their official SDKs don't support OpenTelemetry instrumentation, these third-party instrumentation SDKs in the brackets are used.
+> 1. The SDKs in the brackets are third-party SDKs to support OTLP instrumentation. They are used because the official SDKs don't support OTLP.
 > 2. These Instrument SDKs doesn't strictly adhere to the OpenTelemetry Semantic Convention.
 
 ## How to Get Started to Use Tracing
