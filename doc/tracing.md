@@ -8,8 +8,8 @@ All frameworks or SDKs that support OTLP and follow [Semantic Conventions](https
 
 | | Azure AI Inference | Azure AI Foundry Agents Service | Anthropic | Gemini | LangChain | OpenAI SDK | OpenAI Agents SDK |
 |---|---|---|---|---|---|---|---|
-| **Python** | ✅ | ✅ | ✅ ([traceloop](https://github.com/traceloop/openllmetry))<sup>2</sup> | ✅  | ✅ ([LangSmith](https://github.com/langchain-ai/langsmith-sdk)) <sup>2</sup> | ✅ ([opentelemetry-python-contrib](https://github.com/open-telemetry/opentelemetry-python-contrib)) | ✅ ([Logfire](https://github.com/pydantic/logfire)) <sup>2</sup>  |
-| **TS/JS** | ✅ | ✅ | ✅ ([traceloop](https://github.com/traceloop/openllmetry))<sup>2</sup>| ❌ |✅ ([traceloop](https://github.com/traceloop/openllmetry)) <sup>2</sup> |✅ ([traceloop](https://github.com/traceloop/openllmetry)) <sup>2</sup>|❌|
+| **Python** | ✅ | ✅ | ✅ ([traceloop](https://github.com/traceloop/openllmetry))<sub>1,2</sub> | ✅  | ✅ ([LangSmith](https://github.com/langchain-ai/langsmith-sdk)) <sub>1,2</sub> | ✅ ([opentelemetry-python-contrib](https://github.com/open-telemetry/opentelemetry-python-contrib)) <sub>1</sub> | ✅ ([Logfire](https://github.com/pydantic/logfire)) <sub>1,2</sub>  |
+| **TS/JS** | ✅ | ✅ | ✅ ([traceloop](https://github.com/traceloop/openllmetry))<sub>1,2</sub>| ❌ |✅ ([traceloop](https://github.com/traceloop/openllmetry)) <sub>1,2</sub> |✅ ([traceloop](https://github.com/traceloop/openllmetry)) <sub>1,2</sub>|❌|
 
 > 1. The SDKs in the brackets are third-party SDKs to support OTLP instrumentation. They are used because the official SDKs don't support OTLP.
 > 2. These Instrument SDKs doesn't strictly adhere to the OpenTelemetry Semantic Convention.
