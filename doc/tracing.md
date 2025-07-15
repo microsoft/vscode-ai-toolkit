@@ -1,6 +1,6 @@
 # Tracing
 
-AI Toolkit hosts a local HTTP and gRPC server to collect trace data. The collector server is compatible with OTLP (OpenTelemetry Protocol) and most lanaguage model SDKs either directly support OTLP or have third-party instrumentation libraries to support it. After collecting the instrumentation data, AI Toolkit provides a friendly UI to visualize the data.
+AI Toolkit hosts a local HTTP and gRPC server to collect trace data. The collector server is compatible with OTLP (OpenTelemetry Protocol) and most language model SDKs either directly support OTLP or have third-party instrumentation libraries to support it. After collecting the instrumentation data, AI Toolkit provides a friendly UI to visualize the data.
 
 All frameworks or SDKs that support OTLP and follow [semantic conventions for generative AI systems](https://opentelemetry.io/docs/specs/semconv/gen-ai/) are supported. The following table contains common AI SDKs that we have tested.
 
@@ -9,20 +9,20 @@ All frameworks or SDKs that support OTLP and follow [semantic conventions for ge
 | **Python** | ✅ | ✅ | ✅ ([traceloop](https://github.com/traceloop/openllmetry))<sub>1,2</sub> | ✅  | ✅ ([LangSmith](https://github.com/langchain-ai/langsmith-sdk)) <sub>1,2</sub> | ✅ ([opentelemetry-python-contrib](https://github.com/open-telemetry/opentelemetry-python-contrib)) <sub>1</sub> | ✅ ([Logfire](https://github.com/pydantic/logfire)) <sub>1,2</sub>  |
 | **TS/JS** | ✅ | ✅ | ✅ ([traceloop](https://github.com/traceloop/openllmetry))<sub>1,2</sub>| ❌ |✅ ([traceloop](https://github.com/traceloop/openllmetry)) <sub>1,2</sub> |✅ ([traceloop](https://github.com/traceloop/openllmetry)) <sub>1,2</sub>|❌|
 
-> 1. The SDKs in the brackets are third-party SDKs to support OTLP instrumentation. They are used because the official SDKs don't support OTLP.
-> 2. These Instrument SDKs doesn't strictly adhere to the OpenTelemetry Semantic Convention.
+> 1. The SDKs in brackets are third-party SDKs to support OTLP instrumentation. They are used because the official SDKs don't support OTLP.
+> 2. These instrumentation SDKs don't strictly adhere to the OpenTelemetry semantic conventions for generative AI systems.
 
-## How to Get Started to Use Tracing
+## How to Get Started with Tracing
 
-1. Select **Tracing** in tree view to open the tracing webview and click **Start Collector** button to start the local OTLP trace collector server.
+1. Select **Tracing** in the tree view to open the tracing webview and click **Start Collector** button to start the local OTLP trace collector server.
 
 ![trace_start](./Images/trace_start.png)
 
-2. Add code snippet to your AI app to enable instrumentation. See the [Set up instrumentation](#set-up-instrumentation) section about code snippet for different languages and SDKs.
+2. Add a code snippet to your AI app to enable instrumentation. See the [Set up instrumentation](#set-up-instrumentation) section for code snippets for different languages and SDKs.
 
 3. Run your app to generate trace data.
 
-4. Click **Refresh** button in the tracing webview to see new trace data.
+4. Click the **Refresh** button in the tracing webview to see new trace data.
 
 ![trace_list](./Images/trace_list.png)
 
@@ -275,11 +275,11 @@ set GITHUB_TOKEN=<your-github-token-goes-here>
 ### 2. Install Python Packages
 
 ```bash
-pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http opentelemetry-instrumentation-openai-v2
+pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http azure-ai-inference[opentelemetry]
 ```
 ### 3. Python Code
 
-Create a python file, for example, named `main.py`.
+Create a Python file, for example, named `main.py`.
 
 ```python
 import os
@@ -344,13 +344,13 @@ Run the code with `python main.py`.
 
 ### 5. Check the Trace Data in AI Toolkit
 
-After you run the code and refresh the tracing webview, you will see a new trace in the list. Click the trace to open the trace details webview.
+After you run the code and refresh the tracing webview, you will see a new trace in the list. Click on the trace to open the trace details webview.
 
 ![trace_list](./Images/trace_list.png)
 
 In the trace details webview, you can check the complete execution flow of your app in the left span tree view.
 
-After you select a span in the span tree view, the right span details view will show generative AI messages in **Input + Output** tab, if any. You can also view the raw metadata in **Metadata** tab.
+After you select a span in the span tree view, the right span details view will show generative AI messages in the **Input + Output** tab, if any. You can also view the raw metadata in the **Metadata** tab.
 
 ![trace_details](./Images/trace_details.png)
 
