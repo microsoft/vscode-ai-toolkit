@@ -233,15 +233,53 @@ initialize({
 ```
 </details>
 
-## A full example
+## A Full Example
 
-Here's a complete working example using Azure AI Inference SDK with Python that demonstrates how to set up both the tracing provider and instrumentation:
+Here's a complete working example using Azure AI Inference SDK with Python that demonstrates how to set up both the tracing provider and instrumentation.
 
-### Installation
+### Prerequisites
+
+- Python
+- GitHub account
+- AI Toolkit latest version
+
+### 1. Set up GitHub Personal Access Token
+
+
+This step is for getting access to the free [GitHub Models](https://docs.github.com/en/github-models) to use as an example model.
+
+Open [GitHub Developer Settings](https://github.com/settings/tokens) and click **Generate new token**.
+
+You must give `models:read` permissions to the token or it will return unauthorized. Note that the token will be sent to a Microsoft service.
+
+To use the code snippets below, create an environment variable to set your token as the key for the client code.
+
+If you're using bash:
+
+```bash
+export GITHUB_TOKEN="<your-github-token-goes-here>"
+```
+
+If you're in powershell:
+
+```powershell
+$Env:GITHUB_TOKEN="<your-github-token-goes-here>"
+```
+
+If you're using Windows command prompt:
+
+```cmd
+set GITHUB_TOKEN=<your-github-token-goes-here>
+```
+
+### 2. Install Python Packages
+
 ```bash
 pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http opentelemetry-instrumentation-openai-v2
 ```
-### Python Code
+### 3. Python Code
+
+Create a python file, for example, named `main.py`.
 
 ```python
 import os
@@ -255,6 +293,8 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+
+github_token = os.environ["GITHUB_TOKEN"]
 
 resource = Resource(attributes={
     "service.name": "opentelemetry-instrumentation-azure-ai-inference"
@@ -278,7 +318,7 @@ from azure.core.credentials import AzureKeyCredential
 
 client = ChatCompletionsClient(
     endpoint = "https://models.inference.ai.azure.com",
-    credential = AzureKeyCredential(os.environ["GITHUB_TOKEN"]),
+    credential = AzureKeyCredential(github_token),
     api_version = "2024-08-01-preview",
 )
 
@@ -297,6 +337,12 @@ response = client.complete(
 
 print(response.choices[0].message.content)
 ```
+
+### 4. Run the Code
+
+Run the code with `python main.py`.
+
+### 5. Check the Trace Data in AI Toolkit
 
 After you run the code and refresh the tracing webview, you will see a new trace in the list. Click the trace to open the trace details webview.
 
