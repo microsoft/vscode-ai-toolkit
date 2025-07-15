@@ -2,7 +2,7 @@
 
 AI Toolkit hosts a local HTTP and gRPC server to collect trace data. The collector server is compatible with OTLP (OpenTelemetry Protocol) and most lanaguage model SDKs either directly support OTLP or have third-party instrumentation libraries to support it. After collecting the instrumentation data, AI Toolkit provides a friendly UI to visualize the data.
 
-All frameworks or SDKs that support OTLP and follow [Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/) are supported. The following table contains common AI SDKs that we have tested.
+All frameworks or SDKs that support OTLP and follow [semantic conventions for generative AI systems](https://opentelemetry.io/docs/specs/semconv/gen-ai/) are supported. The following table contains common AI SDKs that we have tested.
 
 | | Azure AI Inference | Azure AI Foundry Agents Service | Anthropic | Gemini | LangChain | OpenAI SDK | OpenAI Agents SDK |
 |---|---|---|---|---|---|---|---|
