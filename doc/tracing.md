@@ -1,10 +1,8 @@
 # Tracing
 
-// TODO: opening
-
 AI Toolkit hosts a local HTTP and gRPC server to collect trace data. The collector server is compatible with OTLP (OpenTelemetry Protocol) and most lanaguage model SDKs either directly support OTLP or have third-party instrumentation libraries to support it. After collecting the instrumentation data, AI Toolkit provides a friendly UI to visualize the data.
 
-All frameworks or SDKs that support OTLP and follow [Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/) are supported. The following table contains common AI SDKs that we have tested to work.
+All frameworks or SDKs that support OTLP and follow [Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/) are supported. The following table contains common AI SDKs that we have tested.
 
 | | Azure AI Inference | Azure AI Foundry Agents Service | Anthropic | Gemini | LangChain | OpenAI SDK | OpenAI Agents SDK |
 |---|---|---|---|---|---|---|---|
@@ -32,7 +30,83 @@ All frameworks or SDKs that support OTLP and follow [Semantic Conventions](https
 ## Set up Instrumentation
 
 <details>
-<summary>Azure AI Foundry Agent Service / Azure AI Inference SDK - Python</summary>
+<summary>Azure AI Inference SDK - Python</summary>
+
+**Installation:**
+```bash
+pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http azure-ai-inference[opentelemetry]
+```
+
+**Setup:**
+```python
+import os
+os.environ["AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED"] = "true"
+os.environ["AZURE_SDK_TRACING_IMPLEMENTATION"] = "opentelemetry"
+
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+
+resource = Resource(attributes={
+    "service.name": "opentelemetry-instrumentation-azure-ai-agents"
+})
+provider = TracerProvider(resource=resource)
+otlp_exporter = OTLPSpanExporter(
+    endpoint="http://localhost:4318/v1/traces",
+)
+processor = BatchSpanProcessor(otlp_exporter)
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
+
+from azure.ai.inference.tracing import AIInferenceInstrumentor
+AIInferenceInstrumentor().instrument(True)
+```
+</details>
+
+
+<details>
+<summary>Azure AI Inference SDK - TypeScript / JavaScript</summary>
+
+**Installation:**
+```bash
+npm install @azure/opentelemetry-instrumentation-azure-sdk @opentelemetry/api @opentelemetry/exporter-trace-otlp-proto @opentelemetry/instrumentation @opentelemetry/resources @opentelemetry/sdk-trace-node
+```
+
+**Setup:**
+```javascript
+const { context } = require("@opentelemetry/api");
+const { resourceFromAttributes } = require("@opentelemetry/resources");
+const {
+  NodeTracerProvider,
+  SimpleSpanProcessor,
+} = require("@opentelemetry/sdk-trace-node");
+const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-proto');
+
+const exporter = new OTLPTraceExporter({
+    url: "http://localhost:4318/v1/traces",
+});
+const provider = new NodeTracerProvider({
+    resource: resourceFromAttributes({
+        "service.name": "opentelemetry-instrumentation-azure-ai-inference",
+    }),
+    spanProcessors: [
+        new SimpleSpanProcessor(exporter)
+    ],
+});
+provider.register();
+
+const { registerInstrumentations } = require("@opentelemetry/instrumentation");
+const { createAzureSdkInstrumentation } = require("@azure/opentelemetry-instrumentation-azure-sdk");
+
+registerInstrumentations({
+  instrumentations: [createAzureSdkInstrumentation()],
+});
+```
+</details>
+
+<details>
+<summary>Azure AI Foundry Agent Service - Python</summary>
 
 **Installation:**
 ```bash
@@ -67,7 +141,7 @@ AIAgentsInstrumentor().instrument(True)
 </details>
 
 <details>
-<summary>Azure AI Foundry Agent Service / Azure AI Inference SDK - TypeScript / JavaScript</summary>
+<summary>Azure AI Foundry Agent Service - TypeScript / JavaScript</summary>
 
 **Installation:**
 ```bash
@@ -76,7 +150,6 @@ npm install @azure/opentelemetry-instrumentation-azure-sdk @opentelemetry/api @o
 
 **Setup:**
 ```javascript
-/** Set up for OpenTelemetry tracing **/
 const { context } = require("@opentelemetry/api");
 const { resourceFromAttributes } = require("@opentelemetry/resources");
 const {
@@ -162,7 +235,7 @@ initialize({
 
 ## A full example
 
-Here's a complete working example using OpenAI with Python that demonstrates how to set up both the tracing provider and instrumentation:
+Here's a complete working example using Azure AI Inference SDK with Python that demonstrates how to set up both the tracing provider and instrumentation:
 
 ### Installation
 ```bash
