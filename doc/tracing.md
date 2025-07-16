@@ -270,14 +270,12 @@ GoogleGenAiSdkInstrumentor().instrument(enable_content_recording=True)
 
 **Installation:**
 ```bash
-pip install langsmith
+pip install langsmith[otel]
 ```
 
 **Setup:**
 ```python
 import os
-from opentelemetry import trace
-
 os.environ["LANGSMITH_OTEL_ENABLED"] = "true"
 os.environ["LANGSMITH_TRACING"] = "true"
 os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://localhost:4318"
