@@ -29,6 +29,11 @@ All frameworks or SDKs that support OTLP and follow [semantic conventions for ge
 
 ## Set up Instrumentation
 
+Overall, the code changes focus on:
+
+- Instrumenting the LLM/agent application.
+- Configuring the OTLP trace exporter to use the AITK local collector.
+
 <details>
 <summary>Azure AI Inference SDK - Python</summary>
 
