@@ -6,8 +6,8 @@ All frameworks or SDKs that support OTLP and follow [semantic conventions for ge
 
 | | Azure AI Inference | Azure AI Foundry Agents Service | Anthropic | Gemini | LangChain | OpenAI SDK | OpenAI Agents SDK |
 |---|---|---|---|---|---|---|---|
-| **Python** | ✅ | ✅ | ✅ ([traceloop](https://github.com/traceloop/openllmetry))<sub>1,2</sub> | ✅  | ✅ ([LangSmith](https://github.com/langchain-ai/langsmith-sdk)) <sub>1,2</sub> | ✅ ([opentelemetry-python-contrib](https://github.com/open-telemetry/opentelemetry-python-contrib)) <sub>1</sub> | ✅ ([Logfire](https://github.com/pydantic/logfire)) <sub>1,2</sub>  |
-| **TS/JS** | ✅ | ✅ | ✅ ([traceloop](https://github.com/traceloop/openllmetry))<sub>1,2</sub>| ❌ |✅ ([traceloop](https://github.com/traceloop/openllmetry)) <sub>1,2</sub> |✅ ([traceloop](https://github.com/traceloop/openllmetry)) <sub>1,2</sub>|❌|
+| **Python** | ✅ | ✅ | ✅ ([traceloop](https://github.com/traceloop/openllmetry))<sub>1,2</sub> | ✅  | ✅ ([LangSmith](https://github.com/langchain-ai/langsmith-sdk))<sub>1,2</sub> | ✅ ([opentelemetry-python-contrib](https://github.com/open-telemetry/opentelemetry-python-contrib))<sub>1</sub> | ✅ ([Logfire](https://github.com/pydantic/logfire))<sub>1,2</sub>  |
+| **TS/JS** | ✅ | ✅ | ✅ ([traceloop](https://github.com/traceloop/openllmetry))<sub>1,2</sub>| ❌ |✅ ([traceloop](https://github.com/traceloop/openllmetry))<sub>1,2</sub> |✅ ([traceloop](https://github.com/traceloop/openllmetry))<sub>1,2</sub>|❌|
 
 > 1. The SDKs in brackets are third-party SDKs to support OTLP instrumentation. They are used because the official SDKs don't support OTLP.
 > 2. These instrumentation SDKs don't strictly adhere to the OpenTelemetry semantic conventions for generative AI systems.
@@ -66,7 +66,7 @@ AIInferenceInstrumentor().instrument(True)
 
 
 <details>
-<summary>Azure AI Inference SDK - TypeScript / JavaScript</summary>
+<summary>Azure AI Inference SDK - TypeScript/JavaScript</summary>
 
 **Installation:**
 ```bash
@@ -141,7 +141,7 @@ AIAgentsInstrumentor().instrument(True)
 </details>
 
 <details>
-<summary>Azure AI Foundry Agent Service - TypeScript / JavaScript</summary>
+<summary>Azure AI Foundry Agent Service - TypeScript/JavaScript</summary>
 
 **Installation:**
 ```bash
@@ -176,6 +176,129 @@ const { createAzureSdkInstrumentation } = require("@azure/opentelemetry-instrume
 
 registerInstrumentations({
   instrumentations: [createAzureSdkInstrumentation()],
+});
+```
+</details>
+
+<details>
+<summary>Anthropic - Python</summary>
+
+**Installation:**
+```bash
+pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http opentelemetry-instrumentation-anthropic
+```
+
+**Setup:**
+```python
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+
+resource = Resource(attributes={
+    "service.name": "opentelemetry-instrumentation-anthropic-traceloop"
+})
+provider = TracerProvider(resource=resource)
+otlp_exporter = OTLPSpanExporter(
+    endpoint="http://localhost:4318/v1/traces",
+)
+processor = BatchSpanProcessor(otlp_exporter)
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
+
+from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
+AnthropicInstrumentor().instrument()
+```
+</details>
+
+<details>
+<summary>Anthropic - TypeScript/JavaScript</summary>
+
+**Installation:**
+```bash
+npm install @traceloop/node-server-sdk
+```
+
+**Setup:**
+```javascript
+const { initialize } = require("@traceloop/node-server-sdk");
+const { trace } = require("@opentelemetry/api");
+
+initialize({
+    appName: "opentelemetry-instrumentation-anthropic-traceloop",
+    baseUrl: "http://localhost:4318",
+    disableBatch: true,
+});
+```
+</details>
+
+<details>
+<summary>Google Gemini - Python</summary>
+
+**Installation:**
+```bash
+pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http opentelemetry-instrumentation-google-genai
+```
+
+**Setup:**
+```python
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+
+resource = Resource(attributes={
+    "service.name": "opentelemetry-instrumentation-google-genai"
+})
+provider = TracerProvider(resource=resource)
+otlp_exporter = OTLPSpanExporter(
+    endpoint="http://localhost:4318/v1/traces",
+)
+processor = BatchSpanProcessor(otlp_exporter)
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
+
+from opentelemetry.instrumentation.google_genai import GoogleGenAiSdkInstrumentor
+GoogleGenAiSdkInstrumentor().instrument(enable_content_recording=True)
+```
+</details>
+
+<details>
+<summary>LangChain - Python</summary>
+
+**Installation:**
+```bash
+pip install langsmith
+```
+
+**Setup:**
+```python
+import os
+from opentelemetry import trace
+
+os.environ["LANGSMITH_OTEL_ENABLED"] = "true"
+os.environ["LANGSMITH_TRACING"] = "true"
+os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://localhost:4318"
+```
+</details>
+
+<details>
+<summary>LangChain - TypeScript/JavaScript</summary>
+
+**Installation:**
+```bash
+npm install @traceloop/node-server-sdk
+```
+
+**Setup:**
+```javascript
+const { initialize } = require("@traceloop/node-server-sdk");
+initialize({
+    appName: "opentelemetry-instrumentation-langchain-traceloop",
+    baseUrl: "http://localhost:4318",
+    disableBatch: true,
 });
 ```
 </details>
@@ -230,6 +353,29 @@ initialize({
     baseUrl: "http://localhost:4318",
     disableBatch: true,
 });
+```
+</details>
+
+<details>
+<summary>OpenAI Agents SDK - Python</summary>
+
+**Installation:**
+```bash
+pip install logfire
+```
+
+**Setup:**
+```python
+import logfire
+import os
+
+os.environ["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = "http://localhost:4318/v1/traces"
+
+logfire.configure(
+    service_name="opentelemetry-instrumentation-openai-agents-logfire",
+    send_to_logfire=False,
+)
+logfire.instrument_openai_agents()
 ```
 </details>
 
