@@ -48,10 +48,15 @@ import os
 os.environ["AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED"] = "true"
 os.environ["AZURE_SDK_TRACING_IMPLEMENTATION"] = "opentelemetry"
 
+from opentelemetry import trace, _events
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk._events import EventLoggerProvider
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 
 resource = Resource(attributes={
     "service.name": "opentelemetry-instrumentation-azure-ai-agents"
@@ -63,6 +68,12 @@ otlp_exporter = OTLPSpanExporter(
 processor = BatchSpanProcessor(otlp_exporter)
 provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
+
+logger_provider = LoggerProvider(resource=resource)
+logger_provider.add_log_record_processor(
+    BatchLogRecordProcessor(OTLPLogExporter(endpoint="http://localhost:4318/v1/logs"))
+)
+_events.set_event_logger_provider(EventLoggerProvider(logger_provider))
 
 from azure.ai.inference.tracing import AIInferenceInstrumentor
 AIInferenceInstrumentor().instrument(True)
@@ -124,10 +135,15 @@ import os
 os.environ["AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED"] = "true"
 os.environ["AZURE_SDK_TRACING_IMPLEMENTATION"] = "opentelemetry"
 
+from opentelemetry import trace, _events
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk._events import EventLoggerProvider
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 
 resource = Resource(attributes={
     "service.name": "opentelemetry-instrumentation-azure-ai-agents"
@@ -139,6 +155,12 @@ otlp_exporter = OTLPSpanExporter(
 processor = BatchSpanProcessor(otlp_exporter)
 provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
+
+logger_provider = LoggerProvider(resource=resource)
+logger_provider.add_log_record_processor(
+    BatchLogRecordProcessor(OTLPLogExporter(endpoint="http://localhost:4318/v1/logs"))
+)
+_events.set_event_logger_provider(EventLoggerProvider(logger_provider))
 
 from azure.ai.agents.telemetry import AIAgentsInstrumentor
 AIAgentsInstrumentor().instrument(True)
@@ -195,11 +217,15 @@ pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http opentelemet
 
 **Setup:**
 ```python
-from opentelemetry import trace
+from opentelemetry import trace, _events
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk._events import EventLoggerProvider
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 
 resource = Resource(attributes={
     "service.name": "opentelemetry-instrumentation-anthropic-traceloop"
@@ -211,6 +237,12 @@ otlp_exporter = OTLPSpanExporter(
 processor = BatchSpanProcessor(otlp_exporter)
 provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
+
+logger_provider = LoggerProvider(resource=resource)
+logger_provider.add_log_record_processor(
+    BatchLogRecordProcessor(OTLPLogExporter(endpoint="http://localhost:4318/v1/logs"))
+)
+_events.set_event_logger_provider(EventLoggerProvider(logger_provider))
 
 from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
 AnthropicInstrumentor().instrument()
@@ -248,11 +280,15 @@ pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http opentelemet
 
 **Setup:**
 ```python
-from opentelemetry import trace
+from opentelemetry import trace, _events
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk._events import EventLoggerProvider
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 
 resource = Resource(attributes={
     "service.name": "opentelemetry-instrumentation-google-genai"
@@ -264,6 +300,12 @@ otlp_exporter = OTLPSpanExporter(
 processor = BatchSpanProcessor(otlp_exporter)
 provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
+
+logger_provider = LoggerProvider(resource=resource)
+logger_provider.add_log_record_processor(
+    BatchLogRecordProcessor(OTLPLogExporter(endpoint="http://localhost:4318/v1/logs"))
+)
+_events.set_event_logger_provider(EventLoggerProvider(logger_provider))
 
 from opentelemetry.instrumentation.google_genai import GoogleGenAiSdkInstrumentor
 GoogleGenAiSdkInstrumentor().instrument(enable_content_recording=True)
@@ -316,14 +358,24 @@ pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http opentelemet
 
 **Setup:**
 ```python
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry import trace, _events
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk._events import EventLoggerProvider
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 
+# Set up resource
+resource = Resource(attributes={
+    "service.name": "opentelemetry-instrumentation-openai"
+})
+
 # Set up tracer provider
-trace.set_tracer_provider(TracerProvider())
+trace.set_tracer_provider(TracerProvider(resource=resource))
 
 # Configure OTLP exporter
 otlp_exporter = OTLPSpanExporter(
@@ -334,6 +386,13 @@ otlp_exporter = OTLPSpanExporter(
 trace.get_tracer_provider().add_span_processor(
     BatchSpanProcessor(otlp_exporter)
 )
+
+# Set up logger provider
+logger_provider = LoggerProvider(resource=resource)
+logger_provider.add_log_record_processor(
+    BatchLogRecordProcessor(OTLPLogExporter(endpoint="http://localhost:4318/v1/logs"))
+)
+_events.set_event_logger_provider(EventLoggerProvider(logger_provider))
 
 # Enable OpenAI instrumentation
 OpenAIInstrumentor().instrument()
@@ -437,11 +496,15 @@ import os
 os.environ["AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED"] = "true"
 os.environ["AZURE_SDK_TRACING_IMPLEMENTATION"] = "opentelemetry"
 
-from opentelemetry import trace
+from opentelemetry import trace, _events
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk._events import EventLoggerProvider
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 
 github_token = os.environ["GITHUB_TOKEN"]
 
@@ -455,6 +518,12 @@ otlp_exporter = OTLPSpanExporter(
 processor = BatchSpanProcessor(otlp_exporter)
 provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
+
+logger_provider = LoggerProvider(resource=resource)
+logger_provider.add_log_record_processor(
+    BatchLogRecordProcessor(OTLPLogExporter(endpoint="http://localhost:4318/v1/logs"))
+)
+_events.set_event_logger_provider(EventLoggerProvider(logger_provider))
 
 from azure.ai.inference.tracing import AIInferenceInstrumentor
 AIInferenceInstrumentor().instrument()
