@@ -1,5 +1,71 @@
 # What's New in AI Toolkit for VS Code Preview
 
+## Version 0.20.0
+This major milestone release introduces significant enhancements and powerful new capabilities:
+
+- **Reimagined Agent Builder**: Experience a completely redesigned Agent Builder with enhanced usability and functionality:
+![agentbuilderui](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0910/agentbuilernewui.png)
+
+  - **Conversation-Centric Interface**: Navigate effortlessly through a redesigned UI that puts conversations at the center, streamlining agent interactions and management.
+  - **Flexible Modular Architecture**: Create your AI agent using a modular interface for prompt editing, model selection, and tool configuration — all seamlessly integrated for maximum flexibility.
+  - **Unified Agent Management**: Access all your agents from a single, centralized location in **My Resources**, making it simple to create, edit, and switch between different agent configurations.
+
+- **Local Model Support from Foundry**: Run AI models directly on your machine with our new Foundry Local Models integration:
+![agentbuilderui](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0910/foundrylocal.png)
+
+  - **Seamless Model Discovery**: Browse and select from an extensive catalog of Foundry Local Models with just a few clicks.
+  - **Integrated Local Execution**: Run models locally through the Model Playground without external dependencies.
+  - **GitHub Copilot Integration**: Leverage Foundry Local Models directly within GitHub Copilot for enhanced development experiences.
+
+- **Enhanced MCP Experience**: Enjoy a completely overhauled Model Context Protocol (MCP) experience with improved functionality:
+![mcp](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0910/mcp.png)
+  - **Latest Specification Support**: Full compatibility with the newest MCP specification, including streamable HTTP transport and OAuth authentication capabilities.
+  - **Intuitive Configuration Interface**: Configure MCP servers effortlessly through our redesigned quick-pick UI, featuring instant access to popular servers and direct configuration file editing.
+  - **Streamlined Server Management**: Manage all your MCP servers from a unified location in **My Resources**, with simplified lifecycle management and configuration options.
+
+- **GitHub Copilot Tool Integration**: Accelerate AI-powered development with new tools designed specifically for GitHub Copilot:
+![ghtools](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0910/ghtools.png)
+  - **AI Model Guidance Tool**: Get intelligent recommendations for selecting and implementing AI models in your applications.
+  - **Advanced Tracing Tool**: Implement comprehensive tracing instrumentation with automatic deeplink generation for seamless visualization in AI Toolkit.
+
+## Version 0.18.3
+This incremental release introduces the latest [GPT-5 family of models](https://openai.com/index/introducing-gpt-5/) and OpenAI's open source models [GPT OSS](https://azure.microsoft.com/en-us/blog/openais-open%E2%80%91source-model-gpt%E2%80%91oss-on-azure-ai-foundry-and-windows-ai-foundry/) to AI Toolkit.
+
+- **GPT-5 Family of Models:** Now available in AI Toolkit through GitHub, Azure AI Foundry, or direct OpenAI access
+![gpt-5_catalog](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0808/gpt-5_catalog.png)
+  - **[gpt-5](https://github.com/marketplace/models/azure-openai/gpt-5):** Delivers advanced reasoning for analytics and code generation.
+  - **[gpt-5-mini](https://github.com/marketplace/models/azure-openai/gpt-5-mini):** Optimized for low-cost, fast experiences such as real-time agents and tool orchestration for customer support.
+  - **[gpt-5-nano](https://github.com/marketplace/models/azure-openai/gpt-5-nano):** Designed for speed and efficiency, offering strong reasoning for concise question answering and responses.
+  - **[gpt-5-chat (preview)](https://github.com/marketplace/models/azure-openai/gpt-5-chat):** Enables natural, multimodal, multi-turn conversations with persistent context for agentic workflows.
+
+
+- **GPT OSS Models:** Via Azure AI Foundry and Local ONNX Runtime
+![gpt_oss_catalog](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0808/gpt_oss_catalog.png)
+  - **[gpt-oss-120b](https://ai.azure.com/catalog/models/gpt-oss-120b) via Azure AI Foundry:** gpt-oss-120b is an open-weight model with the following key characteristics: Text-in/text-out only Reasoning with chain-of-thought (with ability to change reasoning effort to low, medium, or high) Support for structured outputs API compatible with Responses
+  - **[gpt-oss-20b-cuda-gpu](https://ai.azure.com/catalog/models/gpt-oss-20b-cuda-gpu) via Local ONNX Runtime:** This model is an optimized version of gpt-oss-20b to enable local inference on CUDA GPUs. This model uses RTN quantization.
+
+- **Experience GPT-5 and GPT OSS Capabilities**
+  - Compare GPT-5 models with others in the catalog to evaluate their capabilities.
+    ![gpt-5_comparison](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0808/gpt-5_compare.png)
+  - Integrate GPT-5 models into your applications using the `View Code` feature in Model Playground, with support for Azure AI Inference SDK, OpenAI SDK, and multiple programming languages.
+    ![gpt-5_integration](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0808/gpt-5_view_code.png)
+
+## Version 0.18.0
+This is a major milestone release with significant updates and new features:
+- **Local Observability for AI applications and Agents**: You can trace the execution of your AI applications, including interactions with generative AI models and use AI Toolkit tracing visualization tool to gain insights into their behavior and performance.
+![tracing](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0731/Tracing.gif)
+
+- **AI-Powered Prompt Improver**: The new AI-powered prompt improver helps you refine your prompts for better results. It analyzes your prompts and suggests improvements to enhance their effectiveness.
+![prompt improver](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0731/PromptImprover.gif)
+
+- **View Code Language Expansion**: The "View Code" feature in the Agent Builder and Playground now supports multiple programming languages including Python, JavaScript, C# and Java. This allows you to see how your prompts can be implemented in different programming languages, making it easier to integrate AI capabilities into your applications.
+![language expansion](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0731/LanguageExpansion.gif)
+
+- **Enhancements and Bug Fixes**:
+  - Model sections will be automatically expanded when you apply a filter, making it easier to navigate through models.
+  - Added CUDA models to the model catalog, providing more options for GPU-accelerated AI applications.
+  - Fixed an issue where MCP initialization in generated code does not carry headers. [#243](https://github.com/microsoft/vscode-ai-toolkit/issues/243)
+
 ## Version 0.16.0
 This is a major milestone release featuring significant enhancements and exciting new capabilities:
 
