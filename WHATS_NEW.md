@@ -1,5 +1,53 @@
 # What's New in AI Toolkit for VS Code Preview
 
+## Version 0.24.0
+This is a major milestone release introducing **GitHub Copilot Tools Integration** and other enhancements.
+
+### GitHub Copilot Tools Integration
+![copilot_tools](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_1017/copilot_tools.png)
+We are excited to announce the integration of **GitHub Copilot Tools** into AI Toolkit for VS Code. This integration empowers developers to build AI-powered applications more efficiently by leveraging Copilot's capabilities enhanced by AI Toolkit. 
+- **AI Agent Code Generation Tool**: This tool provides best practices, guidance, steps, and code samples on Microsoft Agent Framework for GitHub Copilot to better scaffold AI agent applications.
+- **AI Agent Evaluation Planner Tool**: This tool guides users through the process of evaluating AI agents, including defining evaluation metrics, creating evaluation datasets, and analyzing results. It will invoke several other tools:
+  - **Evaluation Agent Runner Tool**: This tool runs agents on provided datasets and collects results.
+  - **Evaluation Code Generation Tool**: This tool provides best practices, guidance, steps, and code samples on Azure AI Foundry Evaluation Framework for GitHub Copilot to better scaffold code to evaluate AI agents.
+
+You can directly access these tools in GitHub Copilot by entering your user prompt like: `Create an AI agent using Microsoft Agent Framework to help users plan a trip to Paris.` or `Evaluate the performance of my AI agent using Azure AI Foundry Evaluation Framework.`
+
+Alternatively, AI Toolkit offers quick access to these tools via the Tree View UI under section `Build Agent with GitHub Copilot`.
+
+### Additional Enhancements
+- **Model Playground Improvements**: The divider between chat output and model settings is now resizable, allowing users to customize their workspace layout for better usability.
+- **Model Catalog Updates**: The ONNX models section in the Model Catalog has been merged with Foundry Local Models on macOS and Windows platforms, providing a unified experience for discovering and selecting local models.
+
+## Version 0.22.1
+Incremental release with new `codex` model additions:
+![codex](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_0925/codex.png)
+- **[GPT-5-CODEX](https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/announcing-gpt%E2%80%915%E2%80%91codex-redefining-developer-experience-in-azure-ai-foundry/4455524)**: A revolutionary model that seamlessly integrates multimodal coding capabilities, enabling advanced tool utilization across diverse development environments while providing expert-level code review functionality.
+- **[CODEX-MINI](https://devblogs.microsoft.com/foundry/codex-mini-fast-scalable-code-generation-for-the-cli-era/)**: An optimized variant of the o4-mini model, specifically engineered for lightning-fast, instruction-driven code generation tailored to command-line interface workflows.
+
+## Version 0.22.0
+We’re excited to announce the release of **AITK v0.22.0**, a major milestone that aligns closely with the **Windows ML GA** and brings significant enhancements across model conversion, fine-tuning, and playground experiences for local models on windows devices. 
+
+**Model Conversion**
+
+Model conversion now supports a broader set of **Recipes**, enabling developers to convert and optimize models across a wider range of hardware targets. This includes full support for **all supported execution providers (EPs)** that are aligned with the **Windows ML GA**.  
+
+ - Conversion workflows now integrate seamlessly with WinML’s EP management, ensuring optimal performance across CPUs, GPUs, and NPUs. 
+
+ - For more details, refer to the [Model Conversion Documentation](https://code.visualstudio.com/docs/intelligentapps/modelconversion).  
+
+**Model Fine-Tuning** 
+
+We’ve significantly improved the **end-to-end fine-tuning workflow** for the **Phi-Silica** model. 
+
+![finetuninguri](https://raw.githubusercontent.com/microsoft/vscode-ai-toolkit/refs/heads/main/archive/Images/finetuning-new.png)
+
+**Model Playground**  
+
+The **Model Playground** now fully aligns with the **Windows ML GA** capabilities. 
+
+ - Enables real-time local model inferencing across diverse hardware configurations using Windows ML, which distributes, manages, and registers AI workloads for high-performance on-device execution.  
+
 ## Version 0.20.0
 This major milestone release introduces significant enhancements and powerful new capabilities:
 
