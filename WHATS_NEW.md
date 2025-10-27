@@ -1,5 +1,20 @@
 # What's New in AI Toolkit for VS Code Preview
 
+## Version 0.24.1 - 24 October, 2025
+This is an incremental release with bug fixes and enhancements focused on agent development and evaluation workflows.
+
+### Added
+- **Lifecycle Management for Local MCP Servers**: Manage local MCP server execution directly within AI Toolkit with start, stop, and refresh operations for enhanced development workflows.
+- **Local Tracing Support for Agent Framework**: Enhanced tracing visualization with support for Agent Framework: including `Invoke Agent` and `Execute Tool` tags, comprehensive input/output handling, and backend support for receiving OTLP metrics.
+![tracing_agent_framework](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_1017/tracing_agent.png)
+
+### Fixed
+- Fixed missing `--pre` flag in generated code comments for proper pre-release version handling.
+- Fixed `connect ECONNREFUSED` error when debugging local MCP servers.
+- Fixed incorrect usage of `AzureOpenAIModelConfiguration` import in generated evaluation code.
+- Fixed model configuration inconsistencies in generated evaluation code across the project.
+- Fixed evaluation code generation incorrectly implementing custom code for built-in evaluators instead of using them directly.
+
 ## Version 0.24.0
 This is a major milestone release introducing **GitHub Copilot Tools Integration** and other enhancements.
 
