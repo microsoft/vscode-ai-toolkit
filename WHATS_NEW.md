@@ -1,5 +1,17 @@
 # What's New in AI Toolkit for VS Code Preview
 
+## Version 0.26.0 - 12 November, 2025
+This is a major milestone release introducing **AIAgentExpert** custom agent and other enhancements.
+
+### Added
+- **`AIAgentExpert` Custom Agent**: A new specialized agent that provides expert-level assistance for creating, iterating, tracing, and evaluating AI agents.
+![customagent](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_1112/customagent.png)
+- **Connected Agents** in Agent Builder: Build collaborative agents that can connect and interact with each other to accomplish complex tasks.
+![connectedagent](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/aitk_1112/connectagent.png)
+- **GPT-5 Pro Model Support**: Added support for the GPT-5 Pro model, enabling developers to leverage advanced AI capabilities in their applications.
+- **`Declarative Agent To Code` Tool for GitHub Copilot**: Generates Python and .NET code using the Microsoft Agent Framework based on user-provided declarative agent specifications.
+- **`Agent Code Generation` Tool for GitHub Copilot**: Extended to support C# code generation in addition to Python for building AI agents.
+
 ## Version 0.24.1 - 24 October, 2025
 This is an incremental release with bug fixes and enhancements focused on agent development and evaluation workflows.
 
