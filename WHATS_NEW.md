@@ -1,5 +1,41 @@
 # What's New in AI Toolkit for VS Code Preview
 
+## Version 0.26.3 - 25 November, 2025
+This is an incremental release adding new models from Foundry.
+
+### Added
+- Added new Claude model from Foundry, available in Model Catalog, Playground and Agent Builder:
+  - **Claude Opus 4.5**: Anthropic's most intelligent model, and an industry leader across coding, agents, computer use, and enterprise workflows.
+
+## Version 0.26.2 - 19 November, 2025
+This is an incremental release adding new models from Foundry.
+
+### Added
+- Added Claude family of models from Foundry, available in Model Catalog, Playground and Agent Builder:
+  - **Claude Sonnet 4.5**: Anthropic's most capable model to date for building real-world agents and handling complex, long-horizon tasks, balancing the right speed and cost for high-volume use cases.
+  - **Claude Haiku 4.5**: delivers near-frontier performance for a wide range of use cases, and stands out as one of the best coding and agent models–with the right speed and cost to power free products and scaled sub-agents.
+  - **Claude Opus 4.1**: industry leader for coding, delivers sustained performance on long-running tasks that require focused effort and thousands of steps, significantly expanding what AI agents can solve.
+
+## Version 0.26.1 - 18 November, 2025
+This is an incremental release adding new models from Foundry.
+
+### Added
+- Added [gpt-5.1 family of models](https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/gpt%E2%80%915-1-in-foundry-a-workhorse-for-reasoning-coding-and-chat/4469067) from Foundry, available in Model Catalog, Playground and Agent Builder: 
+  - **GPT-5.1**: adaptive, more efficient reasoning
+  - **GPT-5.1-chat**: chat with new chain-of-thought for end-users
+  - **GPT-5.1-codex**: optimized for long-running conversations with enhanced tools and agentic workflows
+  - **GPT-5.1-codex-mini**: a compact variant for resource-constrained environments
+- Added [Phi Silica](https://learn.microsoft.com/en-us/windows/ai/apis/phi-silica) in Model Catalog on win-x64 and win-arm64.
+- Added CLI and version-tag support for AITK model conversion to enable CI/CD workflows
+- Added ability to pack converted models into MSIX format for streamlined deployment
+
+### Changed
+- Updated branding name from Azure AI Foundry to Microsoft Foundry.
+- Updated conversion recipes for improved compatibility and performance.
+  - Shipped non-LLM recipes for AMD GPU EP support
+  - Config changes for OV NPU LLM: Olive updated to version 0.10.1 with a new configuration.
+  - Expanded support for additional LLM models for TRT RTX GPU EP.
+
 ## Version 0.26.0 - 12 November, 2025
 This is a major milestone release introducing **AIAgentExpert** custom agent and other enhancements.
 
