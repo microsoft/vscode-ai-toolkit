@@ -1,5 +1,19 @@
 # What's New in AI Toolkit for VS Code Preview
 
+## Version 0.26.5 - 12 December, 2025
+This is an incremental release adding new models from Microsoft Foundry.
+
+### Added
+- Added new Azure OpenAI models from Foundry, available in Model Catalog, Playground and Agent Builder:
+  - **[GPT-5.2](https://ai.azure.com/catalog/models/gpt-5.2)**: GPT‑5.2 builds on GPT‑5.1 with improvements that make interactions more reliable, flexible, and user-friendly. The focus is on delivering clearer responses, better adaptability, and enhanced control for diverse tasks. 
+  - **[GPT-5.1-Codex-Max](https://ai.azure.com/catalog/models/gpt-5.1-codex-max)**: GPT‑5.1-Codex-Max is built on an update to our foundational reasoning model, which is trained on agentic tasks across software engineering, math, research, and more. 
+
+## Version 0.26.4 - 08 December, 2025
+This is an incremental release adding new models from Huggingface.
+
+### Added
+- Added [Fara-7b-int4-qnn](https://huggingface.co/microsoft/Fara-7B-onnx) model in Model Catalog
+
 ## Version 0.26.3 - 25 November, 2025
 This is an incremental release adding new models from Foundry.
 
