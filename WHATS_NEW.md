@@ -1,5 +1,24 @@
 # What's New in AI Toolkit for VS Code Preview
 
+## Version 0.28.0 - 6 January, 2026
+
+This is a major milestone release introducing significant enhancements across Model Catalog, View Code, Copilot Tools, and Local Models on Windows.
+
+### Added
+- Support for Entra Auth types and Agent Framework for Anthropic models via View Code in Playground and Agent Builder.
+- Profiling features for Windows ML-based local models.
+
+### Changed
+- Improved loading performance and prioritized Foundry models in Model Catalog.
+- Expanded Agent Framework code sample coverage to improve code generation quality in `Agent Code Generation Tool for GitHub Copilot`.
+- Updated recommendations to prioritize Foundry models over GitHub models for agent code generation in `Agent Code Generation Tool for GitHub Copilot`.
+- Removed Windows AI API tab from Linux and macOS platforms in Model Catalog.
+
+### Fixed
+- Fixed Codespaces crash when selecting images in Playground.
+- Fixed delay in displaying added models in My Resources.
+- Fixed an issue where non-empty content was not allowed for Claude models used in GitHub Copilot (via AI Toolkit).
+
 ## Version 0.26.5 - 12 December, 2025
 This is an incremental release adding new models from Microsoft Foundry.
 
