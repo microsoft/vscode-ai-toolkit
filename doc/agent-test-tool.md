@@ -17,7 +17,6 @@ The Agent Test Tool enables developers to debug, visualize, and iterate on AI ag
 ## Prerequisites
 
 - **Agent Framework SDK**: Agent built using `agent-framework` SDK
-- **HTTP Server Mode**: Serverized using `azure.ai.agentserver.agentframework`
 - **Python 3.10+** and **VS Code AI Toolkit** extension
 
 ## Quick start
@@ -133,7 +132,12 @@ For `WorkflowAgent`, view the execution graph with message flows between agents.
 
 ## How it works
 
-The Agent Test Tool provides an integrated debugging experience for Agent Framework-based agents and workflows through three key components:
+When you press F5, the Test Tool:
+
+1. **Starts the agent server** — The `agentdev` CLI wraps your agent as an HTTP server on port 8087, with debugpy attached on port 5679
+2. **Discovers agents** — The UI fetches available agents/workflows from `/agentdev/entities`
+3. **Streams execution** — Chat inputs go to `/v1/responses`, which streams back events via SSE for real-time visualization
+4. **Enables code navigation** — Double-clicking workflow nodes opens the corresponding source file in the editor
 
 ### Architecture Overview
 
@@ -176,46 +180,3 @@ The Agent Test Tool provides an integrated debugging experience for Agent Framew
          │  (Agent Framework SDK) │
          └────────────────────────┘
 ```
-
-**Flow:**
-1. **F5 Launch** → VS Code starts agent server with debugpy attached
-2. **Discovery** → UI fetches agents/workflows from `/agentdev/entities`
-3. **Execution** → UI sends input to `/v1/responses`, streams back events via SSE
-4. **Visualization** → EventMapper converts Agent Framework events to OpenAI format
-5. **Code Nav** → Double-click node → fetch location → open file in editor
-6. **Debugging** → Set breakpoints, inspect variables via debugpy connection
-
-### 1. Local HTTP Server with Test Endpoints
-
-The `agentdev` CLI wraps your agent as an HTTP server using `azure.ai.agentserver.agentframework`, then mounts additional test endpoints via `TestToolServer`:
-
-- **`/agentdev/entities`** - Lists all available agents and workflows with their metadata
-- **`/agentdev/entities/{id}/info`** - Returns detailed information about a specific agent or workflow
-- **`/agentdev/entities/{id}/executor/{executor_id}/location`** - Provides source code location for workflow executors (enables "double-click to navigate to code")
-- **`/agentdev/ws/health`** - WebSocket endpoint for connection monitoring and status updates
-- **`/v1/responses`** - Streams agent/workflow execution events in OpenAI-compatible SSE format
-
-When you run your agent with `agentdev run <file> --port 8087`, it starts this HTTP server on the specified port.
-
-### 2. Event Mapping and Streaming
-
-The `EventMapper` converts Agent Framework events into OpenAI-compatible streaming events that the VS Code webview can render:
-
-- Workflow events (started, completed, failed) → workflow visualization updates
-- Executor events (invoked, completed) → node activation in the workflow graph
-- Agent run updates → chat messages with streaming text deltas
-- Function calls → tool invocation displays with arguments and results
-
-Events stream via Server-Sent Events (SSE) from the `/v1/responses` endpoint, enabling real-time visualization of agent execution.
-
-### 3. VS Code Integration
-
-The Test Tool UI opens as a webview panel when you press F5:
-
-- **Connection management**: WebSocket connection to `/ws/health` monitors server status
-- **Entity discovery**: Fetches available agents/workflows from `/agentdev/entities` 
-- **Interactive testing**: Sends chat messages or workflow inputs to `/v1/responses` and renders streaming responses
-- **Workflow visualization**: For `WorkflowAgent`, displays an interactive DAG with real-time execution highlighting
-- **Code navigation**: Double-clicking workflow nodes calls `/agentdev/entities/{id}/executor/{executor_id}/location` to open the corresponding source file
-
-The VS Code debugger attaches via `debugpy` on port 5679, enabling standard debugging features like breakpoints and variable inspection while the agent runs.
