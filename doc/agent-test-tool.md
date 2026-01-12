@@ -67,7 +67,7 @@ Add these files to your `.vscode` folder to set up debugging for your agent and 
     {
       "label": "Run Agent Server",
       "type": "shell",
-      "command": "${command:python.interpreterPath} -m debugpy --listen 127.0.0.1:5679 -m agentdev run ${file} --port 8087 -- --server",
+      "command": "${command:python.interpreterPath} -m debugpy --listen 127.0.0.1:5679 -m agentdev run ${file} --port 8087",
       "isBackground": true,
       "dependsOn": ["Validate prerequisites"],
       "problemMatcher": {
