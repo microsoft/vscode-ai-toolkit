@@ -49,7 +49,7 @@ If you already have an existing AI agent built with Microsoft Agent Framework SD
 
 ## Configure debugging manually
 
-Add these files to your `.vscode` folder to set up debugging for your agent:
+Add these files to your `.vscode` folder to set up debugging for your agent and replace `${file}` with your agent's entrypoint python file path.
 
 <details>
 <summary><b>tasks.json</b></summary>
