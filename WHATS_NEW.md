@@ -1,5 +1,15 @@
 # What's New in AI Toolkit for VS Code Preview
 
+## Version 0.28.1 - 13 January, 2026
+
+This is an incremental release improving Copilot integration by replacing instructions with [skills](https://code.visualstudio.com/docs/copilot/customization/agent-skills).
+
+### Changed
+- Migrated from Copilot instructions to Copilot skills for better AI Toolkit Agent Development experience.
+- Replaced `extendCopilotInstructions` setting with `extendCopilotSkills` for enhanced GitHub Copilot Chat integration.
+- Updated `AIAgentExpert` custom agent description to include workflow code generation and evaluation planning/execution.
+- Automatic cleanup of old Copilot instructions when upgrading from previous versions.
+
 ## Version 0.28.0 - 6 January, 2026
 
 This is a major milestone release introducing significant enhancements across Model Catalog, View Code, Copilot Tools, and Local Models on Windows.
