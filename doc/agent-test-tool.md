@@ -1,8 +1,8 @@
-# Agent Test Tool
+# Agent Inspector
 
-The Agent Test Tool enables developers to debug, visualize, and iterate on AI agents directly within VS Code. Press F5 to launch your agent with full debugger support, view real-time streaming responses, and visualize multi-agent workflow execution.
+The Agent Inspector enables developers to debug, visualize, and iterate on AI agents directly within VS Code. Press F5 to launch your agent with full debugger support, view real-time streaming responses, and visualize multi-agent workflow execution.
 
-![Screenshot showing the Agent Test Tool interface](Images/test-tool/test_tool_visualizer.png)
+![Screenshot showing the Agent Inspector interface](Images/test-tool/test_tool_visualizer.png)
 
 ## Benefits
 
@@ -20,31 +20,31 @@ The Agent Test Tool enables developers to debug, visualize, and iterate on AI ag
 - **Python 3.10+** and **VS Code AI Toolkit** extension
 
 ## Quick start
-![Screenshot showing the Agent Test Tool quick start](Images/test-tool/test_tool_quick_start.png)
+![Screenshot showing the Agent Inspector quick start](Images/test-tool/inspector.png)
 
 ### Option 1: Scaffold a sample (Recommended)
 
-1. Select **AI Toolkit** in the Activity Bar → **Agent and Workflow Tools** → **Agent Test Tool**
+1. Select **AI Toolkit** in the Activity Bar → **Agent and Workflow Tools** → **Agent Inspector**
 2. Select **Scaffold a Sample** to generate a pre-configured project
 3. Follow the README to run and debug the sample agent
 
 ### Option 2: Use Copilot to create anew agent
 
-1. Select **AI Toolkit** in the Activity Bar → **Agent and Workflow Tools** → **Agent Test Tool**
+1. Select **AI Toolkit** in the Activity Bar → **Agent and Workflow Tools** → **Agent Inspector**
 2. Select **Build with Copilot** and provide agent requirements
 3. Copilot generates agent code and configures debugging automatically
 4. Follow the instructions from Copilot output to run and debug your agent
 
 ### Option 3: Start with an existing agent
 
-If you already have an existing AI agent built with Microsoft Agent Framework SDK, you can ask GitHub Copilot to help you configure the debugging setup for the Agent Test Tool.
+If you already have an existing AI agent built with Microsoft Agent Framework SDK, you can ask GitHub Copilot to help you configure the debugging setup for the Agent Inspector.
 
 1. Select **AIAgentExpert** from Agent Mode.
 2. Enter prompt:
    ```
-   Help me set up the debug environment for the workflow agent to use AI Toolkit Agent Test Tool
+   Help me set up the debug environment for the workflow agent to use AI Toolkit Agent Inspector
    ```
-3. Copilot will generate the necessary configuration files and instructions to run and debug your agent using the Agent Test Tool.
+3. Copilot will generate the necessary configuration files and instructions to run and debug your agent using the Agent Inspector.
 
 ## Configure debugging manually
 
@@ -75,7 +75,7 @@ Add these files to your `.vscode` folder to set up debugging for your agent and 
       }
     },
     {
-      "label": "Open Test Tool",
+      "label": "Open Inspector",
       "type": "shell",
       "command": "echo '${input:openTestTool}'",
       "presentation": {"reveal": "never"},
@@ -102,14 +102,14 @@ Add these files to your `.vscode` folder to set up debugging for your agent and 
     "type": "debugpy",
     "request": "attach",
     "connect": { "host": "localhost", "port": 5679 },
-    "preLaunchTask": "Open Test Tool",
+    "preLaunchTask": "Open Inspector",
     "postDebugTask": "Terminate All"
   }]
 }
 ```
 </details>
 
-## Using the Test Tool
+## Using the Inspector
 
 ### Chat playground
 Send messages to trigger the workflow and view executions in real-time.
@@ -132,7 +132,7 @@ For `WorkflowAgent`, view the execution graph with message flows between agents.
 
 ## How it works
 
-When you press F5, the Test Tool:
+When you press F5, the Inspector:
 
 1. **Starts the agent server** — The `agentdev` CLI wraps your agent as an HTTP server on port 8087, with debugpy attached on port 5679
 2. **Discovers agents** — The UI fetches available agents/workflows from `/agentdev/entities`
@@ -145,7 +145,7 @@ When you press F5, the Test Tool:
 ┌───────────────────────────────────────────────────────────────────────────┐
 │                              VS Code                                      │
 │  ┌──────────────────┐  ┌─────────────────┐  ┌──────────────────────────┐  │
-│  │  Test Tool UI    │  │ Python Debugger │  │    VS Code Editor        │  │
+│  │  Inspector UI    │  │ Python Debugger │  │    VS Code Editor        │  │
 │  │   (Webview)      │  │  (debugpy)      │  │                          │  │
 │  └────────┬─────────┘  └────────┬────────┘  └──────────▲───────────────┘  │
 └───────────┼─────────────────────┼──────────────────────┼──────────────────┘
