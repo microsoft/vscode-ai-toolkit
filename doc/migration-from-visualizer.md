@@ -49,7 +49,7 @@ from agent_framework.observability import setup_observability
 setup_observability(vs_code_extension_port=4319)
 ```
 
-Agent Inspector handles observability automatically through the `agentdev` CLI — no manual instrumentation needed for visualization.
+Agent Inspector communicates with the locally running agent server through agent-dev-cli, without a hard dependency on OTEL tracing.
 
 ### Step 2: Add VS Code Debug Configuration
 
