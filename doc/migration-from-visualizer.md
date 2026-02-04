@@ -139,9 +139,8 @@ pip install debugpy agent-dev-cli
 
 ### Step 4: Run Your Agent with Agent Inspector
 
-1. Open your agent's main Python file in VS Code
-2. Press **F5** to start debugging
-3. Agent Inspector will automatically:
+1. Press **F5** to start debugging
+2. Agent Inspector will automatically:
    - Start your agent server on port 8087
    - Attach the Python debugger on port 5679
    - Open the Inspector UI with both chat playground and workflow visualization
