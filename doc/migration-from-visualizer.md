@@ -44,7 +44,7 @@ Before migrating, ensure you have:
 **Remove** the previous visualizer setup code:
 
 ```python
-# ❌ Remove this (old Local Visualizer approach)
+# You can remove this if you just need workflow visualization as tracing is not required, or change the port to 4317 if you want to keep using tracing features in AI Toolkit.
 from agent_framework.observability import setup_observability
 setup_observability(vs_code_extension_port=4319)
 ```
