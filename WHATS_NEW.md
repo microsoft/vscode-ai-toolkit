@@ -1,5 +1,117 @@
 # What's New in AI Toolkit for VS Code Preview
 
+AI Toolkit is an extension pack that includes Microsoft Foundry. For Microsoft Foundry changes, see the [Microsoft Foundry Changelog](https://marketplace.visualstudio.com/items/TeamsDevApp.vscode-ai-foundry/changelog).
+
+## Version 0.32.0 - 16 March, 2026
+
+This release brings a unified tree view experience, Agent Builder enhancements, and streamlined GitHub Copilot integration for agent development.
+
+![TreeView_CreateAgent](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/2026/aitk_0316/changelog0316.png)
+
+### Added
+
+- **Create Agent View**: A new unified entry point for creating AI agents, offering two paths side by side:
+  - **Create in Code with Full Control**: Scaffold a project from a template, or generate a single agent or multi-agent workflow using GitHub Copilot.
+  - **Design an Agent Without Code**: Launch Agent Builder directly to configure a prompt agent through the UI.
+
+- **Conversations View for Foundry Agents**: A dedicated Conversations tab is now available in Agent Builder, making it easier to review and manage conversation history when working with Foundry agents.
+
+- **Foundry Model Licenses**: License information is now displayed for Foundry models directly in the model catalog.
+
+- **View Code for Workspace Scaffolding**: Added View Code support to scaffold a workspace for Foundry agents, letting you quickly generate the project structure needed to get started.
+
+### Changed
+
+- **GitHub Copilot Agent Development**: Agent code generation, evaluation, and deployment now uses the open-source `microsoft-foundry` skill from [azure-skills](https://github.com/microsoft/azure-skills), the same source used by GitHub Copilot for Azure. AI Toolkit automatically installs and keeps this skill up to date — no manual setup required.
+
+- **Agent Builder**:
+  - Draft agents are now automatically saved before running in the playground, preventing accidental loss of unsaved changes.
+  - Open Foundry prompt agents directly in Agent Builder from the Foundry extension.
+  - Generate and refine agent instructions with the Foundry Prompt Optimizer.
+
+- **MCP Tool Approval**: Configure auto or manual approval for MCP tool calls in Agent Builder, giving you control over how tool invocations are handled during agent runs.
+
+- **Tree View**:
+  - The AI Toolkit and Foundry extension sidebar panels have been unified into a single **My Resources** view. Local resources (models, agents, tools) are grouped under a **Local Resources** node, with Foundry remote resources appearing alongside them.
+  - If Foundry is installed but not yet configured, a setup prompt is shown inline instead of an empty panel.
+  - All nodes are collapsed by default and expand/collapse state is preserved across sessions.
+  - **Developer Tools View Mode**: The Developer Tools panel now supports two switchable layouts, accessible from the panel title menu: **Group by Lifecycle** organizes entries into Discover, Build, and Monitor stages, while **Group by Resource** groups them into Agent Dev Tools and Model Tools. The active mode is indicated with a checkmark.
+  - Foundry agents and Foundry models now have dedicated icons to distinguish them from local resources at a glance.
+
+- **Evaluation**: Updated the VS Code Skill to use the `pytest-agent-evals` SDK for running agent evaluations, aligned with the latest evaluation framework.
+
+## Version 0.30.1 - 12 February, 2026
+This is an incremental release with bug fix.
+
+- **Changed**: Consolidated Inspector templates from the Foundry extension
+- **Fixed**: Fixed a skill issue for Python environment configuration
+- **Added**: Support for Claude-Opus-4.6
+
+## Version 0.30.0 - 5 February, 2026
+This major milestone release introduces several new features and significant enhancements. 
+
+### Added
+
+- **Tool Catalog**: A centralized hub for discovering, managing, and integrating tools into AI agents. The Tool Catalog streamlines agent capability enhancement by providing unified access to a comprehensive range of tools.
+  - Browse, search, and filter available tools from the public Foundry catalog and local `stdio` MCP servers.
+  - Configure connection settings for each tool directly within the catalog.
+  - Seamlessly integrate selected tools into AI agents via Agent Builder.
+  - Manage tool lifecycles including adding, updating, and removing tools.
+![Tools](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/2026/aitk_0205/Tool_Catalog.png)
+
+- **Agent Inspector**: A comprehensive debugging and visualization environment for AI agents within VS Code. Press F5 to launch agents with full debugger support, view real-time streaming responses, and visualize multi-agent workflow execution.
+![Inspector_1](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/2026/aitk_0205/Inspector_1.png)
+  - **One-click F5 debugging**: Launch agents with breakpoints, variable inspection, and step-through debugging.
+  - **Copilot auto-configuration**: GitHub Copilot generates agent code and configures debugging, endpoints, and environment.
+  - **Production-ready code**: Generated code uses Hosted Agent SDK, ready for deployment to Microsoft Foundry.
+  - **Real-time visualization**: Monitor streaming responses, tool calls, and workflow graphs between agents.
+  - **Quick code navigation**: Double-click workflow nodes to navigate directly to corresponding source code.
+  - **Unified experience**: Integrated interface combining chat and visualization for seamless agent development.
+![Inspector_2](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/2026/aitk_0205/Inspector_2.png)
+
+- **Evaluation as Tests**: A structured approach to defining, running, and analyzing AI agent evaluations using familiar testing frameworks.
+![Eval_1](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/2026/aitk_0205/Eval_1.png)
+  - **Define evaluations as test cases**: Write evaluations using pytest syntax and annotations with the Eval Runner SDK.
+  - **Test Explorer integration**: Execute tests directly in VS Code Test Explorer with flexible test case combinations.
+  - **Result analysis**: View and analyze evaluation results in a tabular view with [Data Wrangler](https://code.visualstudio.com/docs/datascience/data-wrangler-quick-start) integration.
+  - **Run evaluations in Foundry**: Submit evaluation definitions to run in Microsoft Foundry.
+![Eval_2](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/2026/aitk_0205/Eval_2.png)
+
+
+### Changed
+- **Agent Builder**:
+  - Redesigned layout for improved usability and navigation.
+  - Added quick switcher for seamless transitions between agents.
+  - Added support for authoring, running, and saving prompt agents on Microsoft Foundry.
+  - Added support for adding tools to Foundry prompt agents from Tool Catalog or built-in tools.
+  - Added **Inspire Me** feature to assist users when drafting agent instructions.
+  - Numerous performance and stability improvements.
+![Agentbuilder](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/2026/aitk_0205/AgentBuilder.png)
+
+- **Model Catalog**:
+  - Added support for models using the OpenAI Response API, such as `gpt-5.2-codex`.
+  - Numerous performance and stability improvements.
+
+- **Build Agent with GitHub Copilot**:
+  - Added **New Workflow** entry point to quickly generate multi-agent workflows with GitHub Copilot.
+  - Added capability to orchestrate multi-agent workflows by selecting prompt agents from Foundry.
+![Workflow](https://raw.githubusercontent.com/MuyangAmigo/MuyangAmigo/main/assets/2026/aitk_0205/Workflow.png)
+
+- **Conversion**:
+  - Support generate interactive playground for history model.
+  - Add Qualcomm GPU recipes.
+
+- **Profiling**: 
+  - Support show resource usage for Phi Silica in Model Playground.
+
+## Version 0.28.2 - 19 January, 2026
+
+This is an incremental release with bug fix
+
+### Fixed
+- Fixed local model on the QNN device is not providing an appropriate response.
+- Fixed phi silica finetuning float parameter issue.
+
 ## Version 0.28.1 - 13 January, 2026
 
 This is an incremental release improving Copilot integration by replacing instructions with [skills](https://code.visualstudio.com/docs/copilot/customization/agent-skills).
@@ -78,6 +190,7 @@ This is an incremental release adding new models from Foundry.
   - Shipped non-LLM recipes for AMD GPU EP support
   - Config changes for OV NPU LLM: Olive updated to version 0.10.1 with a new configuration.
   - Expanded support for additional LLM models for TRT RTX GPU EP.
+
 
 ## Version 0.26.0 - 12 November, 2025
 This is a major milestone release introducing **AIAgentExpert** custom agent and other enhancements.
