@@ -14,9 +14,16 @@ The Agent Inspector enables developers to debug, visualize, and iterate on AI ag
 | **Real-time visualization** | View streaming responses, tool calls, and workflow graphs between agents. |
 | **Quick code navigation** | Double-click workflow nodes to jump to corresponding code. |
 
+## Supported Frameworks
+
+|Frameworks|Supported|Not Supported Yet|
+|---|---|---|
+|[Agent Framework](https://github.com/microsoft/agent-framework)|Fully supported|n/a|
+|[LangGraph](https://www.langchain.com/langgraph)|Playground, Events, Tools|Workflow Visualization, Per-node Input / Output|
+
 ## Prerequisites
 
-- **Agent Framework SDK**: Agent built using `agent-framework` SDK
+- **Agent Framework SDK** or **LangGraph SDK**: Agent built using `agent-framework` SDK or `langgraph` SDK
 - **Python 3.10+** and **VS Code AI Toolkit** extension
 
 ## Quick start
