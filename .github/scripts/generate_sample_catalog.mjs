@@ -3,11 +3,11 @@
  * Generate samples/hosted-agent/sample-catalog.json from the foundry-samples repository.
  *
  * Walks the hosted-agents tree in microsoft-foundry/foundry-samples once via
- * the git-tree API, parses each sample's agent.yaml (+ optional
- * agent.manifest.yaml) for protocol and model requirements, derives
- * displayName from the directory name, and — when AZURE_OPENAI_* secrets are
- * set — fills the description with a short LLM-generated sentence sourced
- * from the sample's README.md.
+ * the git-tree API, parses each sample's azure.yaml (the azd service
+ * manifest) for protocol and model requirements, derives displayName from the
+ * directory name, and — when AZURE_OPENAI_* secrets are set — fills the
+ * description with a short LLM-generated sentence sourced from the sample's
+ * README.md.
  *
  * Usage:
  *   node generate_sample_catalog.mjs <commitSha>
@@ -35,7 +35,7 @@ const OVERRIDES_PATH = join(REPO_ROOT, 'samples', 'hosted-agent', 'sample-overri
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 
 // Languages, frameworks, and protocols are discovered dynamically from the
-// samples repo tree (see discoverLanguagesAndFrameworks / parseAgentYaml)
+// samples repo tree (see discoverLanguagesAndFrameworks / parseAzureYaml)
 // instead of being restricted by an allowlist. These blacklists are the
 // explicit escape hatch to exclude a specific discovered value; empty by
 // default means "no restriction" — everything discovered is kept.
@@ -72,8 +72,9 @@ const DIMENSION_DEFAULTS = {
         title: 'Select a Protocol',
         placeholder: 'Choose the protocol for your agent',
         options: {
-            responses: 'Responses API',
-            invocations: 'Invocations API',
+            responses: 'Responses',
+            invocations: 'Invocations',
+            invocations_ws: 'Invocations (WebSocket)',
         },
     },
 };
@@ -244,12 +245,12 @@ function discoverLanguagesAndFrameworks(tree) {
 
 /**
  * Find sample template directories under a `hosted-agents/<framework>/` prefix.
- * A template is identified by the presence of an `agent.yaml`. When nested
- * agent.yaml files exist (e.g. a sub-agent declared inside a parent sample),
- * only the OUTERMOST one is treated as a catalog template — the inner files
- * are part of the parent sample. Hidden directories (segments beginning with
- * `.`, e.g. `.claude/skills`) are skipped, as are segments that fail the
- * `SAFE_PATH_SEGMENT` check.
+ * A template is identified by the presence of an `azure.yaml` (the azd service
+ * manifest). When nested azure.yaml files exist (e.g. a sub-agent declared
+ * inside a parent sample), only the OUTERMOST one is treated as a catalog
+ * template — the inner files are part of the parent sample. Hidden directories
+ * (segments beginning with `.`, e.g. `.claude/skills`) are skipped, as are
+ * segments that fail the `SAFE_PATH_SEGMENT` check.
  *
  * Nested templates are kept unless their category segment is listed in
  * `BLOCKED_CATEGORY_SEGMENTS` (empty by default, so everything is surfaced);
@@ -263,8 +264,8 @@ function discoverLanguagesAndFrameworks(tree) {
  */
 function findTemplateDirsUnder(tree, prefix) {
     const candidates = tree
-        .filter((entry) => entry.type === 'blob' && entry.path.startsWith(prefix) && entry.path.endsWith('/agent.yaml'))
-        .map((entry) => entry.path.slice(0, -'/agent.yaml'.length))
+        .filter((entry) => entry.type === 'blob' && entry.path.startsWith(prefix) && entry.path.endsWith('/azure.yaml'))
+        .map((entry) => entry.path.slice(0, -'/azure.yaml'.length))
         .filter((dir) => {
             const rel = dir.slice(prefix.length);
             if (!rel) {
@@ -295,7 +296,7 @@ function findTemplateDirsUnder(tree, prefix) {
         })
         // Lexicographic sort serves two purposes: (1) a parent path always
         // sorts before its descendants, so the `startsWith` check below
-        // correctly keeps only the outermost agent.yaml; (2) it preserves
+        // correctly keeps only the outermost azure.yaml; (2) it preserves
         // upstream's `NN-` numeric prefix ordering in the picker.
         .sort();
 
@@ -310,7 +311,7 @@ function findTemplateDirsUnder(tree, prefix) {
 }
 
 /**
- * Infer protocol when `agent.yaml` does not declare one explicitly. Looks for
+ * Infer protocol when `azure.yaml` does not declare one explicitly. Looks for
  * a `responses` or `invocations` segment in the path, then for the substring
  * in the leaf directory name (common for samples like
  * `hello-world-invocations-voicelive`). Falls back to `responses` and emits a
@@ -334,23 +335,26 @@ function inferProtocolFromPath(templatePath) {
     if (leaf.includes('responses')) {
         return 'responses';
     }
-    warn(`Could not infer protocol for "${templatePath}"; defaulting to "responses". Add a "- protocol:" entry to agent.yaml or a sample-overrides.json entry to silence this.`);
+    warn(`Could not infer protocol for "${templatePath}"; defaulting to "responses". Add a "- protocol:" entry to azure.yaml or a sample-overrides.json entry to silence this.`);
     return 'responses';
 }
 
 /**
- * Minimal parser for agent.yaml. Extracts the declared protocol(s) and
- * whether the sample exposes the AZURE_AI_MODEL_DEPLOYMENT_NAME env var
- * (used as a heuristic for `requiresModel`). Does NOT use eval or a real
- * YAML library — a regex-y scan is sufficient for our two fields. Any
- * declared protocol is accepted except those listed in BLOCKED_PROTOCOLS
- * (empty by default).
+ * Minimal parser for a sample's azure.yaml (the azd service manifest).
+ * Extracts the declared protocol(s) from the hosted-agent service's
+ * `protocols:` list and whether the sample requires a Foundry model. A sample
+ * requires a model when it either consumes one (an
+ * AZURE_AI_MODEL_DEPLOYMENT_NAME env var) or provisions one (an `ai-project`
+ * `deployments:` block — which replaced the model resource that used to live
+ * in agent.manifest.yaml). Does NOT use eval or a real YAML library — a line
+ * scan is sufficient for these fields. Any declared protocol is accepted
+ * except those listed in BLOCKED_PROTOCOLS (empty by default).
  * @param {string} content
- * @returns {{ protocols: string[], hasModelEnv: boolean }}
+ * @returns {{ protocols: string[], requiresModel: boolean }}
  */
-function parseAgentYaml(content) {
-    /** @type {{ protocols: string[], hasModelEnv: boolean }} */
-    const result = { protocols: [], hasModelEnv: false };
+function parseAzureYaml(content) {
+    /** @type {{ protocols: string[], requiresModel: boolean }} */
+    const result = { protocols: [], requiresModel: false };
 
     for (const line of content.split('\n')) {
         const stripped = line.trim();
@@ -360,8 +364,15 @@ function parseAgentYaml(content) {
                 result.protocols.push(value);
             }
         }
+        // Model consumer: the agent reads a Foundry model deployment name.
         if (stripped.startsWith('- name:') && stripped.includes('AZURE_AI_MODEL_DEPLOYMENT_NAME')) {
-            result.hasModelEnv = true;
+            result.requiresModel = true;
+        }
+        // Model provider: the ai-project service declares one or more model
+        // deployments to provision (the azure.yaml successor to a manifest
+        // `kind: model` resource).
+        if (stripped === 'deployments:') {
+            result.requiresModel = true;
         }
     }
 
@@ -369,64 +380,16 @@ function parseAgentYaml(content) {
 }
 
 /**
- * Fetch and parse agent.yaml for a sample directory.
+ * Fetch and parse a sample directory's azure.yaml.
  * @param {string} samplePath
  * @param {string} ref
- * @returns {Promise<{ protocols: string[], hasModelEnv: boolean } | null>}
+ * @returns {Promise<{ protocols: string[], requiresModel: boolean } | null>}
  */
-async function fetchAgentYaml(samplePath, ref) {
-    const rawUrl = `https://raw.githubusercontent.com/microsoft-foundry/foundry-samples/${ref}/${samplePath}/agent.yaml`;
+async function fetchAzureYaml(samplePath, ref) {
+    const rawUrl = `https://raw.githubusercontent.com/microsoft-foundry/foundry-samples/${ref}/${samplePath}/azure.yaml`;
     try {
         const content = await fetchText(rawUrl);
-        return parseAgentYaml(content);
-    } catch {
-        return null;
-    }
-}
-
-/**
- * Minimal parser for agent.manifest.yaml — detects whether the manifest
- * declares a top-level `resources:` list containing `kind: model`. Matches
- * both `- kind: model` and the multi-line continuation form, and limits
- * scanning to the `resources:` block to avoid false positives.
- * @param {string} content
- * @returns {{ hasModelResource: boolean }}
- */
-function parseAgentManifestYaml(content) {
-    let inResources = false;
-    for (const rawLine of content.split('\n')) {
-        const stripped = rawLine.trim();
-        // Detect top-level key (column 0, e.g. `resources:`, `metadata:`).
-        if (/^[A-Za-z_][\w-]*:/.test(rawLine)) {
-            inResources = stripped.startsWith('resources:');
-            continue;
-        }
-        if (!inResources) {
-            continue;
-        }
-        // Strip optional `- ` so the inline and continuation forms both match.
-        const withoutDash = stripped.replace(/^-\s+/, '');
-        if (withoutDash.startsWith('kind:')) {
-            const value = withoutDash.substring('kind:'.length).trim().replace(/^["']|["']$/g, '');
-            if (value === 'model') {
-                return { hasModelResource: true };
-            }
-        }
-    }
-    return { hasModelResource: false };
-}
-
-/**
- * Fetch and parse agent.manifest.yaml for a sample directory.
- * @param {string} samplePath
- * @param {string} ref
- * @returns {Promise<{ hasModelResource: boolean } | null>}
- */
-async function fetchAgentManifestYaml(samplePath, ref) {
-    const rawUrl = `https://raw.githubusercontent.com/microsoft-foundry/foundry-samples/${ref}/${samplePath}/agent.manifest.yaml`;
-    try {
-        const content = await fetchText(rawUrl);
-        return parseAgentManifestYaml(content);
+        return parseAzureYaml(content);
     } catch {
         return null;
     }
@@ -586,7 +549,7 @@ function displayNameFromPath(samplePath) {
 
 /**
  * Scan the foundry-samples repo and build the flat template list. Uses one
- * recursive git-tree call to enumerate every `agent.yaml` under each
+ * recursive git-tree call to enumerate every `azure.yaml` under each
  * `<language>/hosted-agents/<framework>/` prefix, regardless of intermediate
  * directories. Languages and frameworks are discovered dynamically from the
  * tree (see discoverLanguagesAndFrameworks) rather than hard-coded, then
@@ -615,26 +578,18 @@ async function scanTemplates(commitSha) {
             const templateDirs = findTemplateDirsUnder(tree, prefix);
 
             for (const templatePath of templateDirs) {
-                const agentInfo = await fetchAgentYaml(templatePath, commitSha);
-                if (!agentInfo) {
-                    warn(`Could not fetch or parse agent.yaml for "${templatePath}"; skipping this template.`);
+                const azureInfo = await fetchAzureYaml(templatePath, commitSha);
+                if (!azureInfo) {
+                    warn(`Could not fetch or parse azure.yaml for "${templatePath}"; skipping this template.`);
                     continue;
                 }
 
                 /** @type {string} */
-                const protocol = agentInfo.protocols.length > 0
-                    ? agentInfo.protocols[0]
+                const protocol = azureInfo.protocols.length > 0
+                    ? azureInfo.protocols[0]
                     : inferProtocolFromPath(templatePath);
 
-                let requiresModel = agentInfo.hasModelEnv;
-                // Only consult agent.manifest.yaml when agent.yaml reported no
-                // model env; otherwise we already default to `true`.
-                if (!requiresModel) {
-                    const manifestInfo = await fetchAgentManifestYaml(templatePath, commitSha);
-                    if (manifestInfo?.hasModelResource) {
-                        requiresModel = true;
-                    }
-                }
+                const requiresModel = azureInfo.requiresModel;
 
                 templates.push({
                     language,
