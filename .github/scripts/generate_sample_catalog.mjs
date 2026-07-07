@@ -399,6 +399,11 @@ async function fetchAzureYaml(samplePath, ref) {
 const AZURE_OPENAI_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT || '';
 const AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY || '';
 const AZURE_OPENAI_DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini';
+// Must be >= 2024-09-01-preview so `max_completion_tokens` is accepted. Newer
+// models (gpt-5.x / reasoning) reject the legacy `max_tokens` param and any
+// non-default `temperature`; override via env if your deployment needs a
+// newer api-version.
+const AZURE_OPENAI_API_VERSION = process.env.AZURE_OPENAI_API_VERSION || '2024-10-21';
 
 /**
  * Fetch README.md content for a sample directory.
@@ -431,7 +436,7 @@ async function generateWithLLM(readmeContent, samplePath) {
         return null;
     }
 
-    const apiUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/${AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
+    const apiUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/${AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version=${AZURE_OPENAI_API_VERSION}`;
 
     const systemPrompt = `You generate one-sentence descriptions for a VS Code template picker.
 The user has already selected language, framework, and protocol before seeing these items, so the description must NOT repeat those choices.
@@ -461,8 +466,12 @@ ${readmeContent.substring(0, 2000)}`;
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
         ],
-        temperature: 0,
-        max_tokens: 120,
+        // `max_completion_tokens` (not the legacy `max_tokens`) so newer models
+        // accept the request. Kept generous because reasoning models spend part
+        // of the budget on hidden reasoning tokens before emitting the sentence.
+        // `temperature` is intentionally omitted: several newer models only
+        // support the default value and 400 on anything else.
+        max_completion_tokens: 800,
     };
 
     try {
@@ -476,7 +485,16 @@ ${readmeContent.substring(0, 2000)}`;
         });
 
         if (!response.ok) {
-            warn(`LLM API returned ${response.status} for ${samplePath}; description will be left empty.`);
+            // Include a truncated response body so the exact reason (e.g. an
+            // unsupported param, a missing deployment, or a wrong endpoint) is
+            // visible in the CI log instead of a bare status code.
+            let detail = '';
+            try {
+                detail = (await response.text()).replace(/\s+/g, ' ').trim().slice(0, 400);
+            } catch {
+                // ignore body read failures
+            }
+            warn(`LLM API returned ${response.status} for ${samplePath}; description will be left empty.${detail ? ` Response: ${detail}` : ''}`);
             return null;
         }
 
