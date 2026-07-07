@@ -404,6 +404,18 @@ const AZURE_OPENAI_DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-m
 // non-default `temperature`; override via env if your deployment needs a
 // newer api-version.
 const AZURE_OPENAI_API_VERSION = process.env.AZURE_OPENAI_API_VERSION || '2024-10-21';
+// Reasoning models (gpt-5.x / o-series) spend part of the completion budget on
+// hidden reasoning tokens BEFORE emitting any visible content. If the budget
+// is too small the reasoning alone exhausts it and `message.content` comes
+// back EMPTY (finish_reason: "length"), which is why a too-low value silently
+// dropped ~1/4 of descriptions. The visible output is a single short sentence,
+// so a generous budget costs little but leaves ample headroom for reasoning.
+const AZURE_OPENAI_MAX_COMPLETION_TOKENS = Number(process.env.AZURE_OPENAI_MAX_COMPLETION_TOKENS) || 2000;
+// Optional: cap the hidden reasoning for a trivial summarization task. Only
+// sent when set, because non-reasoning deployments (and older api-versions)
+// 400 on an unknown `reasoning_effort` param. For gpt-5.x use `minimal`; for
+// o-series use `low`.
+const AZURE_OPENAI_REASONING_EFFORT = process.env.AZURE_OPENAI_REASONING_EFFORT || '';
 
 /**
  * Fetch README.md content for a sample directory.
@@ -461,6 +473,7 @@ Respond ONLY with a JSON object: {"description": "..."}`;
 README.md:
 ${readmeContent.substring(0, 2000)}`;
 
+    /** @type {{ messages: Array<{role: string, content: string}>, max_completion_tokens: number, reasoning_effort?: string }} */
     const body = {
         messages: [
             { role: 'system', content: systemPrompt },
@@ -471,8 +484,11 @@ ${readmeContent.substring(0, 2000)}`;
         // of the budget on hidden reasoning tokens before emitting the sentence.
         // `temperature` is intentionally omitted: several newer models only
         // support the default value and 400 on anything else.
-        max_completion_tokens: 800,
+        max_completion_tokens: AZURE_OPENAI_MAX_COMPLETION_TOKENS,
     };
+    if (AZURE_OPENAI_REASONING_EFFORT) {
+        body.reasoning_effort = AZURE_OPENAI_REASONING_EFFORT;
+    }
 
     try {
         const response = await fetch(apiUrl, {
@@ -499,8 +515,17 @@ ${readmeContent.substring(0, 2000)}`;
         }
 
         const data = await response.json();
-        const content = data.choices?.[0]?.message?.content?.trim();
+        const choice = data.choices?.[0];
+        const content = choice?.message?.content?.trim();
         if (!content) {
+            // A successful (200) call with empty content is almost always a
+            // reasoning model exhausting `max_completion_tokens` on hidden
+            // reasoning (finish_reason: "length"). Surface it instead of
+            // silently leaving the description empty, and hint at the knobs.
+            const finishReason = choice?.finish_reason ?? 'unknown';
+            const reasoningTokens = data.usage?.completion_tokens_details?.reasoning_tokens;
+            const usageHint = reasoningTokens !== undefined ? ` (reasoning_tokens=${reasoningTokens})` : '';
+            warn(`LLM returned empty content for ${samplePath} (finish_reason=${finishReason}${usageHint}); description left empty. If finish_reason is "length", raise AZURE_OPENAI_MAX_COMPLETION_TOKENS or set AZURE_OPENAI_REASONING_EFFORT.`);
             return null;
         }
 
@@ -510,6 +535,7 @@ ${readmeContent.substring(0, 2000)}`;
 
         const description = typeof parsed.description === 'string' ? parsed.description.trim() : '';
         if (!description) {
+            warn(`LLM response for ${samplePath} had no usable "description" field; description left empty.`);
             return null;
         }
 
