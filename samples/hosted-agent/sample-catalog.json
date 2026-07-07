@@ -266,7 +266,7 @@
             "framework": "bring-your-own",
             "protocol": "invocations_ws",
             "displayName": "HelloWorld",
-            "description": "Routes real-time audio between a browser and a managed voice service for live conversations.",
+            "description": "Routes real-time audio between a browser and a managed voice service session.",
             "path": "samples/csharp/hosted-agents/bring-your-own/invocations_ws/HelloWorld",
             "requiresModel": false
         },
