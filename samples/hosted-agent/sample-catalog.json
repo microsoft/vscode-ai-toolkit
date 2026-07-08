@@ -1,7 +1,7 @@
 {
-    "commitSha": "c14a01b61eb6a59aeae140f7db07b420f85fcfb4",
+    "commitSha": "a2435554c7ba41fb76fdc37623c2f3715ca81c86",
     "repo": "https://github.com/microsoft-foundry/foundry-samples/",
-    "generatedAt": "2026-07-07T06:19:12Z",
+    "generatedAt": "2026-07-08T05:56:39Z",
     "dimensions": {
         "language": {
             "title": "Select a Language",
@@ -45,11 +45,11 @@
             "options": [
                 {
                     "id": "responses",
-                    "displayName": "Responses"
+                    "displayName": "Responses API"
                 },
                 {
                     "id": "invocations",
-                    "displayName": "Invocations"
+                    "displayName": "Invocations API"
                 },
                 {
                     "id": "invocations_ws",
