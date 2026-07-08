@@ -72,8 +72,8 @@ const DIMENSION_DEFAULTS = {
         title: 'Select a Protocol',
         placeholder: 'Choose the protocol for your agent',
         options: {
-            responses: 'Responses API',
-            invocations: 'Invocations API',
+            responses: 'Responses',
+            invocations: 'Invocations',
             invocations_ws: 'Invocations (WebSocket)',
         },
     },
