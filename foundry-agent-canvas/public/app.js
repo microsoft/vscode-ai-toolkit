@@ -265,6 +265,10 @@ function applyFold(blockId, open) {
 function renderFolds() {
     applyFold("resourcesBlock", state.folds.resources);
     applyFold("deployBlock", state.folds.deploy);
+    const shell = document.querySelector(".panel-shell");
+    if (shell) {
+        shell.classList.toggle("resources-collapsed", !state.folds.resources);
+    }
 }
 
 // Prettify an ARM region code for display, e.g. "eastus2" → "East US 2".
@@ -372,6 +376,8 @@ function initPromptText() {
 
 const HELP_ME_DECIDE_PROMPT =
     "Guide user through the process of creating an agent, deciding scenarios and technical stack such as coding languages, frameworks and protocols.";
+const INIT_PROMPT_MIN_HEIGHT = 72;
+const INIT_PROMPT_MAX_HEIGHT = 144;
 
 const INSPIRATION_IDEAS = Object.freeze([
     "rehearse a difficult conversation by role-playing the other person, then give concise feedback on tone, clarity, and empathy",
@@ -391,11 +397,25 @@ function randomInspirationIdea() {
     return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
+function resizeInitPrompt(ta = document.getElementById("initPrompt")) {
+    if (!ta) return;
+    ta.style.height = "auto";
+    const nextHeight = Math.min(
+        INIT_PROMPT_MAX_HEIGHT,
+        Math.max(INIT_PROMPT_MIN_HEIGHT, ta.scrollHeight),
+    );
+    ta.style.height = `${nextHeight}px`;
+    ta.style.overflowY = ta.scrollHeight > INIT_PROMPT_MAX_HEIGHT ? "auto" : "hidden";
+}
+
 function setInitPreviewPrompt(text) {
     state.init.promptText = text;
     state.init.promptDirty = true;
     const ta = document.getElementById("initPrompt");
-    if (ta) ta.value = text;
+    if (ta) {
+        ta.value = text;
+        resizeInitPrompt(ta);
+    }
 }
 
 // Seed the textarea from durable state. When promptDirty is true, the value is
@@ -405,11 +425,13 @@ function syncInitPrompt() {
     if (!ta) return;
     if (state.init.promptDirty) {
         ta.value = state.init.promptText || "";
+        resizeInitPrompt(ta);
         return;
     }
     const text = initPromptText();
     state.init.promptText = text;
     ta.value = text;
+    resizeInitPrompt(ta);
 }
 
 // Re-seed the prompt from structured state (used by the bubble buttons and the
@@ -560,7 +582,7 @@ function renderDeployList() {
 
     for (const m of st.items) {
         const item = document.createElement("button");
-        item.className = "menu-item";
+        item.className = "menu-item menu-item--hover-action";
         item.type = "button";
         item.setAttribute("role", "menuitem");
 
@@ -568,6 +590,11 @@ function renderDeployList() {
         name.className = "item-name";
         name.textContent = m.name;
         item.appendChild(name);
+
+        const action = document.createElement("span");
+        action.className = "item-action";
+        action.append(fluentIcon("switch"), document.createTextNode("Switch"));
+        item.appendChild(action);
 
         item.addEventListener("click", () => {
             closeModelMenu();
@@ -641,45 +668,50 @@ function renderToolboxList() {
 
     for (const t of st.items) {
         const wrap = document.createElement("div");
-        wrap.className = "toolbox-wrap";
+        wrap.className = "toolbox-wrap" + (t.expanded ? " is-expanded" : "");
 
         // Header row: chevron + icon + name; the whole row toggles the tools.
-        const item = document.createElement("button");
-        item.className = "menu-item menu-item--toolbox";
-        item.type = "button";
-        item.setAttribute("role", "menuitem");
-        item.setAttribute("aria-expanded", String(!!t.expanded));
+        const item = document.createElement("div");
+        item.className = "menu-item menu-item--toolbox menu-item--hover-action";
+
+        const toggle = document.createElement("button");
+        toggle.className = "toolbox-toggle";
+        toggle.type = "button";
+        toggle.setAttribute("role", "menuitem");
+        toggle.setAttribute("aria-expanded", String(!!t.expanded));
 
         const chev = document.createElement("span");
         chev.className = "toolbox-chev" + (t.expanded ? " is-open" : "");
         chev.setAttribute("aria-hidden", "true");
         chev.appendChild(fluentIcon("chev"));
-        item.appendChild(chev);
+        toggle.appendChild(chev);
 
         const icon = document.createElement("span");
         icon.className = "toolbox-icon";
         icon.setAttribute("aria-hidden", "true");
         icon.appendChild(fluentIcon("toolbox"));
-        item.appendChild(icon);
+        toggle.appendChild(icon);
 
         const name = document.createElement("span");
         name.className = "item-name";
         const count = Array.isArray(t.tools) && t.toolsStatus === "ready" ? ` (${t.tools.length})` : "";
         name.textContent = t.name + count;
-        item.appendChild(name);
+        toggle.appendChild(name);
 
-        // "Use" selects the toolbox (prompt-to-chat); clicking elsewhere expands.
-        const use = document.createElement("span");
-        use.className = "toolbox-use";
+        // Connect selects the toolbox (prompt-to-chat); clicking elsewhere expands.
+        const use = document.createElement("button");
+        use.className = "item-action toolbox-use";
+        use.type = "button";
+        use.setAttribute("aria-label", `Connect ${t.name}`);
         use.append(fluentIcon("plug"), document.createTextNode("Connect"));
         use.addEventListener("click", (e) => {
             e.stopPropagation();
             closeToolMenu();
             sendToChat(withProjectContext(t.prompt));
         });
-        item.appendChild(use);
+        item.append(toggle, use);
 
-        item.addEventListener("click", (e) => {
+        toggle.addEventListener("click", (e) => {
             // Stop the document-level outside-click handler: re-rendering below
             // detaches this row, so its closest(".tool-select") would be null
             // and the menu would wrongly close.
@@ -731,7 +763,7 @@ function renderGuardrailList() {
 
     for (const g of st.items) {
         const item = document.createElement("button");
-        item.className = "menu-item";
+        item.className = "menu-item menu-item--hover-action";
         item.type = "button";
         item.setAttribute("role", "menuitem");
 
@@ -741,6 +773,11 @@ function renderGuardrailList() {
         name.className = "item-name";
         name.textContent = g.name;
         item.appendChild(name);
+
+        const action = document.createElement("span");
+        action.className = "item-action";
+        action.append(fluentIcon("plug"), document.createTextNode("Assign"));
+        item.appendChild(action);
 
         item.addEventListener("click", () => {
             closeGuardrailMenu();
@@ -764,7 +801,7 @@ function renderSkillList() {
 
     for (const s of st.items) {
         const item = document.createElement("button");
-        item.className = "menu-item";
+        item.className = "menu-item menu-item--hover-action";
         item.type = "button";
         item.setAttribute("role", "menuitem");
 
@@ -774,6 +811,11 @@ function renderSkillList() {
         name.className = "item-name";
         name.textContent = s.name;
         item.appendChild(name);
+
+        const action = document.createElement("span");
+        action.className = "item-action";
+        action.append(fluentIcon("plug"), document.createTextNode("Connect"));
+        item.appendChild(action);
 
         item.addEventListener("click", () => {
             closeSkillMenu();
@@ -2212,6 +2254,7 @@ root.addEventListener("input", (e) => {
     else if (e.target.id === "initPrompt") {
         state.init.promptDirty = true;
         state.init.promptText = e.target.value;
+        resizeInitPrompt(e.target);
     }
 });
 
