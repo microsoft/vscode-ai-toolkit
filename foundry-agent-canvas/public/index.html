@@ -95,45 +95,36 @@
                         </div>
                     </header>
 
-                    <section class="accordion-section init" id="initBlock" data-open="false" aria-label="Initialize agent">
+                    <section class="accordion-section init" id="initBlock" data-open="false" aria-label="Create new hosted agents">
                         <button class="accordion-toggle init-toggle" id="initToggle" type="button" aria-expanded="false" aria-controls="initPanel">
                             <span class="accordion-title">
                                 <span class="fi fi-num-1" aria-hidden="true"></span>
-                                <span>Initialize Agent</span>
+                                <span>Create new Hosted Agents</span>
                             </span>
                             <span class="fi fi-chev accordion-chev init-chev" aria-hidden="true"></span>
                         </button>
                         <div class="init-panel" id="initPanel" hidden>
                             <div class="init-content">
                                 <p class="section-caption">How would you like to get started?</p>
-                                <div class="start-options" role="group" aria-label="Initialize agent options">
+                                <div class="start-options" role="group" aria-label="Create hosted agent options">
                                     <button class="start-option is-selected" id="inspireIdea" type="button">
                                         <span class="option-icon option-icon-purple"><span class="fi fi-sparkle" aria-hidden="true"></span></span>
-                                        <span class="option-text">
-                                            <span class="option-title">Inspire me</span>
-                                            <span class="option-sub">Drop a random agent idea to spark creativity</span>
-                                        </span>
+                                        <span class="option-title">Inspire me</span>
                                     </button>
                                     <button class="start-option" id="decideIdea" type="button">
                                         <span class="option-icon option-icon-blue"><span class="fi fi-chat" aria-hidden="true"></span></span>
-                                        <span class="option-text">
-                                            <span class="option-title">Help me decide</span>
-                                            <span class="option-sub">Copilot guides you through frameworks, languages and scenarios</span>
-                                        </span>
+                                        <span class="option-title">Help me decide</span>
                                     </button>
                                     <button class="start-option" id="helloWorldIdea" type="button">
                                         <span class="option-icon option-icon-green"><span class="fi fi-code" aria-hidden="true"></span></span>
-                                        <span class="option-text">
-                                            <span class="option-title">Hello world</span>
-                                            <span class="option-sub">Generate a simple working agent sample to get started fast</span>
-                                        </span>
+                                        <span class="option-title">Hello world</span>
                                     </button>
                                 </div>
                             </div>
                             <div class="preview-block">
                                 <span class="section-caption">Preview</span>
                                 <div class="preview-card">
-                                    <textarea class="init-prompt" id="initPrompt" rows="3" spellcheck="false"></textarea>
+                                    <textarea class="init-prompt" id="initPrompt" rows="4" spellcheck="false"></textarea>
                                     <div class="preview-actions">
                                         <button class="start-link" id="initStart" type="button">
                                             <span class="fi fi-send" aria-hidden="true"></span>
@@ -145,11 +136,14 @@
                         </div>
                     </section>
 
-                    <section class="accordion-section fold" id="resourcesBlock" data-open="true" aria-label="Add resources">
+                    <section class="accordion-section fold" id="resourcesBlock" data-open="true" aria-label="Build current hosted agent">
                         <button class="accordion-toggle fold-toggle" id="resourcesToggle" type="button" aria-expanded="true" aria-controls="resourcesPanel">
-                            <span class="accordion-title">
+                            <span class="accordion-title accordion-title--described">
                                 <span class="fi fi-num-2" aria-hidden="true"></span>
-                                <span>Add Resources</span>
+                                <span class="accordion-title-copy">
+                                    <span>Build current Hosted Agent</span>
+                                    <span class="accordion-description">Switch to a new model, add tools and skills or apply guardrail to your current hosted agent.</span>
+                                </span>
                             </span>
                             <span class="fi fi-chev accordion-chev fold-chev" aria-hidden="true"></span>
                         </button>
@@ -165,9 +159,8 @@
                                             <span class="fi fi-refresh" aria-hidden="true"></span>
                                         </button>
                                     </div>
-                                    <div class="model-menu resource-menu" id="modelMenu" role="menu" hidden>
+                                    <div class="model-menu resource-menu" id="modelMenu" role="menu" aria-label="Deployed models" hidden>
                                         <div class="menu-section">
-                                            <div class="menu-label">Deployed Models</div>
                                             <div id="deployList"></div>
                                         </div>
                                         <div class="menu-sep"></div>
@@ -190,9 +183,8 @@
                                             <span class="fi fi-refresh" aria-hidden="true"></span>
                                         </button>
                                     </div>
-                                    <div class="model-menu tool-menu resource-menu" id="toolMenu" role="menu" hidden>
+                                    <div class="model-menu tool-menu resource-menu" id="toolMenu" role="menu" aria-label="Deployed toolboxes" hidden>
                                         <div class="menu-section">
-                                            <div class="menu-label">Deployed Toolboxes</div>
                                             <div id="toolboxList"></div>
                                         </div>
                                         <div class="menu-sep"></div>
@@ -215,9 +207,8 @@
                                             <span class="fi fi-refresh" aria-hidden="true"></span>
                                         </button>
                                     </div>
-                                    <div class="model-menu resource-menu" id="skillMenu" role="menu" hidden>
+                                    <div class="model-menu resource-menu" id="skillMenu" role="menu" aria-label="Project skills" hidden>
                                         <div class="menu-section">
-                                            <div class="menu-label">Skills in <span id="skillMenuProject">your project</span></div>
                                             <div id="skillList"></div>
                                         </div>
                                         <div class="menu-sep"></div>
@@ -240,9 +231,8 @@
                                             <span class="fi fi-refresh" aria-hidden="true"></span>
                                         </button>
                                     </div>
-                                    <div class="model-menu resource-menu" id="guardrailMenu" role="menu" hidden>
+                                    <div class="model-menu resource-menu" id="guardrailMenu" role="menu" aria-label="Project guardrails" hidden>
                                         <div class="menu-section">
-                                            <div class="menu-label">Guardrails in <span id="guardrailMenuProject">your project</span></div>
                                             <div id="guardrailList"></div>
                                         </div>
                                         <div class="menu-sep"></div>

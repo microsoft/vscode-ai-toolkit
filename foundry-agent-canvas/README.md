@@ -26,11 +26,10 @@ Drop this folder at `~/.copilot/extensions/foundry-agent-canvas/` for user scope
 
 ## Usage
 
-1. Open **Foundry Agent Canvas** or ask Copilot to create a Foundry hosted agent.
-2. Open the project menu, sign in if needed, and choose a subscription and
-   Foundry project.
-3. Initialize the agent or select existing models, toolboxes, skills, and
-   guardrails. Selections are sent to Copilot for implementation.
-4. Select **Deploy to Foundry** when the agent is ready.
-5. Select **Inspect Locally** after the workspace contains a runnable Foundry hosted
-   agent.
+
+1. Ask Copilot to *create a Foundry hosted agent*, then the Canvas will be opened in the right panel automatically.
+2. Open the canvas project menu, sign in if needed, and choose a subscription and Foundry project.
+3. Create a hosted agent with random idea via **Inspire me**, or start from a **Hello world** sample prompt.
+4. Switch to other deployed models, connect existing toolboxes, skills, or guardrails for the created agent.
+5. Click **Deploy to Foundry** when the agent is ready.
+6. Click **Inspect Locally** after the workspace contains a runnable Foundry hosted agent.
