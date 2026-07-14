@@ -22,10 +22,18 @@ Inspector.
 
 ## Install
 
-Drop this folder at `~/.copilot/extensions/foundry-agent-canvas/` for user scope, or in a repository at `.github/extensions/foundry-agent-canvas/` for project scope.
+### With Copilot
+
+Ask Copilot to install the extension and specify the scope you want. For example:
+
+> Install the canvas extension https://github.com/microsoft/foundry-toolkit/tree/main/foundry-agent-canvas in user scope
+
+
+### Manually
+
+Copy this folder to `~/.copilot/extensions/foundry-agent-canvas/` for user scope, or to `.github/extensions/foundry-agent-canvas/` in a repository for project scope.
 
 ## Usage
-
 
 1. Ask Copilot to *create a Foundry hosted agent*, then the Canvas will be opened in the right panel automatically.
 2. Open the canvas project menu, sign in if needed, and choose a subscription and Foundry project.
