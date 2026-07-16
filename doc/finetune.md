@@ -1,5 +1,8 @@
 # Finetune models
 
+> [!IMPORTANT]
+> This documentation is outdated and no longer maintained. For the latest information, see the official Foundry Toolkit for Visual Studio Code documentation: [Fine-Tuning (Project Template)](https://code.visualstudio.com/docs/intelligentapps/finetune-legacy) and [LoRA fine-tuning for Phi Silica](https://code.visualstudio.com/docs/intelligentapps/finetune).
+
 # **[Preview]** Introducing Remote Development with AI Toolkit for VS Code
 
 In addition to local development, the AI Toolkit for VS Code now supports remote development. This feature enables users to provision for Azure Container Apps to run model fine-tuning and inference endpoint in the cloud.

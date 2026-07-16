@@ -1,5 +1,8 @@
 # Agent Inspector
 
+> [!IMPORTANT]
+> This documentation is outdated and no longer maintained. For the latest information, see the official Foundry Toolkit for Visual Studio Code documentation: [Agent Inspector](https://code.visualstudio.com/docs/intelligentapps/agent-inspector).
+
 The Agent Inspector enables developers to debug, visualize, and iterate on AI agents directly within VS Code. Press F5 to launch your agent with full debugger support, view real-time streaming responses, and visualize multi-agent workflow execution.
 
 ![Screenshot showing the Agent Inspector interface](Images/test-tool/test_tool_visualizer.png)

@@ -1,5 +1,135 @@
 # What's New in Foundry Toolkit for VS Code
 
+## Version 1.6.3 - 8 July, 2026
+
+This release moves the **Models** and **Knowledge** project nodes from the tree to tabbed resource webviews and adds a richer **Tool Catalog** (inline add-to-agent/toolbox, connected-tool status, and provisionable toolbox templates). It also fixes OAuth consent in the remote playground, Windows invocation of Copilot SDK templates, and several hosted-agent deploy issues.
+
+### Added
+
+- **Tool Catalog**
+  - **Inline operations**: Add a tool to a prompt agent or a toolbox — and create a new toolbox — directly from the Tools Catalog without leaving the page.
+  - **Connected-tool status**: Catalog tools now show whether they're already connected.
+  - **Toolbox templates**: New **Essentials** and **WorkIQ Suite** templates appear in the Toolboxes section with a read-only preview (tools and skills grouped) and one-click provisioning that creates the required connections and skills, then pre-fills the create-toolbox form.
+
+### Changed
+
+- **Knowledge node**: Now opens a tabbed resource webview instead of expanding nested tree items — an **Indexes** tab (vector stores plus project-managed Azure AI Search, Managed Azure AI Search, and CosmosDB indexes) and a **Knowledge Bases** tab for Azure AI Search knowledge bases.
+- **Models node**: Now opens a searchable, tabbed Models webview for your Foundry-hosted model deployments instead of expanding tree items, matching the existing Tools overview.
+- **Agents view**: Each tab — **Prompt Agent**, **Hosted Agent**, **Routines**, and **Workflow** — now shows a short, Microsoft Learn–grounded description with a **Learn more** link so first-time users can tell the agent types apart.
+- **Hosted Agent Create**: Added a dedicated description for the **Invocations (WebSocket)** protocol, highlighting real-time voice and bidirectional streaming over a single persistent connection.
+- **Hosted Agent Deploy**: Aligned the container-deploy schema with the unified Azure Developer CLI payload (`protocol_versions` and a top-level container image).
+- **Hosted Agent messages**: Clearer invoke-playground request-body placeholder (`{"input": "your message"}`) and a more actionable "package too large" (250 MB) code-deploy error.
+- **Hosted Agent samples**: Upgraded the toolbox sample to the latest version.
+
+### Fixed
+
+- **Hosted Agent Playground**: The **Remote** (container) playground now renders the OAuth consent card, so OAuth-gated tools can run, with a resume step after you authorize access.
+- **Hosted Agent (Windows)**: The Copilot SDK Python hosted-agent template now invokes correctly on Windows instead of failing on a missing `/home` path.
+- **Hosted Agent Deploy**
+  - ADC/vNext agents advertising protocol version `2.0.0` are no longer misclassified and blocked at deploy time.
+  - Environment variables authored in the `azure.yaml` `environmentVariables` list form are no longer silently dropped.
+- **Agent Inspector**: `azd ai agent run` now opens the Agent Inspector inside VS Code instead of an external browser.
+- **Resource lists**: Canceling a delete no longer removes the row — lists now reflect the host's actual state after a delete.
+- **MCP tools**: Playwright MCP integration no longer breaks out of the box due to the `load_prompts` default.
+
+## Version 1.6.2 - 30 June, 2026
+
+This incremental release improves Hosted Agent deployment reliability with unified `azure.yaml` support, safer environment-variable handling, and ACR polling that waits for terminal build status. It also restores Azure sign-in during subscription selection and strengthens the shared Agents list architecture.
+
+### Added
+
+- **Hosted Agent Deploy**
+  - **Unified `azure.yaml` support**: Hosted-agent create and deploy flows now read the unified Azure Developer CLI `azure.yaml` (`host: azure.ai.agent`) for agent name, source, runtime, protocols, environment variables, and resource settings, while falling back to legacy `agent.yaml` with a migration warning.
+
+### Changed
+
+- **Hosted Agent Deploy**
+  - Filter runtime-reserved environment variables (`AGENT_*` and `FOUNDRY_*`) before deploy, warn when values are dropped, and continue with the sanitized set.
+  - ACR build polling now waits until the build reaches a terminal status instead of stopping after a fixed number of attempts, preventing long container builds from failing prematurely.
+- **Hosted Agent samples**: Updated the Agent Framework Toolbox sample to use `TOOLBOX_ENDPOINT`, clearer Azure Developer CLI and Foundry Toolkit setup guidance, and leaner dependencies.
+- **Hosted Agent disclaimers**: Updated the tracing and deploy disclaimer presentation to match the latest compliance guidance.
+
+### Fixed
+
+- **Authentication**: Restored the Azure sign-in prompt in the subscription picker when the user is not signed in, without reintroducing the subscription-selection loop.
+- **Agent Inspector**: OAuth consent cards now remain actionable when an agent response pauses for user consent and appear in the correct order above the assistant response.
+- **Model deployment**: Fixed the deployment dropdown being disabled when a default Foundry project is set.
+- **Fine-tuning**: Local `.jsonl` datasets now generate an Olive config `data_name` of `json`, matching the Hugging Face dataset loader.
+
+## Version 1.6.1 - 24 June, 2026
+
+This hotfix resolves an issue introduced in 1.6.0 where agents could fail to appear in the Agents view.
+
+### Fixed
+
+- **Agents view**: Fixed agents not displaying when listing routines returned a `403 Forbidden` error. The Agents view now handles the failed routines request gracefully so prompt and hosted agents still load. ([#487](https://github.com/microsoft/foundry-toolkit/issues/487))
+
+## Version 1.6.0 - 23 June, 2026
+
+This release expands the agent tooling story in Foundry Toolkit with **Skills**, three new **custom tools** (Browser Automation, Agent-to-Agent, and OpenAPI), and brings **Routines** to VS Code for scheduled agent automation. It also adds **code-asset download** for code-deployed Hosted Agents and **agent deletion** from the tree.
+
+### Added
+
+- **Skills (preview)**
+  - **Skill support in Toolbox**: Author a `SKILL.md` once, store it centrally as a [versioned skill](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/skills) in Foundry, and attach it to a toolbox so any MCP client discovers and loads it alongside tools — decoupling behavioral guidelines from agent code.
+  - **Skill catalog**: New skill catalog section on the Tools Catalog page to browse available skills.
+- **Agent Tools**
+  - **Browser Automation tool (preview)**: Add the Playwright Workspaces–powered [Browser Automation tool](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/browser-automation) to a toolbox, enabling agents to run scalable, isolated browser sessions for navigation and form filling.
+  - **OpenAPI custom tool**: Connect agents to external HTTP APIs using an [OpenAPI 3.0/3.1 specification](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/tool-catalog#custom-tools).
+  - **Agent-to-Agent (A2A) custom tool (preview)**: Connect an agent to other agents through [A2A-compatible endpoints](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/tool-catalog#custom-tools) for cross-agent communication, configured directly in the toolbox.
+- **Agents view**: A new standalone Agents webview brings every agent in your Foundry project into a single tabbed surface, replacing the separate sidebar tree nodes with one place to browse, open, and manage them. It lists:
+  - **Prompt agents** and **hosted agents** in your project.
+  - **Workflows** for multi-step orchestration.
+  - **Routines** for scheduled, trigger-based automation.
+- **Routines (preview)**: [Foundry Routines](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/routines) provide a project-native way to run an agent automatically when a trigger fires. A routine pairs a single trigger — a one-time timer or a recurring schedule — with an action that invokes a prompt or hosted agent, keeping the trigger, permissions, connections, and run history together with the agent in the same Foundry project. They're ideal for lightweight automation such as daily summaries, one-time reminders, or periodic checks. This release brings Routines to VS Code:
+  - **Create routines** directly from the agent view, hosted-agent detail, and the routine list.
+  - **Routine list**: Browse all routines in your project from a dedicated list view.
+  - **Routine detail view**: Inspect a routine with full run history — inputs, outputs, status, and links to the related agent response and trace details.
+  - **Manage routines**: Edit, rename, duplicate, resume, pause, and delete routines from the list and detail views.
+- **Hosted Agents**
+  - **Code-asset download for direct code deployment**: Download the source code asset for code-deployed Hosted Agents via a new download API and UI action.
+  - **Delete agent**: Delete Hosted Agents from the tree view, the recent-agents list, and the Hosted Agent Playground.
+- **Agent Builder**: Added a **Copy project endpoint** action to quickly copy your Foundry project endpoint.
+- **VNet-restricted projects**: Foundry projects with public network access disabled now show a **VNet required** label in the resources tree when you're not connected to an approved Azure Virtual Network (VNet). The label explains that the project can only be reached from an approved VNet — with a link to the [private network how-to guide](https://learn.microsoft.com/en-us/azure/foundry/how-to/configure-private-link) — and reminds you to refresh the project after connecting.
+
+### Changed
+
+- **Hosted Agent Deploy**
+  - Default the deploy method to **Code** and list it first.
+  - Removed the **Preview** badge from the Code option on the deploy Basics tab.
+  - Support private-ACR bring-your-own images and gate VNet-only Foundry projects.
+  - Support DNL ACR login servers.
+- **Agents**: Converted the agent **View Code** split button into a menu button exposing both options, and added a searchable agent combobox to the Routine detail UI.
+- **Model Catalog**: Added a GitHub Models retirement banner and disabled deploy for models not supported in the selected region.
+- **Model Conversion**: Added AMD op-level support and Intel GPU LLM op support.
+
+### Fixed
+
+- **Hosted Agent**: Prevented a subscription-selection loop in the hosted-agent flow.
+- **Authentication**: Refresh the Azure token before it expires to avoid `ExpiredAuthenticationToken` errors.
+- **Model Catalog**: Corrected context length and token limits for Foundry models.
+- **Playground**: Fixed the Anthropic `max_tokens` issue.
+- **Evaluation**: Updated Canceled/Partial status icons and colors.
+- **UI**: Style fixes after the `vsc-ui-react` upgrade and improved performance when opening the Tools overview page.
+
+## Version 1.4.3 - 10 June, 2026
+
+This incremental release speeds up model listing with short-lived caching and polishes the Hosted Agent **Create** and **Deploy** experiences with better field alignment, clearer selected-card contrast, and per-option tooltips.
+
+### Changed
+
+- **Performance**
+  - **Faster Model Listing**: Added short-lived caching (30s TTL) with in-flight request de-duplication for the chat model provider and the Foundry Local catalog, cutting redundant lookups during startup and model selection.
+- **Hosted Agent Create**
+  - Aligned field widths across the Create tab (Folder Name, Project Name, and dropdowns) so inputs line up consistently.
+  - Added per-option tooltips and improved text contrast on the selected sample/option cards.
+- **Hosted Agent Deploy**
+  - Made ZIP code deploy fields (Language, Runtime Version, Entry Point, CPU and Memory, Package Command) and other inputs full-width, and aligned the source-browse row with the resource dropdowns.
+
+### Fixed
+
+- **Hosted Agent Create**: Selected sample cards now keep readable text against the active-selection background, and the field tooltip uses a standard pointer instead of the help cursor.
+
 ## Version 1.4.2 - 2 June, 2026
 
 This incremental release adds **Toolbox Guardrails** for safer agent execution and expands Hosted Agent sample coverage with new LangGraph examples.
@@ -56,7 +186,7 @@ This release marks a major milestone: the **[Foundry Toolkit](https://marketplac
   - **Continuous Evaluation Settings**: New page to configure ongoing evaluation for deployed Hosted Agents.
   - **Evaluations Node**: One-click access to evaluation runs and results from the Foundry project tree.
 - **Hosted Agent**
-  - **Hosted Agent ZIP Code Deploy**: Deploy your agent source as a ZIP package directly to ADC.
+  - **Hosted Agent ZIP Code Deploy**: Deploy your agent source as a ZIP package directly to Foundry.
   - **Hosted Agent Bring-Your-Own-Image (BYOI)**: Deploy from a pre-built container image in your own Azure Container Registry.
 - **Agent Tools and Toolboxes**
   - **WorkIQ as a Built-in Tool**: Native WorkIQ tool experience in the Toolbox — first-class integration powered by A2A connections, no MCP fallback required. End-to-end toolbox creation with WorkIQ works out of the box.

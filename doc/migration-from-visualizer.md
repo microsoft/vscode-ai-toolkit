@@ -1,5 +1,8 @@
 # Migrating from Local Agent Playground & Local Visualizer to Agent Inspector
 
+> [!IMPORTANT]
+> This documentation is outdated and no longer maintained. For the latest information, see the official Foundry Toolkit for Visual Studio Code documentation: [Migrating from Visualizer to Agent Inspector](https://code.visualstudio.com/docs/intelligentapps/reference/migrate-from-visualizer).
+
 ## Why We're Making This Change
 
 We're consolidating the **Local Agent Playground** and **Local Visualizer** into a single, unified experience called **Agent Inspector**. This transition brings significant improvements to your AI agent development workflow.
