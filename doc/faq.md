@@ -1,5 +1,8 @@
 # AI Toolkit FAQ
 
+> [!IMPORTANT]
+> This documentation is outdated and no longer maintained. For the latest information, see the official Foundry Toolkit for Visual Studio Code documentation: [FAQ](https://code.visualstudio.com/docs/intelligentapps/faq).
+
 ### There are too many fine-tune settings do I need to worry about all of them?
 
 No, you can just run with the default settings and our current dataset in the project to test. If you want you can also pick your own dataset but you will need to tweak some setting see [this](walkthrough-hf-dataset.md) tutorial for more info.

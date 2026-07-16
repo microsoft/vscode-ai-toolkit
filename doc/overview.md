@@ -1,5 +1,8 @@
 # Overview of AI Toolkit
 
+> [!IMPORTANT]
+> This documentation is outdated and no longer maintained. For the latest information, see the official Foundry Toolkit for Visual Studio Code documentation: [Foundry Toolkit overview](https://code.visualstudio.com/docs/intelligentapps/overview).
+
 ## What's AI Toolkit for Visual Studio Code?
 
 AI Toolkit for Visual Studio Code is an extension to help developers and AI engineers to easily build AI apps through developing and testing with generative AI models locally or in the cloud. AI Toolkit supports most genAI models on the market.

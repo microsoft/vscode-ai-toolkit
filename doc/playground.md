@@ -1,5 +1,8 @@
 # Playground overview
 
+> [!IMPORTANT]
+> This documentation is outdated and no longer maintained. For the latest information, see the official Foundry Toolkit for Visual Studio Code documentation: [Playground](https://code.visualstudio.com/docs/intelligentapps/playground).
+
 Playground is where developer to interact with AI models of choice, try different prompts with different model parameter settings. For the most recent multi-modal models that supports attachment of different format, developer can also interact through playground.
 
 In AI Toolkit, click the playground or from Model Catalog to load or try in playground, the playground view will display as screenshot:

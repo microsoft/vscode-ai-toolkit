@@ -1,5 +1,8 @@
 # Tracing
 
+> [!IMPORTANT]
+> This documentation is outdated and no longer maintained. For the latest information, see the official Foundry Toolkit for Visual Studio Code documentation: [Tracing](https://code.visualstudio.com/docs/intelligentapps/tracing).
+
 AI Toolkit hosts a local HTTP and gRPC server to collect trace data. The collector server is compatible with OTLP (OpenTelemetry Protocol) and most language model SDKs either directly support OTLP or have third-party instrumentation libraries to support it. After collecting the instrumentation data, AI Toolkit provides a friendly UI to visualize the data.
 
 All frameworks or SDKs that support OTLP and follow [semantic conventions for generative AI systems](https://opentelemetry.io/docs/specs/semconv/gen-ai/) are supported. The following table contains common AI SDKs that we have tested.

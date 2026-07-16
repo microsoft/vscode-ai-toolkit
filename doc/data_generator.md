@@ -1,5 +1,8 @@
 # Data Generator
 
+> [!IMPORTANT]
+> This documentation is outdated and no longer maintained. For the latest information, see the official Foundry Toolkit for Visual Studio Code documentation: [Agent Builder](https://code.visualstudio.com/docs/intelligentapps/agentbuilder).
+
 The Data Generator is a powerful feature in the Prompt Builder that helps you create high-quality data for your prompt templates. It analyzes your prompt structure and variables to generate realistic test cases that match your expected use cases.
 
 ## How It Works
