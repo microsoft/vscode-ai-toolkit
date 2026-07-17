@@ -22,16 +22,9 @@ Inspector.
 
 ## Install
 
-### With Copilot
+Open GitHub Copilot App, search `foundry-agent-canvas` from Settings -> Plugins, then install it. 
 
-Ask Copilot to install the extension and specify the scope you want. For example:
-
-> Install the canvas extension https://github.com/microsoft/foundry-toolkit/tree/main/foundry-agent-canvas in user scope
-
-
-### Manually
-
-Copy this folder to `~/.copilot/extensions/foundry-agent-canvas/` for user scope, or to `.github/extensions/foundry-agent-canvas/` in a repository for project scope.
+Or you can go to https://awesome-copilot.github.com/extension/foundry-agent-canvas/, and click the button `+ Open in GitHub Copilot App` to install it.
 
 ## Usage
 

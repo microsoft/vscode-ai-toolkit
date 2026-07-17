@@ -1,5 +1,37 @@
 # What's New in Foundry Toolkit for VS Code
 
+## Version 1.6.4 - 15 July, 2026
+
+This release introduces **Agent Optimization (preview)** and streamlines Foundry project navigation by flattening resources into **My Resources** and consolidating model deployments, connected-provider models, and the Model Catalog into one tabbed **Models** page. It also refreshes the Model Catalog and improves Hosted Agent creation and playground reliability.
+
+### Added
+
+- **Models page**
+  - **Foundry** tab: Manage your Foundry-hosted model deployments.
+  - **Others** tab: Browse models from connected GitHub, NVIDIA NIM, OpenAI, Anthropic, Google, and custom providers, with provider and status details.
+  - **Catalog** tab: Open the Model Catalog directly from the Models page.
+- **Agent Optimization (preview)**: Optimize a Hosted Agent from the playground, compare generated candidates against the baseline, inspect scores and configuration changes, and deploy the best candidate.
+- **Project actions**: Added **Copy Azure OpenAI Endpoint** to the Foundry project settings menu.
+
+### Changed
+
+- **My Resources**: Models, Agents, Tools, Knowledge, Evaluations, and Classic now appear directly at the view root instead of beneath the Foundry project. Project actions are consolidated under a settings menu, and the redundant **Connected Resources** node has been removed.
+- **Resource lists**: Prompt Agents, Hosted Agents, Routines, Workflows, and Models are now ordered newest-first. The Evaluations list also uses the shared resource-list layout for consistent spacing, search, tables, and pagination.
+- **Model Catalog**: Refreshed the featured-model lineup and the ordering of collapsed Microsoft Foundry models.
+- **Hosted Agent toolbox sample**: Updated the Agent Framework Python toolbox template to the latest sample structure and unified `azure.yaml` manifest.
+- **Icons and labels**: Aligned tree and webview panel icons across Models, Knowledge, Evaluations, Agents, Routines, Workflows, Playground, and Hosted Agent create and deploy views.
+
+### Fixed
+
+- **My Resources**: The resource tree now keeps a stable, flat structure while Foundry loads instead of briefly nesting resources under a temporary wrapper.
+- **Hosted Agent Playground**: Conversation resets and protocol switches are now latest-wins, preventing stale state or empty conversation IDs during overlapping transitions.
+- **Hosted Agent Create**
+  - Creating a project in a non-empty folder now opens it in a new VS Code window while preserving the existing empty-folder behavior.
+  - Sample download failures now show concise, recovery-oriented messages for rate limits, missing samples, GitHub outages, and network failures.
+- **Tool Catalog**: Foundry connection cards for Remote MCP, OpenAPI, and A2A now remain visible in the **Custom** tab when you're signed out; sign-in is requested when you save.
+- **Agent Framework C# sample**: The Agent Skills sample no longer fails because of an invalid skill download name.
+- **Startup**: Background data warm-up errors no longer open the Output panel automatically during extension activation.
+
 ## Version 1.6.3 - 8 July, 2026
 
 This release moves the **Models** and **Knowledge** project nodes from the tree to tabbed resource webviews and adds a richer **Tool Catalog** (inline add-to-agent/toolbox, connected-tool status, and provisionable toolbox templates). It also fixes OAuth consent in the remote playground, Windows invocation of Copilot SDK templates, and several hosted-agent deploy issues.
