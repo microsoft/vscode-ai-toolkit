@@ -25,23 +25,33 @@ const state = {
     signin: { sessionId: null, timer: null, starting: false },
     // "Initialize agent code" block (ephemeral UI state).
     init: {
-        open: false,
+        open: true,
         promptDirty: false, // true once the user edits the textarea by hand
         promptText: "",
         startOption: "inspireIdea",
         idea: "",
     },
-    // Collapsible "Add Project Resources" / "Deploy & Test" cards (open by default).
-    folds: { resources: true, deploy: true },
+    // Existing-agent sections stay folded until workspace detection completes.
+    folds: { resources: false, deploy: false },
     // Hosted-agent region availability for the selected project.
     // supported: true | false | null (null = unknown → don't block, fail open).
     hostedRegion: { status: "idle", location: "", supported: null, regions: [], docsUrl: "" },
+    hostedAgentDeployment: {
+        status: "idle",
+        deployed: false,
+        available: false,
+        portalUrl: "",
+        agentName: "",
+        version: "",
+        reason: "",
+    },
 };
 
 const root = document.getElementById("root");
 const toastEl = document.getElementById("toast");
 
 let toastTimer = null;
+let hostedAgentDeploymentRequest = 0;
 function toast(msg) {
     toastEl.textContent = msg;
     toastEl.classList.add("show");
@@ -110,12 +120,12 @@ async function postJSON(url, body) {
     return res.json();
 }
 
-async function sendToChat(prompt) {
+async function sendToChat(prompt, refresh) {
     try {
         const res = await fetch("/api/send", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt }),
+            body: JSON.stringify(refresh ? { prompt, refresh } : { prompt }),
         });
         if (!res.ok) throw new Error("HTTP " + res.status);
         toast("Sent to chat \u2713");
@@ -248,6 +258,7 @@ function renderBuild() {
     renderInit();
     renderFolds();
     renderRegionSupport();
+    renderHostedAgentDeployment();
 }
 
 // Apply a collapsible card's open/closed state to the DOM. Mirrors the
@@ -265,10 +276,6 @@ function applyFold(blockId, open) {
 function renderFolds() {
     applyFold("resourcesBlock", state.folds.resources);
     applyFold("deployBlock", state.folds.deploy);
-    const shell = document.querySelector(".panel-shell");
-    if (shell) {
-        shell.classList.toggle("resources-collapsed", !state.folds.resources);
-    }
 }
 
 // Prettify an ARM region code for display, e.g. "eastus2" → "East US 2".
@@ -317,6 +324,76 @@ function renderRegionSupport() {
     }
 }
 
+function emptyHostedAgentDeployment(status = "idle", reason = "") {
+    return {
+        status,
+        deployed: false,
+        available: false,
+        portalUrl: "",
+        agentName: "",
+        version: "",
+        reason,
+    };
+}
+
+function resetHostedAgentDeployment() {
+    hostedAgentDeploymentRequest += 1;
+    state.hostedAgentDeployment = emptyHostedAgentDeployment();
+    renderHostedAgentDeployment();
+}
+
+function hasAvailableHostedAgentDeployment(deployment) {
+    return !!(deployment?.deployed && deployment?.available && deployment?.portalUrl);
+}
+
+function isDefinitiveHostedAgentResult(result) {
+    if (result?.ok === true) return true;
+    return ["ambiguous_agent", "no_agent", "no_project"].includes(result?.reason);
+}
+
+function hostedAgentDeploymentFromResult(result) {
+    const available = !!(result?.ok && result?.deployed && result?.available && result?.portalUrl);
+    return {
+        status: "ready",
+        deployed: !!result?.deployed,
+        available,
+        portalUrl: available ? result.portalUrl : "",
+        agentName: result?.agentName || "",
+        version: result?.version || "",
+        reason: result?.reason || "",
+    };
+}
+
+function renderHostedAgentDeployment() {
+    const link = document.getElementById("testPlaygroundLink");
+    if (!link) return;
+    const deployment = state.hostedAgentDeployment;
+    const visible = hasAvailableHostedAgentDeployment(deployment);
+    link.hidden = !visible;
+    link.closest(".row-deploy")?.classList.toggle("has-playground", visible);
+    if (visible) link.href = deployment.portalUrl;
+    else link.removeAttribute("href");
+    link.title = visible && deployment.version
+        ? `Test ${deployment.agentName} version ${deployment.version} in Microsoft Foundry Playground`
+        : "";
+}
+
+async function loadHostedAgentDeployment() {
+    const requestId = ++hostedAgentDeploymentRequest;
+    state.hostedAgentDeployment = emptyHostedAgentDeployment("loading");
+    renderHostedAgentDeployment();
+    try {
+        const result = await getJSON("/api/hosted-agent-deployment");
+        if (requestId !== hostedAgentDeploymentRequest) return null;
+        state.hostedAgentDeployment = hostedAgentDeploymentFromResult(result);
+    } catch (err) {
+        if (requestId !== hostedAgentDeploymentRequest) return null;
+        state.hostedAgentDeployment = emptyHostedAgentDeployment("error", err?.message || "fetch_failed");
+    }
+    renderHostedAgentDeployment();
+    return state.hostedAgentDeployment;
+}
+
 // Fetch hosted-agent region support for the selected project and update the UI.
 async function loadRegionSupport() {
     state.hostedRegion.status = "loading";
@@ -341,18 +418,24 @@ async function loadRegionSupport() {
     renderRegionSupport();
 }
 
-// Set the initial expand/fold state of the Build sections from whether the
-// workspace is already scaffolded. Not initialized => focus on Initialize
-// Agent Code (expanded, others folded). Initialized => fold Initialize Agent
-// Code and surface Add Project Resources / Deploy & Test (expanded). Applied
-// once on load; manual toggles afterward take over.
+// Apply the server-derived initial section state once on load. The server uses
+// an agent manifest or an Azure service hosted by azure.ai.agent anywhere in
+// the workspace, not generic Azure scaffolding.
+// Manual toggles afterward take over.
 function applyInitDefaults(info) {
-    const initialized = !!(info && info.initialized);
-    state.init.open = !initialized;
-    state.folds.resources = initialized;
-    state.folds.deploy = initialized;
+    const sections = info && info.sections;
+    if (!sections) return;
+    state.init.open = sections.initOpen === true;
+    state.folds.resources = sections.resourcesOpen === true;
+    state.folds.deploy = sections.deployOpen === true;
+}
+
+function applyWorkspaceTransition(info) {
+    if (!info?.hasAgent || !info.sections) return false;
+    applyInitDefaults(info);
     renderInit();
     renderFolds();
+    return true;
 }
 
 // ----------------------------------------------------- Initialize agent code
@@ -370,7 +453,7 @@ function initPromptText() {
     return (
         sentenceCase(purpose) +
         ". Create a foundry hosted agent for this task using Python, Microsoft Agent Framework, and the Responses protocol. " +
-        "Once it's done, run it locally to make sure it runs successfully."
+        "Then run it locally to make sure it runs successfully."
     );
 }
 
@@ -586,6 +669,8 @@ function renderDeployList() {
         item.type = "button";
         item.setAttribute("role", "menuitem");
 
+        item.appendChild(fluentIcon("cube"));
+
         const name = document.createElement("span");
         name.className = "item-name";
         name.textContent = m.name;
@@ -739,7 +824,10 @@ function renderToolboxList() {
                 for (const tool of t.tools) {
                     const row = document.createElement("div");
                     row.className = "toolbox-tool";
-                    row.textContent = tool.name;
+                    row.append(
+                        fluentIcon("tools", "toolbox-tool-kind"),
+                        Object.assign(document.createElement("span"), { textContent: tool.name }),
+                    );
                     tools.appendChild(row);
                 }
             }
@@ -1374,6 +1462,7 @@ async function doSignOut() {
     state.project.endpoint = "";
     state.project.rg = "";
     state.project.account = "";
+    resetHostedAgentDeployment();
     renderIdentity();
     renderSubList();
     renderProjList();
@@ -1387,6 +1476,7 @@ async function doSignOut() {
 
 // After sign-in: refresh subscriptions, auto-select default sub + first project.
 async function afterAuthChange() {
+    resetHostedAgentDeployment();
     state.subsState = { status: "idle", items: [], reason: null };
     state.projState = { status: "idle", items: [], reason: null, sub: null };
     await loadSubscriptions(true);
@@ -1399,6 +1489,7 @@ async function afterAuthChange() {
             if (b.project && b.project.name) setProjectLabels(b.project.name);
             resetSelectors();
             await loadProjects(true);
+            await loadHostedAgentDeployment();
         }
     } catch {
         /* keep current selection */
@@ -1462,6 +1553,7 @@ function renderSubList() {
 }
 
 async function selectSubscription(s) {
+    resetHostedAgentDeployment();
     setSelectedSubscription(s.id, s.name);
     renderSubList();
     try {
@@ -1532,6 +1624,7 @@ function renderProjList() {
 }
 
 async function selectProject(p) {
+    resetHostedAgentDeployment();
     try {
         await postJSON("/api/select-project", {
             endpoint: p.endpoint,
@@ -1555,6 +1648,7 @@ async function selectProject(p) {
     toast("Project: " + p.name);
     // Re-evaluate hosted-agent region support for the newly selected project.
     loadRegionSupport();
+    loadHostedAgentDeployment();
 }
 
 // Generic search-list row.
@@ -2039,7 +2133,7 @@ root.addEventListener("click", async (e) => {
         if (!remindProjectSelection(e)) return;
         const ta = document.getElementById("initPrompt");
         const text = (ta ? ta.value : state.init.promptText).trim();
-        if (text) sendToChat(withProjectContext(text));
+        if (text) sendToChat(withProjectContext(text), "workspace");
         return;
     }
     if (e.target.closest("#initReset")) {
@@ -2148,7 +2242,8 @@ root.addEventListener("click", async (e) => {
             );
             return;
         }
-        sendToChat(withProjectContext(state.deployPrompt));
+        resetHostedAgentDeployment();
+        sendToChat(withProjectContext(state.deployPrompt), "deployment");
         return;
     }
     if (e.target.closest("#inspectBtn")) {
@@ -2260,26 +2355,29 @@ root.addEventListener("input", (e) => {
 
 // ------------------------------------------------------- Init + live updates
 async function init() {
-    try {
-        const s = await getJSON("/api/state");
+    let initialPage = "build";
+    const [stateResult, projectInitResult] = await Promise.allSettled([
+        getJSON("/api/state"),
+        getJSON("/api/project-init"),
+    ]);
+
+    if (stateResult.status === "fulfilled") {
+        const s = stateResult.value;
         if (s.agentName) state.agentName = s.agentName;
         if (s.project) state.project = s.project;
         if (s.model) state.model = s.model;
         if (s.deployPrompt) state.deployPrompt = s.deployPrompt;
-        render(s.page || "build");
-    } catch {
-        render("build");
+        initialPage = s.page || "build";
     }
 
-    // Seed the Build sections' expand/fold state from whether the workspace is
-    // already scaffolded (azure.yaml / agent.yaml). Non-fatal: on failure we
-    // keep the static defaults.
-    try {
-        const pi = await getJSON("/api/project-init");
+    // Resolve the workspace's hosted-agent signal before first paint so refresh
+    // does not briefly show the wrong section layout. On failure, retain the
+    // conservative create-first defaults.
+    if (projectInitResult.status === "fulfilled") {
+        const pi = projectInitResult.value;
         if (pi && pi.ok) applyInitDefaults(pi);
-    } catch {
-        /* keep static fold defaults */
     }
+    render(initialPage);
 
     // Resolve the default selection (az default subscription + first project)
     // and the signed-in identity. Falls back to the parsed project name.
@@ -2329,6 +2427,8 @@ async function init() {
         /* fail open — leave Deploy enabled */
     }
 
+    await loadHostedAgentDeployment();
+
     // Optional: let an agent-invoked navigate() action reflect in the open
     // iframe. The stream also doubles as a liveness canary — see the
     // markReconnected / scheduleDisconnect helpers at module scope.
@@ -2340,6 +2440,17 @@ async function init() {
                 const msg = JSON.parse(ev.data);
                 if (msg.type === "navigate" && msg.page) render(msg.page);
                 else if (msg.type === "setIdea" && msg.idea) setInitIdea(msg.idea);
+                else if (msg.type === "workspaceState") applyWorkspaceTransition(msg);
+                else if (msg.type === "deploymentState" && msg.deployment) {
+                    hostedAgentDeploymentRequest += 1;
+                    const previous = state.hostedAgentDeployment;
+                    const refreshed = hostedAgentDeploymentFromResult(msg.deployment);
+                    state.hostedAgentDeployment =
+                        previous.available && !refreshed.available && !isDefinitiveHostedAgentResult(msg.deployment)
+                            ? { ...previous, status: "ready", reason: msg.deployment.reason || "refresh_failed" }
+                            : refreshed;
+                    renderHostedAgentDeployment();
+                }
             } catch {
                 /* ignore malformed frames */
             }

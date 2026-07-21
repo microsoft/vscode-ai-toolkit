@@ -95,15 +95,15 @@
                         </div>
                     </header>
 
-                    <section class="accordion-section init" id="initBlock" data-open="false" aria-label="Create new hosted agents">
-                        <button class="accordion-toggle init-toggle" id="initToggle" type="button" aria-expanded="false" aria-controls="initPanel">
+                    <section class="accordion-section init" id="initBlock" data-open="true" aria-label="Create new hosted agents">
+                        <button class="accordion-toggle init-toggle" id="initToggle" type="button" aria-expanded="true" aria-controls="initPanel">
                             <span class="accordion-title">
                                 <span class="fi fi-num-1" aria-hidden="true"></span>
                                 <span>Create new Hosted Agents</span>
                             </span>
                             <span class="fi fi-chev accordion-chev init-chev" aria-hidden="true"></span>
                         </button>
-                        <div class="init-panel" id="initPanel" hidden>
+                        <div class="init-panel" id="initPanel">
                             <div class="init-content">
                                 <p class="section-caption">How would you like to get started?</p>
                                 <div class="start-options" role="group" aria-label="Create hosted agent options">
@@ -136,8 +136,8 @@
                         </div>
                     </section>
 
-                    <section class="accordion-section fold" id="resourcesBlock" data-open="true" aria-label="Build current hosted agent">
-                        <button class="accordion-toggle fold-toggle" id="resourcesToggle" type="button" aria-expanded="true" aria-controls="resourcesPanel">
+                    <section class="accordion-section fold" id="resourcesBlock" data-open="false" aria-label="Build current hosted agent">
+                        <button class="accordion-toggle fold-toggle" id="resourcesToggle" type="button" aria-expanded="false" aria-controls="resourcesPanel">
                             <span class="accordion-title accordion-title--described">
                                 <span class="fi fi-num-2" aria-hidden="true"></span>
                                 <span class="accordion-title-copy">
@@ -147,7 +147,7 @@
                             </span>
                             <span class="fi fi-chev accordion-chev fold-chev" aria-hidden="true"></span>
                         </button>
-                        <div class="fold-panel resources-panel" id="resourcesPanel">
+                        <div class="fold-panel resources-panel" id="resourcesPanel" hidden>
                             <div class="resource-list">
                                 <div class="model-select resource-select">
                                     <div class="resource-row">
@@ -248,15 +248,15 @@
                         </div>
                     </section>
 
-                    <section class="accordion-section fold" id="deployBlock" data-open="true" aria-label="Deploy and test">
-                        <button class="accordion-toggle fold-toggle" id="deployToggle" type="button" aria-expanded="true" aria-controls="deployPanel">
+                    <section class="accordion-section fold" id="deployBlock" data-open="false" aria-label="Deploy and test">
+                        <button class="accordion-toggle fold-toggle" id="deployToggle" type="button" aria-expanded="false" aria-controls="deployPanel">
                             <span class="accordion-title">
                                 <span class="fi fi-num-3" aria-hidden="true"></span>
                                 <span>Deploy &amp; Test</span>
                             </span>
                             <span class="fi fi-chev accordion-chev fold-chev" aria-hidden="true"></span>
                         </button>
-                        <div class="fold-panel deploy-panel" id="deployPanel">
+                        <div class="fold-panel deploy-panel" id="deployPanel" hidden>
                             <div class="region-warn" id="regionWarn" role="alert" hidden>
                                 <span class="region-warn-ico">!</span>
                                 <div class="region-warn-text">
@@ -265,6 +265,10 @@
                                 </div>
                             </div>
                             <div class="row-deploy">
+                                <a class="btn btn-playground" id="testPlaygroundLink" href="" target="_blank" rel="noopener noreferrer" hidden>
+                                    <span class="codicon codicon-debug-alt" aria-hidden="true"></span>
+                                    <span>Test in Playground</span>
+                                </a>
                                 <button class="btn btn-deploy" id="deployBtn" type="button">
                                     <span class="fi fi-rocket" aria-hidden="true"></span>
                                     <span>Deploy to Foundry</span>
