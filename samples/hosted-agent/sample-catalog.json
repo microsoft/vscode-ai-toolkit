@@ -1,7 +1,7 @@
 {
-    "commitSha": "22b2c89c676bddb107ea370330d6341e25ff674b",
+    "commitSha": "fa3bc4cc26397ca9f4229ef493a8f1559f8c8563",
     "repo": "https://github.com/microsoft-foundry/foundry-samples/",
-    "generatedAt": "2026-07-14T08:17:41Z",
+    "generatedAt": "2026-07-22T07:32:13Z",
     "dimensions": {
         "language": {
             "title": "Select a Language",
@@ -358,15 +358,6 @@
             "displayName": "Tools",
             "description": "Agent with custom tools like weather lookup callable during conversation.",
             "path": "samples/python/hosted-agents/agent-framework/responses/02-tools",
-            "requiresModel": true
-        },
-        {
-            "language": "python",
-            "framework": "agent-framework",
-            "protocol": "responses",
-            "displayName": "MCP",
-            "description": "Agent that dynamically discovers and invokes tools from a remote GitHub Copilot MCP server.",
-            "path": "samples/python/hosted-agents/agent-framework/responses/03-mcp",
             "requiresModel": true
         },
         {
@@ -835,15 +826,6 @@
             "displayName": "Langgraph Toolbox",
             "description": "Agent that uses a toolbox for web search and GitHub Copilot MCP tools with managed credentials.",
             "path": "samples/python/hosted-agents/langgraph/responses/02-langgraph-toolbox",
-            "requiresModel": true
-        },
-        {
-            "language": "python",
-            "framework": "langgraph",
-            "protocol": "responses",
-            "displayName": "MCP",
-            "description": "Agent that discovers and invokes tools from a remote server for enhanced capabilities.",
-            "path": "samples/python/hosted-agents/langgraph/responses/04-mcp",
             "requiresModel": true
         },
         {
