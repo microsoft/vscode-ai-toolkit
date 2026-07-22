@@ -83,7 +83,7 @@ body {
 .pm-auth-btn:hover { background: var(--bg-subtle); border-color: var(--accent); }
 .pm-auth-btn:disabled { opacity: .6; cursor: default; }
 
-/* Device-code block */
+/* Interactive sign-in status */
 .pm-device { padding: 4px; }
 .pm-device-row {
     border: 1px solid var(--border); border-radius: 9px; background: var(--bg-subtle); padding: 10px;
@@ -91,16 +91,6 @@ body {
 }
 .pm-device-row.is-busy { align-items: center; flex-direction: row; }
 .pm-dc-label { color: var(--muted); }
-.pm-dc-code {
-    display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 18px;
-    letter-spacing: .08em; font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-}
-.pm-dc-copy {
-    border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer;
-    font: inherit; font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600;
-}
-.pm-dc-copy:hover { background: var(--bg-subtle); }
-.pm-dc-link { color: var(--accent); font-weight: 600; word-break: break-all; }
 .pm-dc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .pm-dc-wait { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
 .pm-dc-cancel {
