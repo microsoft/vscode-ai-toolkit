@@ -142,6 +142,155 @@ function warn(message) {
 }
 
 /**
+ * HTTP error carrying the response status so callers can distinguish a
+ * genuine 404 (resource does not exist) from a transient failure
+ * (429 rate-limit / 5xx) that is worth retrying and must NOT be silently
+ * treated as "missing".
+ */
+class HttpError extends Error {
+    /**
+     * @param {number} status
+     * @param {string} url
+     */
+    constructor(status, url) {
+        super(`HTTP ${status} for ${url}`);
+        this.name = 'HttpError';
+        this.status = status;
+    }
+}
+
+// Retry knobs for the raw.githubusercontent.com / GitHub API fetches. These
+// endpoints rate-limit (429) and occasionally 5xx under the ~90-request
+// serial scan, which previously surfaced as random "missing" templates when
+// the error was swallowed. Retry transient failures with exponential backoff
+// (plus jitter, and honoring a server `Retry-After`) before giving up.
+// Overridable via env for local debugging.
+const FETCH_MAX_ATTEMPTS = Number(process.env.FETCH_MAX_ATTEMPTS) || 4;
+const FETCH_BASE_DELAY_MS = Number(process.env.FETCH_BASE_DELAY_MS) || 500;
+// Cap a single wait so a large server `Retry-After` (GitHub can return tens of
+// seconds) cannot stall one request indefinitely.
+const FETCH_MAX_DELAY_MS = Number(process.env.FETCH_MAX_DELAY_MS) || 20_000;
+// Cap the cumulative time spent sleeping across ALL requests. Without this,
+// many requests each hitting the rate limit could sum to more than the job
+// timeout; once exceeded, retries stop and the run fails fast (and loudly)
+// rather than hanging.
+const FETCH_TOTAL_BACKOFF_BUDGET_MS = Number(process.env.FETCH_TOTAL_BACKOFF_BUDGET_MS) || 120_000;
+
+// Running total of time spent in backoff sleeps, enforced against
+// FETCH_TOTAL_BACKOFF_BUDGET_MS.
+let totalBackoffMs = 0;
+
+/**
+ * @param {number} ms
+ * @returns {Promise<void>}
+ */
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * A failure is transient (worth retrying) when it is a network-level error
+ * (no HttpError status, e.g. ECONNRESET / socket timeout) or an HTTP 429 /
+ * 5xx. A 4xx other than 429 (notably 404) is permanent and not retried.
+ * @param {unknown} error
+ * @returns {boolean}
+ */
+function isTransientError(error) {
+    if (error instanceof HttpError) {
+        return error.status === 429 || error.status >= 500;
+    }
+    return true;
+}
+
+/**
+ * Parse a `Retry-After` header (RFC 7231): either delay-seconds or an HTTP
+ * date. Returns the delay in milliseconds, or `undefined` when absent or
+ * unparseable. When a server tells us how long to wait, we honor it instead
+ * of our own exponential backoff — but still clamp it to FETCH_MAX_DELAY_MS.
+ * @param {Response} response
+ * @returns {number | undefined}
+ */
+function parseRetryAfterMs(response) {
+    const value = response.headers.get('retry-after');
+    if (!value) {
+        return undefined;
+    }
+    const seconds = Number(value);
+    if (Number.isFinite(seconds)) {
+        return Math.max(0, seconds * 1000);
+    }
+    const dateMs = Date.parse(value);
+    if (!Number.isNaN(dateMs)) {
+        return Math.max(0, dateMs - Date.now());
+    }
+    return undefined;
+}
+
+/**
+ * Compute the backoff for a given attempt: prefer the server's `Retry-After`
+ * when present, otherwise exponential backoff with full jitter
+ * (`random * base * 2^(n-1)`), which AWS recommends to avoid synchronized
+ * retry storms. Either way the result is clamped to FETCH_MAX_DELAY_MS.
+ * @param {number} attempt 1-based attempt number that just failed.
+ * @param {number | undefined} retryAfterMs
+ * @returns {number}
+ */
+function computeBackoffMs(attempt, retryAfterMs) {
+    if (retryAfterMs !== undefined) {
+        return Math.min(retryAfterMs, FETCH_MAX_DELAY_MS);
+    }
+    const ceiling = FETCH_BASE_DELAY_MS * 2 ** (attempt - 1);
+    const jittered = Math.random() * ceiling;
+    return Math.min(jittered, FETCH_MAX_DELAY_MS);
+}
+
+/**
+ * Fetch a URL, retrying transient failures with jittered exponential backoff
+ * (honoring a server `Retry-After`). Throws the last error once attempts are
+ * exhausted OR the global backoff budget is spent, so the caller can decide
+ * whether a 404 is acceptable while a transient error becomes fatal.
+ * @param {string} url
+ * @param {Record<string, string>} headers
+ * @returns {Promise<Response>}
+ */
+async function fetchWithRetry(url, headers) {
+    /** @type {unknown} */
+    let lastError;
+    for (let attempt = 1; attempt <= FETCH_MAX_ATTEMPTS; attempt++) {
+        /** @type {number | undefined} */
+        let retryAfterMs;
+        try {
+            const response = await fetch(url, { headers });
+            if (!response.ok) {
+                if (response.status === 429 || response.status >= 500) {
+                    retryAfterMs = parseRetryAfterMs(response);
+                }
+                throw new HttpError(response.status, url);
+            }
+            return response;
+        } catch (error) {
+            lastError = error;
+            if (!isTransientError(error) || attempt === FETCH_MAX_ATTEMPTS) {
+                throw error;
+            }
+            const message = error instanceof Error ? error.message : String(error);
+            const backoff = computeBackoffMs(attempt, retryAfterMs);
+            if (totalBackoffMs + backoff > FETCH_TOTAL_BACKOFF_BUDGET_MS) {
+                throw new Error(
+                    `Exhausted total backoff budget (${FETCH_TOTAL_BACKOFF_BUDGET_MS}ms) while retrying ${url}; last error: ${message}`
+                );
+            }
+            totalBackoffMs += backoff;
+            const source = retryAfterMs !== undefined ? 'server Retry-After' : 'jittered backoff';
+            console.warn(`Transient fetch failure (attempt ${attempt}/${FETCH_MAX_ATTEMPTS}) for ${url}: ${message}; retrying in ${Math.round(backoff)}ms (${source}).`);
+            await delay(backoff);
+        }
+    }
+    // Unreachable — the loop either returns or throws — but satisfies the type checker.
+    throw lastError;
+}
+
+/**
  * @param {string} url
  * @returns {Promise<any>}
  */
@@ -154,10 +303,7 @@ async function fetchJson(url) {
     if (GITHUB_TOKEN) {
         headers['Authorization'] = `Bearer ${GITHUB_TOKEN}`;
     }
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status} for ${url}`);
-    }
+    const response = await fetchWithRetry(url, headers);
     return response.json();
 }
 
@@ -171,10 +317,7 @@ async function fetchText(url) {
     if (GITHUB_TOKEN) {
         headers['Authorization'] = `Bearer ${GITHUB_TOKEN}`;
     }
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status} for ${url}`);
-    }
+    const response = await fetchWithRetry(url, headers);
     return response.text();
 }
 
@@ -403,6 +546,13 @@ function parseAzureYaml(content) {
 
 /**
  * Fetch and parse a sample directory's azure.yaml.
+ *
+ * Returns `null` ONLY when the file genuinely does not exist (HTTP 404) — a
+ * legitimate signal that the directory is not a template. A transient failure
+ * (429 / 5xx / network) that survives retries is re-thrown so the run fails
+ * loudly instead of silently dropping a real template (which is how the same
+ * upstream commit could yield 88 vs 89 templates across runs).
+ *
  * @param {string} samplePath
  * @param {string} ref
  * @returns {Promise<{ protocols: string[], requiresModel: boolean } | null>}
@@ -412,8 +562,11 @@ async function fetchAzureYaml(samplePath, ref) {
     try {
         const content = await fetchText(rawUrl);
         return parseAzureYaml(content);
-    } catch {
-        return null;
+    } catch (error) {
+        if (error instanceof HttpError && error.status === 404) {
+            return null;
+        }
+        throw error;
     }
 }
 
@@ -798,7 +951,11 @@ async function scanTemplates(commitSha) {
             for (const templatePath of templateDirs) {
                 const azureInfo = await fetchAzureYaml(templatePath, commitSha);
                 if (!azureInfo) {
-                    warn(`Could not fetch or parse azure.yaml for "${templatePath}"; skipping this template.`);
+                    // null means a genuine 404 — the directory matched the scan
+                    // prefix but has no azure.yaml, so it is not a template.
+                    // (Transient fetch failures are re-thrown by fetchAzureYaml
+                    // and abort the run instead of silently dropping a sample.)
+                    warn(`No azure.yaml found for "${templatePath}" (HTTP 404); skipping this template.`);
                     continue;
                 }
 
