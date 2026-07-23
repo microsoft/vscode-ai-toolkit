@@ -1,4 +1,4 @@
-# Microsoft Foundry
+# Microsoft Foundry Canvas
 
 A GitHub Copilot App canvas extension for designing Microsoft Foundry hosted
 agents from a side panel. It combines live Foundry project discovery with
