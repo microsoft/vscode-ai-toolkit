@@ -3,5 +3,5 @@
     "version": "1.0.0",
     "private": true,
     "type": "module",
-    "description": "Interactive Copilot canvas for designing, configuring, testing and deploying hosted agents to Microsoft Foundry."
+    "description": "Skills and interactive Copilot canvas for designing, configuring, testing and deploying agents to Microsoft Foundry."
 }
