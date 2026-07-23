@@ -445,6 +445,44 @@ const AZURE_OPENAI_REASONING_EFFORT = process.env.AZURE_OPENAI_REASONING_EFFORT 
 // fields and never touches values that are already present.
 const AI_REFINE = /^(true|1|yes)$/i.test(process.env.AI_REFINE || '');
 
+// Retry knobs for the Azure OpenAI calls. The refine path fires one request
+// per template (~90 in a full run); even with ample TPM/RPM quota a burst can
+// momentarily trip the rate limiter (HTTP 429) at the sliding-window edge.
+// Retry those (and transient 5xx / network errors) with jittered exponential
+// backoff, honoring a server `Retry-After`, so an occasional throttle self-heals
+// instead of dropping the field. Overridable via env for local debugging.
+const LLM_MAX_ATTEMPTS = Number(process.env.LLM_MAX_ATTEMPTS) || 5;
+const LLM_BASE_DELAY_MS = Number(process.env.LLM_BASE_DELAY_MS) || 1000;
+const LLM_MAX_DELAY_MS = Number(process.env.LLM_MAX_DELAY_MS) || 30_000;
+
+/**
+ * @param {number} ms
+ * @returns {Promise<void>}
+ */
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Parse a `Retry-After` header (RFC 7231): delay-seconds or an HTTP date.
+ * Returns milliseconds, or `undefined` when absent/unparseable.
+ * @param {Response} response
+ * @returns {number | undefined}
+ */
+function retryAfterMsFromResponse(response) {
+    const value = response.headers.get('retry-after');
+    if (!value) {
+        return undefined;
+    }
+    const seconds = Number(value);
+    if (Number.isFinite(seconds)) {
+        return Math.max(0, seconds * 1000);
+    }
+    const dateMs = Date.parse(value);
+    return Number.isNaN(dateMs) ? undefined : Math.max(0, dateMs - Date.now());
+}
+
+
 /**
  * Fetch README.md content for a sample directory.
  * @param {string} samplePath
@@ -496,57 +534,80 @@ async function callLLMForJson(systemPrompt, userPrompt, samplePath) {
         body.reasoning_effort = AZURE_OPENAI_REASONING_EFFORT;
     }
 
-    try {
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'api-key': AZURE_OPENAI_API_KEY,
-            },
-            body: JSON.stringify(body),
-        });
+    for (let attempt = 1; attempt <= LLM_MAX_ATTEMPTS; attempt++) {
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'api-key': AZURE_OPENAI_API_KEY,
+                },
+                body: JSON.stringify(body),
+            });
 
-        if (!response.ok) {
-            // Include a truncated response body so the exact reason (e.g. an
-            // unsupported param, a missing deployment, or a wrong endpoint) is
-            // visible in the CI log instead of a bare status code.
-            let detail = '';
-            try {
-                detail = (await response.text()).replace(/\s+/g, ' ').trim().slice(0, 400);
-            } catch {
-                // ignore body read failures
+            if (!response.ok) {
+                // Retry rate-limit (429) and transient 5xx, honoring a server
+                // `Retry-After`; give up on other 4xx (bad request, auth, etc.).
+                const retryable = response.status === 429 || response.status >= 500;
+                if (retryable && attempt < LLM_MAX_ATTEMPTS) {
+                    const retryAfter = retryAfterMsFromResponse(response);
+                    const backoff = retryAfter !== undefined
+                        ? Math.min(retryAfter, LLM_MAX_DELAY_MS)
+                        : Math.min(Math.random() * LLM_BASE_DELAY_MS * 2 ** (attempt - 1), LLM_MAX_DELAY_MS);
+                    const source = retryAfter !== undefined ? 'server Retry-After' : 'jittered backoff';
+                    console.warn(`LLM API returned ${response.status} for ${samplePath} (attempt ${attempt}/${LLM_MAX_ATTEMPTS}); retrying in ${Math.round(backoff)}ms (${source}).`);
+                    await sleep(backoff);
+                    continue;
+                }
+                // Include a truncated response body so the exact reason (e.g. an
+                // unsupported param, a missing deployment, or a wrong endpoint) is
+                // visible in the CI log instead of a bare status code.
+                let detail = '';
+                try {
+                    detail = (await response.text()).replace(/\s+/g, ' ').trim().slice(0, 400);
+                } catch {
+                    // ignore body read failures
+                }
+                warn(`LLM API returned ${response.status} for ${samplePath}.${detail ? ` Response: ${detail}` : ''}`);
+                return null;
             }
-            warn(`LLM API returned ${response.status} for ${samplePath}.${detail ? ` Response: ${detail}` : ''}`);
-            return null;
-        }
 
-        const data = await response.json();
-        const choice = data.choices?.[0];
-        const content = choice?.message?.content?.trim();
-        if (!content) {
-            // A successful (200) call with empty content is almost always a
-            // reasoning model exhausting `max_completion_tokens` on hidden
-            // reasoning (finish_reason: "length"). Surface it instead of
-            // silently returning nothing, and hint at the knobs.
-            const finishReason = choice?.finish_reason ?? 'unknown';
-            const reasoningTokens = data.usage?.completion_tokens_details?.reasoning_tokens;
-            const usageHint = reasoningTokens !== undefined ? ` (reasoning_tokens=${reasoningTokens})` : '';
-            warn(`LLM returned empty content for ${samplePath} (finish_reason=${finishReason}${usageHint}). If finish_reason is "length", raise AZURE_OPENAI_MAX_COMPLETION_TOKENS or set AZURE_OPENAI_REASONING_EFFORT.`);
-            return null;
-        }
+            const data = await response.json();
+            const choice = data.choices?.[0];
+            const content = choice?.message?.content?.trim();
+            if (!content) {
+                // A successful (200) call with empty content is almost always a
+                // reasoning model exhausting `max_completion_tokens` on hidden
+                // reasoning (finish_reason: "length"). Surface it instead of
+                // silently returning nothing, and hint at the knobs.
+                const finishReason = choice?.finish_reason ?? 'unknown';
+                const reasoningTokens = data.usage?.completion_tokens_details?.reasoning_tokens;
+                const usageHint = reasoningTokens !== undefined ? ` (reasoning_tokens=${reasoningTokens})` : '';
+                warn(`LLM returned empty content for ${samplePath} (finish_reason=${finishReason}${usageHint}). If finish_reason is "length", raise AZURE_OPENAI_MAX_COMPLETION_TOKENS or set AZURE_OPENAI_REASONING_EFFORT.`);
+                return null;
+            }
 
-        // Parse JSON response — strip markdown code fences if present.
-        const jsonStr = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        const parsed = JSON.parse(jsonStr);
-        if (!parsed || typeof parsed !== 'object') {
-            warn(`LLM response for ${samplePath} was not a JSON object.`);
+            // Parse JSON response — strip markdown code fences if present.
+            const jsonStr = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            const parsed = JSON.parse(jsonStr);
+            if (!parsed || typeof parsed !== 'object') {
+                warn(`LLM response for ${samplePath} was not a JSON object.`);
+                return null;
+            }
+            return /** @type {Record<string, unknown>} */ (parsed);
+        } catch (/** @type {any} */ err) {
+            // Network-level errors (ECONNRESET, socket timeout) are transient.
+            if (attempt < LLM_MAX_ATTEMPTS) {
+                const backoff = Math.min(Math.random() * LLM_BASE_DELAY_MS * 2 ** (attempt - 1), LLM_MAX_DELAY_MS);
+                console.warn(`LLM call failed for ${samplePath} (attempt ${attempt}/${LLM_MAX_ATTEMPTS}): ${err.message}; retrying in ${Math.round(backoff)}ms.`);
+                await sleep(backoff);
+                continue;
+            }
+            warn(`LLM call failed for ${samplePath}: ${err.message}`);
             return null;
         }
-        return /** @type {Record<string, unknown>} */ (parsed);
-    } catch (/** @type {any} */ err) {
-        warn(`LLM call failed for ${samplePath}: ${err.message}`);
-        return null;
     }
+    return null;
 }
 
 // Shared guidance describing what a good picker description looks like, reused
