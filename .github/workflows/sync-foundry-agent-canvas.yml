@@ -9,12 +9,16 @@ on:
         default: "main"
         type: string
       marketplace_version:
-        description: "New marketplace version using stable X.Y.Z format"
-        required: true
+        description: "Optional new marketplace version using stable X.Y.Z format"
+        required: false
         type: string
 
 permissions:
   contents: read
+
+env:
+  CANVAS_SOURCE_REF: ${{ inputs.source_ref || 'main' }}
+  MARKETPLACE_VERSION: ${{ inputs.marketplace_version || '' }}
 
 concurrency:
   group: sync-foundry-agent-canvas
@@ -34,7 +38,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: SmallBlackHole/foundry-agent-canvas
-          ref: ${{ inputs.source_ref }}
+          ref: ${{ env.CANVAS_SOURCE_REF }}
           path: source
           persist-credentials: false
 
@@ -92,6 +96,13 @@ jobs:
       contents: read
 
     steps:
+      - name: Checkout workflow automation
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: automation
+          persist-credentials: false
+
       - name: Generate GitHub App token
         id: app-token
         uses: actions/create-github-app-token@v1
@@ -115,11 +126,35 @@ jobs:
 
       - name: Sync runtime package
         run: |
-          node target/.github/scripts/sync_foundry_agent_canvas.mjs \
+          node automation/.github/scripts/sync_foundry_agent_canvas.mjs \
             bundle \
             target/foundry-agent-canvas/extensions/foundry-agent-canvas \
             target/foundry-agent-canvas/.github/plugin/plugin.json \
-            "${{ inputs.marketplace_version }}"
+            "$MARKETPLACE_VERSION"
+
+      - name: Resolve pull request metadata
+        id: metadata
+        shell: bash
+        env:
+          SOURCE_SHORT_SHA: ${{ needs.build.outputs.source_short_sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ -n "$MARKETPLACE_VERSION" ]]; then
+            branch_suffix="v$MARKETPLACE_VERSION"
+            title="chore: sync foundry-agent-canvas v$MARKETPLACE_VERSION"
+            version_label="$MARKETPLACE_VERSION"
+          else
+            branch_suffix="$SOURCE_SHORT_SHA"
+            title="chore: sync foundry-agent-canvas ($SOURCE_SHORT_SHA)"
+            version_label="unchanged"
+          fi
+
+          {
+            echo "branch_suffix=$branch_suffix"
+            echo "title=$title"
+            echo "version_label=$version_label"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Detect package changes
         id: diff
@@ -146,7 +181,7 @@ jobs:
             echo "## Foundry Agent Canvas Sync"
             echo
             echo "- Source: \`SmallBlackHole/foundry-agent-canvas@${{ needs.build.outputs.source_sha }}\`"
-            echo "- Marketplace version: \`${{ inputs.marketplace_version }}\`"
+            echo "- Marketplace version: \`${{ steps.metadata.outputs.version_label }}\`"
             echo
             echo "### Changed files"
             echo
@@ -163,20 +198,20 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           path: target
           base: main
-          branch: bot/sync-foundry-agent-canvas-v${{ inputs.marketplace_version }}
+          branch: bot/sync-foundry-agent-canvas-${{ steps.metadata.outputs.branch_suffix }}
           delete-branch: true
           draft: always-true
-          commit-message: "chore: sync foundry-agent-canvas v${{ inputs.marketplace_version }}"
-          title: "chore: sync foundry-agent-canvas v${{ inputs.marketplace_version }}"
+          commit-message: ${{ steps.metadata.outputs.title }}
+          title: ${{ steps.metadata.outputs.title }}
           body: |
             ## Summary
             This automated draft PR updates the bundled Foundry Agent Canvas runtime.
 
             ## Source
             - Repository: `SmallBlackHole/foundry-agent-canvas`
-            - Requested ref: `${{ inputs.source_ref }}`
+            - Requested ref: `${{ env.CANVAS_SOURCE_REF }}`
             - Resolved commit: `${{ needs.build.outputs.source_sha }}`
-            - Marketplace version: `${{ inputs.marketplace_version }}`
+            - Marketplace version: `${{ steps.metadata.outputs.version_label }}`
             - Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
             ## Validation

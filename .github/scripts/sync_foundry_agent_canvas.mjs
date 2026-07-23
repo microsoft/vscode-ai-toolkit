@@ -13,9 +13,9 @@ import { join, resolve } from "node:path";
 const [sourceArg, targetArg, pluginManifestArg, nextVersion] =
   process.argv.slice(2);
 
-if (!sourceArg || !targetArg || !pluginManifestArg || !nextVersion) {
+if (!sourceArg || !targetArg || !pluginManifestArg) {
   throw new Error(
-    "Usage: sync_foundry_agent_canvas.mjs <source-package> <target-extension> <plugin-manifest> <version>",
+    "Usage: sync_foundry_agent_canvas.mjs <source-package> <target-extension> <plugin-manifest> [version]",
   );
 }
 
@@ -75,15 +75,20 @@ if (extensionManifest.name !== "foundry-agent-canvas") {
   throw new Error(`Unexpected extension name: ${extensionManifest.name}`);
 }
 
-const currentParsedVersion = parseVersion(
-  pluginManifest.version,
-  "Current plugin version",
-);
-const nextParsedVersion = parseVersion(nextVersion, "Requested plugin version");
-if (compareVersions(nextParsedVersion, currentParsedVersion) <= 0) {
-  throw new Error(
-    `Requested plugin version ${nextVersion} must be newer than ${pluginManifest.version}`,
+if (nextVersion) {
+  const currentParsedVersion = parseVersion(
+    pluginManifest.version,
+    "Current plugin version",
   );
+  const nextParsedVersion = parseVersion(
+    nextVersion,
+    "Requested plugin version",
+  );
+  if (compareVersions(nextParsedVersion, currentParsedVersion) <= 0) {
+    throw new Error(
+      `Requested plugin version ${nextVersion} must be newer than ${pluginManifest.version}`,
+    );
+  }
 }
 
 for (const entry of payload) {
@@ -97,12 +102,17 @@ for (const entry of payload) {
   });
 }
 
-pluginManifest.version = nextVersion;
-writeFileSync(
-  pluginManifestPath,
-  `${JSON.stringify(pluginManifest, null, 2)}\n`,
-);
-
-console.log(
-  `Synced foundry-agent-canvas payload and updated plugin version to ${nextVersion}`,
-);
+if (nextVersion) {
+  pluginManifest.version = nextVersion;
+  writeFileSync(
+    pluginManifestPath,
+    `${JSON.stringify(pluginManifest, null, 2)}\n`,
+  );
+  console.log(
+    `Synced foundry-agent-canvas payload and updated plugin version to ${nextVersion}`,
+  );
+} else {
+  console.log(
+    `Synced foundry-agent-canvas payload and preserved plugin version ${pluginManifest.version}`,
+  );
+}
