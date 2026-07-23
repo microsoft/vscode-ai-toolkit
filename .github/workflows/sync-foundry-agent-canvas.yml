@@ -103,6 +103,11 @@ jobs:
           path: automation
           persist-credentials: false
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19"
+
       - name: Generate GitHub App token
         id: app-token
         uses: actions/create-github-app-token@v1
@@ -117,6 +122,7 @@ jobs:
           ref: main
           fetch-depth: 0
           path: target
+          persist-credentials: false
 
       - name: Download runtime package
         uses: actions/download-artifact@v4
