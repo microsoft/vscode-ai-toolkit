@@ -610,38 +610,12 @@ const IGNORE_EXISTING = /^(true|1|yes)$/i.test(process.env.IGNORE_EXISTING || ''
 // per template (~90 in a full run); even with ample TPM/RPM quota a burst can
 // momentarily trip the rate limiter (HTTP 429) at the sliding-window edge.
 // Retry those (and transient 5xx / network errors) with jittered exponential
-// backoff, honoring a server `Retry-After`, so an occasional throttle self-heals
-// instead of dropping the field. Overridable via env for local debugging.
+// backoff, honoring a server `Retry-After` (reusing the shared `delay` and
+// `parseRetryAfterMs` helpers), so an occasional throttle self-heals instead of
+// dropping the field. Overridable via env for local debugging.
 const LLM_MAX_ATTEMPTS = Number(process.env.LLM_MAX_ATTEMPTS) || 5;
 const LLM_BASE_DELAY_MS = Number(process.env.LLM_BASE_DELAY_MS) || 1000;
 const LLM_MAX_DELAY_MS = Number(process.env.LLM_MAX_DELAY_MS) || 30_000;
-
-/**
- * @param {number} ms
- * @returns {Promise<void>}
- */
-function sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * Parse a `Retry-After` header (RFC 7231): delay-seconds or an HTTP date.
- * Returns milliseconds, or `undefined` when absent/unparseable.
- * @param {Response} response
- * @returns {number | undefined}
- */
-function retryAfterMsFromResponse(response) {
-    const value = response.headers.get('retry-after');
-    if (!value) {
-        return undefined;
-    }
-    const seconds = Number(value);
-    if (Number.isFinite(seconds)) {
-        return Math.max(0, seconds * 1000);
-    }
-    const dateMs = Date.parse(value);
-    return Number.isNaN(dateMs) ? undefined : Math.max(0, dateMs - Date.now());
-}
 
 
 /**
@@ -711,13 +685,13 @@ async function callLLMForJson(systemPrompt, userPrompt, samplePath) {
                 // `Retry-After`; give up on other 4xx (bad request, auth, etc.).
                 const retryable = response.status === 429 || response.status >= 500;
                 if (retryable && attempt < LLM_MAX_ATTEMPTS) {
-                    const retryAfter = retryAfterMsFromResponse(response);
+                    const retryAfter = parseRetryAfterMs(response);
                     const backoff = retryAfter !== undefined
                         ? Math.min(retryAfter, LLM_MAX_DELAY_MS)
                         : Math.min(Math.random() * LLM_BASE_DELAY_MS * 2 ** (attempt - 1), LLM_MAX_DELAY_MS);
                     const source = retryAfter !== undefined ? 'server Retry-After' : 'jittered backoff';
                     console.warn(`LLM API returned ${response.status} for ${samplePath} (attempt ${attempt}/${LLM_MAX_ATTEMPTS}); retrying in ${Math.round(backoff)}ms (${source}).`);
-                    await sleep(backoff);
+                    await delay(backoff);
                     continue;
                 }
                 // Include a truncated response body so the exact reason (e.g. an
@@ -761,7 +735,7 @@ async function callLLMForJson(systemPrompt, userPrompt, samplePath) {
             if (attempt < LLM_MAX_ATTEMPTS) {
                 const backoff = Math.min(Math.random() * LLM_BASE_DELAY_MS * 2 ** (attempt - 1), LLM_MAX_DELAY_MS);
                 console.warn(`LLM call failed for ${samplePath} (attempt ${attempt}/${LLM_MAX_ATTEMPTS}): ${err.message}; retrying in ${Math.round(backoff)}ms.`);
-                await sleep(backoff);
+                await delay(backoff);
                 continue;
             }
             warn(`LLM call failed for ${samplePath}: ${err.message}`);
