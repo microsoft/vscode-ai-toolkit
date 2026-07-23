@@ -1,7 +1,7 @@
 {
-    "commitSha": "9c4e42a1eedcec32c1582bebeb83a381a23efbe1",
+    "commitSha": "84cb8c9a15d7a8bd40e1d80556e00557ea917049",
     "repo": "https://github.com/microsoft-foundry/foundry-samples/",
-    "generatedAt": "2026-07-07T06:19:12Z",
+    "generatedAt": "2026-07-23T07:26:00Z",
     "dimensions": {
         "language": {
             "title": "Select a Language",
@@ -64,10 +64,100 @@
     },
     "templates": [
         {
+            "language": "python",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Basic Hosted Agent",
+            "description": "Agent that supports multi-turn conversations with response tracking.",
+            "path": "samples/python/hosted-agents/agent-framework/responses/01-basic",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "copilot-sdk",
+            "protocol": "invocations",
+            "displayName": "Copilot Streaming",
+            "description": "Agent streams Copilot session events with support for multi-turn conversations.",
+            "path": "samples/python/hosted-agents/bring-your-own/invocations/github-copilot",
+            "requiresModel": false
+        },
+        {
+            "language": "python",
+            "framework": "langgraph",
+            "protocol": "responses",
+            "displayName": "LangGraph Chat",
+            "description": "Chat agent with tools for current time and math calculations.",
+            "path": "samples/python/hosted-agents/langgraph/responses/01-langgraph-chat",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "langgraph",
+            "protocol": "responses",
+            "displayName": "Toolbox Agent",
+            "description": "Agent that uses a toolbox for web search and public MCP tools without credentials.",
+            "path": "samples/python/hosted-agents/langgraph/responses/02-langgraph-toolbox",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Foundry Toolbox",
+            "description": "Agent that discovers and invokes centrally managed tools from a Foundry Toolbox.",
+            "path": "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Multi-Agent Workflow",
+            "description": "Processes requests through slogan writing, legal review, and formatting agents in sequence.",
+            "path": "samples/python/hosted-agents/agent-framework/responses/05-workflows",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "langgraph",
+            "protocol": "responses",
+            "displayName": "Multi-Agent Workflow",
+            "description": "Processes a request through slogan writing, legal review, and formatting steps.",
+            "path": "samples/python/hosted-agents/langgraph/responses/05-workflows",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Azure Search RAG",
+            "description": "Answers questions using product documentation and cites sources from a search index.",
+            "path": "samples/python/hosted-agents/agent-framework/responses/11-azure-search-rag",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "bring-your-own",
+            "protocol": "invocations",
+            "displayName": "Claude Agent SDK",
+            "description": "Agent that streams responses from a Claude model for plain text input.",
+            "path": "samples/python/hosted-agents/bring-your-own/invocations/claude-agent-sdk",
+            "requiresModel": false
+        },
+        {
+            "language": "python",
+            "framework": "bring-your-own",
+            "protocol": "responses",
+            "displayName": "Streaming Text Agent",
+            "description": "Minimal agent that streams text responses from a Foundry model.",
+            "path": "samples/python/hosted-agents/bring-your-own/responses/openai-agents-sdk",
+            "requiresModel": true
+        },
+        {
             "language": "csharp",
             "framework": "agent-framework",
             "protocol": "responses",
-            "displayName": "Caller",
+            "displayName": "Delegating Concierge Agent",
             "description": "Concierge agent that delegates questions to a remote specialist and summarizes answers.",
             "path": "samples/csharp/hosted-agents/agent-framework/a2a/01-delegation/caller",
             "requiresModel": true
@@ -76,7 +166,7 @@
             "language": "csharp",
             "framework": "agent-framework",
             "protocol": "responses",
-            "displayName": "Executor",
+            "displayName": "Math Executor",
             "description": "Answers arithmetic and math questions as an expert agent.",
             "path": "samples/csharp/hosted-agents/agent-framework/a2a/01-delegation/executor",
             "requiresModel": true
@@ -157,7 +247,7 @@
             "language": "csharp",
             "framework": "agent-framework",
             "protocol": "invocations",
-            "displayName": "Invocations Echo Agent",
+            "displayName": "Echo Agent",
             "description": "Echoes back input messages with a simple prefix for testing agent hosting.",
             "path": "samples/csharp/hosted-agents/agent-framework/invocations-echo-agent",
             "requiresModel": false
@@ -184,7 +274,7 @@
             "language": "csharp",
             "framework": "agent-framework",
             "protocol": "responses",
-            "displayName": "Observability",
+            "displayName": "Agent Observability",
             "description": "Agent with built-in observability for traces, metrics, and logs via Azure Monitor.",
             "path": "samples/csharp/hosted-agents/agent-framework/observability",
             "requiresModel": true
@@ -221,7 +311,7 @@
             "framework": "agent-framework",
             "protocol": "responses",
             "displayName": "Toolbox Auth Paths",
-            "description": "Agent toolbox demonstrates different authentication methods for accessing upstream tools.",
+            "description": "Toolbox demonstrating authentication paths for tools to reach upstream servers.",
             "path": "samples/csharp/hosted-agents/agent-framework/toolbox-auth-paths",
             "requiresModel": true
         },
@@ -229,7 +319,7 @@
             "language": "csharp",
             "framework": "agent-framework",
             "protocol": "responses",
-            "displayName": "Workflows",
+            "displayName": "Agent Workflows",
             "description": "Workflow chains three translation agents to show intermediate language outputs.",
             "path": "samples/csharp/hosted-agents/agent-framework/workflows",
             "requiresModel": true
@@ -238,7 +328,7 @@
             "language": "csharp",
             "framework": "bring-your-own",
             "protocol": "invocations",
-            "displayName": "HelloWorld",
+            "displayName": "Hello World",
             "description": "Hosted agent that returns a streaming hello world response from a Foundry model.",
             "path": "samples/csharp/hosted-agents/bring-your-own/invocations/HelloWorld",
             "requiresModel": true
@@ -265,7 +355,7 @@
             "language": "csharp",
             "framework": "bring-your-own",
             "protocol": "invocations_ws",
-            "displayName": "HelloWorld",
+            "displayName": "Voice Live Hello World",
             "description": "Routes real-time audio between a browser and a managed voice service session.",
             "path": "samples/csharp/hosted-agents/bring-your-own/invocations_ws/HelloWorld",
             "requiresModel": false
@@ -274,8 +364,8 @@
             "language": "csharp",
             "framework": "bring-your-own",
             "protocol": "responses",
-            "displayName": "HelloWorld",
-            "description": "Minimal hosted agent that returns a greeting from a Foundry model using the Responses API.",
+            "displayName": "Hello World",
+            "description": "Minimal hosted agent that returns a greeting from a Foundry model.",
             "path": "samples/csharp/hosted-agents/bring-your-own/responses/HelloWorld",
             "requiresModel": true
         },
@@ -293,7 +383,7 @@
             "framework": "bring-your-own",
             "protocol": "responses",
             "displayName": "Browser Automation",
-            "description": "",
+            "description": "Agent that automates browsing, scraping, and form filling using a remote browser with live view.",
             "path": "samples/csharp/hosted-agents/bring-your-own/responses/browser-automation",
             "requiresModel": true
         },
@@ -319,7 +409,7 @@
             "language": "python",
             "framework": "agent-framework",
             "protocol": "responses",
-            "displayName": "Caller",
+            "displayName": "Delegating Caller",
             "description": "Concierge agent that delegates questions to a remote specialist and summarizes the answers.",
             "path": "samples/python/hosted-agents/agent-framework/a2a/01-delegation/caller",
             "requiresModel": true
@@ -328,7 +418,7 @@
             "language": "python",
             "framework": "agent-framework",
             "protocol": "responses",
-            "displayName": "Executor",
+            "displayName": "Math Expert",
             "description": "Answers arithmetic and math questions as an expert agent.",
             "path": "samples/python/hosted-agents/agent-framework/a2a/01-delegation/executor",
             "requiresModel": true
@@ -337,7 +427,7 @@
             "language": "python",
             "framework": "agent-framework",
             "protocol": "invocations",
-            "displayName": "Basic",
+            "displayName": "Session Management",
             "description": "Agent with in-memory session management for multi-turn conversations.",
             "path": "samples/python/hosted-agents/agent-framework/invocations/01-basic",
             "requiresModel": true
@@ -346,16 +436,7 @@
             "language": "python",
             "framework": "agent-framework",
             "protocol": "responses",
-            "displayName": "Basic",
-            "description": "Agent that supports multi-turn conversations with response tracking.",
-            "path": "samples/python/hosted-agents/agent-framework/responses/01-basic",
-            "requiresModel": true
-        },
-        {
-            "language": "python",
-            "framework": "agent-framework",
-            "protocol": "responses",
-            "displayName": "Tools",
+            "displayName": "Local Tools",
             "description": "Agent with custom tools like weather lookup callable during conversation.",
             "path": "samples/python/hosted-agents/agent-framework/responses/02-tools",
             "requiresModel": true
@@ -364,34 +445,7 @@
             "language": "python",
             "framework": "agent-framework",
             "protocol": "responses",
-            "displayName": "MCP",
-            "description": "Agent that dynamically discovers and invokes tools from a remote GitHub Copilot MCP server.",
-            "path": "samples/python/hosted-agents/agent-framework/responses/03-mcp",
-            "requiresModel": true
-        },
-        {
-            "language": "python",
-            "framework": "agent-framework",
-            "protocol": "responses",
-            "displayName": "Foundry Toolbox",
-            "description": "Agent that discovers and invokes centrally managed tools from a Foundry Toolbox.",
-            "path": "samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox",
-            "requiresModel": true
-        },
-        {
-            "language": "python",
-            "framework": "agent-framework",
-            "protocol": "responses",
-            "displayName": "Workflows",
-            "description": "Processes requests through slogan writing, legal review, and formatting agents in sequence.",
-            "path": "samples/python/hosted-agents/agent-framework/responses/05-workflows",
-            "requiresModel": true
-        },
-        {
-            "language": "python",
-            "framework": "agent-framework",
-            "protocol": "responses",
-            "displayName": "Files",
+            "displayName": "File Tools",
             "description": "Agent that lists, reads, and interprets files using shell and code tools.",
             "path": "samples/python/hosted-agents/agent-framework/responses/06-files",
             "requiresModel": true
@@ -400,7 +454,7 @@
             "language": "python",
             "framework": "agent-framework",
             "protocol": "responses",
-            "displayName": "Skills",
+            "displayName": "File-Based Skills",
             "description": "Agent that discovers and runs local file-based skills like generating PDF travel guides.",
             "path": "samples/python/hosted-agents/agent-framework/responses/07-skills",
             "requiresModel": true
@@ -418,7 +472,7 @@
             "language": "python",
             "framework": "agent-framework",
             "protocol": "responses",
-            "displayName": "Observability",
+            "displayName": "Agent Observability",
             "description": "Agent with built-in observability and telemetry for diagnostics and monitoring.",
             "path": "samples/python/hosted-agents/agent-framework/responses/08-observability",
             "requiresModel": true
@@ -439,15 +493,6 @@
             "displayName": "Downstream Azure",
             "description": "Agent performs data operations on Blob Storage and Service Bus using its own identity.",
             "path": "samples/python/hosted-agents/agent-framework/responses/10-downstream-azure",
-            "requiresModel": true
-        },
-        {
-            "language": "python",
-            "framework": "agent-framework",
-            "protocol": "responses",
-            "displayName": "Azure Search RAG",
-            "description": "Answers questions using product documentation and cites sources from a search index.",
-            "path": "samples/python/hosted-agents/agent-framework/responses/11-azure-search-rag",
             "requiresModel": true
         },
         {
@@ -481,7 +526,7 @@
             "language": "python",
             "framework": "agent-framework",
             "protocol": "responses",
-            "displayName": "Optimization Travel Approver",
+            "displayName": "Travel Request Approver",
             "description": "Agent that reviews and approves travel requests for employees.",
             "path": "samples/python/hosted-agents/agent-framework/responses/15-optimization-travel-approver",
             "requiresModel": true
@@ -499,7 +544,7 @@
             "language": "python",
             "framework": "agent-framework",
             "protocol": "responses",
-            "displayName": "Foundry Iq Toolbox",
+            "displayName": "Foundry IQ Toolbox",
             "description": "Answers user questions using a knowledge base accessed through a remote toolbox connection.",
             "path": "samples/python/hosted-agents/agent-framework/responses/17-foundry-iq-toolbox",
             "requiresModel": true
@@ -508,19 +553,10 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "invocations",
-            "displayName": "AG UI",
+            "displayName": "AG-UI Invocations",
             "description": "Agent that streams AG-UI lifecycle events in response to user input.",
             "path": "samples/python/hosted-agents/bring-your-own/invocations/ag-ui",
             "requiresModel": true
-        },
-        {
-            "language": "python",
-            "framework": "bring-your-own",
-            "protocol": "invocations",
-            "displayName": "Claude Agent SDK",
-            "description": "Agent that streams responses from a Claude model for plain text input.",
-            "path": "samples/python/hosted-agents/bring-your-own/invocations/claude-agent-sdk",
-            "requiresModel": false
         },
         {
             "language": "python",
@@ -536,18 +572,9 @@
             "framework": "bring-your-own",
             "protocol": "invocations",
             "displayName": "Event Grid Trigger",
-            "description": "Processes new blobs in Azure Storage by summarizing content and saving results to a summary container.",
+            "description": "Summarizes new Azure Storage blobs and writes JSON summaries to a sibling summary container.",
             "path": "samples/python/hosted-agents/bring-your-own/invocations/event-grid-trigger",
             "requiresModel": true
-        },
-        {
-            "language": "python",
-            "framework": "copilot-sdk",
-            "protocol": "invocations",
-            "displayName": "GitHub Copilot",
-            "description": "Agent streams Copilot session events with support for multi-turn conversations.",
-            "path": "samples/python/hosted-agents/bring-your-own/invocations/github-copilot",
-            "requiresModel": false
         },
         {
             "language": "python",
@@ -571,7 +598,7 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "invocations",
-            "displayName": "Langgraph Chat",
+            "displayName": "Multi-Turn Chat",
             "description": "Conversational agent with session history and built-in time and calculator tools.",
             "path": "samples/python/hosted-agents/bring-your-own/invocations/langgraph-chat",
             "requiresModel": true
@@ -589,7 +616,7 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "invocations",
-            "displayName": "Toolbox",
+            "displayName": "Toolbox Integration",
             "description": "Agent connects to a toolbox server and enables tool discovery and invocation during chat.",
             "path": "samples/python/hosted-agents/bring-your-own/invocations/toolbox",
             "requiresModel": true
@@ -607,7 +634,7 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "invocations_ws",
-            "displayName": "Hello World",
+            "displayName": "Voice Live Bridge",
             "description": "Real-time voice agent that relays audio and events between browser and a managed service.",
             "path": "samples/python/hosted-agents/bring-your-own/invocations_ws/hello-world",
             "requiresModel": false
@@ -616,7 +643,7 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "invocations_ws",
-            "displayName": "Livekit Server",
+            "displayName": "LiveKit Voice Agent",
             "description": "Voice agent connects to a LiveKit server for real-time audio conversations.",
             "path": "samples/python/hosted-agents/bring-your-own/invocations_ws/livekit-server",
             "requiresModel": false
@@ -625,8 +652,8 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "invocations_ws",
-            "displayName": "Pipecat Webrtc",
-            "description": "Real-time voice agent with multi-agent pipeline and WebRTC audio media support.",
+            "displayName": "Real-Time Voice Pipeline",
+            "description": "Real-time voice agent with multi-agent pipeline and streaming transcription.",
             "path": "samples/python/hosted-agents/bring-your-own/invocations_ws/pipecat-webrtc",
             "requiresModel": false
         },
@@ -634,7 +661,7 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "invocations_ws",
-            "displayName": "Pipecat Ws Server",
+            "displayName": "Real-Time Voice Agent",
             "description": "Real-time voice agent with greeting and order-checking capabilities.",
             "path": "samples/python/hosted-agents/bring-your-own/invocations_ws/pipecat-ws-server",
             "requiresModel": false
@@ -680,7 +707,7 @@
             "framework": "bring-your-own",
             "protocol": "responses",
             "displayName": "Hello World",
-            "description": "Hosted agent that returns a hello world message from a Foundry model using a custom backend.",
+            "description": "Hosted agent that returns a hello world message from a model via a custom backend.",
             "path": "samples/python/hosted-agents/bring-your-own/responses/hello-world",
             "requiresModel": true
         },
@@ -688,7 +715,7 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "responses",
-            "displayName": "Langgraph Chat",
+            "displayName": "Multi-Turn Chat",
             "description": "Conversational agent with built-in calculator and time tools, streaming responses.",
             "path": "samples/python/hosted-agents/bring-your-own/responses/langgraph-chat",
             "requiresModel": true
@@ -697,7 +724,7 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "responses",
-            "displayName": "Langgraph Toolbox",
+            "displayName": "LangGraph Toolbox",
             "description": "Agent that dynamically loads tools from a remote toolbox and handles incoming requests.",
             "path": "samples/python/hosted-agents/bring-your-own/responses/langgraph-toolbox",
             "requiresModel": true
@@ -706,7 +733,7 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "responses",
-            "displayName": "Langgraph Toolbox User Identity",
+            "displayName": "LangGraph Toolbox User Identity",
             "description": "Agent that accesses mail, calendar, and GitHub tools for user-identity scenarios.",
             "path": "samples/python/hosted-agents/bring-your-own/responses/langgraph-toolbox-user-identity",
             "requiresModel": true
@@ -724,16 +751,7 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "responses",
-            "displayName": "OpenAI Agents SDK",
-            "description": "Minimal agent that streams text responses from a Foundry model.",
-            "path": "samples/python/hosted-agents/bring-your-own/responses/openai-agents-sdk",
-            "requiresModel": true
-        },
-        {
-            "language": "python",
-            "framework": "bring-your-own",
-            "protocol": "responses",
-            "displayName": "Optimization Customer Support",
+            "displayName": "Customer Support Agent",
             "description": "Customer support agent for troubleshooting and product assistance.",
             "path": "samples/python/hosted-agents/bring-your-own/responses/optimization-customer-support",
             "requiresModel": true
@@ -760,7 +778,7 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "responses",
-            "displayName": "Foreground Background Agents Responses Voicelive",
+            "displayName": "Foreground Background Agents",
             "description": "Voice agent that routes quick replies to users and delegates long tasks to a background worker.",
             "path": "samples/python/hosted-agents/bring-your-own/voicelive/foreground-background-agents-responses-voicelive",
             "requiresModel": true
@@ -769,7 +787,7 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "responses",
-            "displayName": "Handoff Langgraph Responses Voicelive",
+            "displayName": "LangGraph Handoff",
             "description": "Customer support agent with triage and handoff between refund and order specialists.",
             "path": "samples/python/hosted-agents/bring-your-own/voicelive/handoff-langgraph-responses-voicelive",
             "requiresModel": true
@@ -778,7 +796,7 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "invocations",
-            "displayName": "Hello World Invocations Voicelive",
+            "displayName": "Real-Time Voice Agent",
             "description": "Minimal hosted agent for real-time voice interactions with audio transcription streaming.",
             "path": "samples/python/hosted-agents/bring-your-own/voicelive/hello-world-invocations-voicelive",
             "requiresModel": true
@@ -787,7 +805,7 @@
             "language": "python",
             "framework": "bring-your-own",
             "protocol": "invocations",
-            "displayName": "Hotel Booking Invocations Voicelive",
+            "displayName": "Hotel Booking Agent",
             "description": "Hotel booking agent that handles speech and UI actions with session state and streaming.",
             "path": "samples/python/hosted-agents/bring-your-own/voicelive/hotel-booking-invocations-voicelive",
             "requiresModel": true
@@ -796,7 +814,7 @@
             "language": "python",
             "framework": "langgraph",
             "protocol": "responses",
-            "displayName": "A2a Caller",
+            "displayName": "A2A Caller",
             "description": "Concierge agent that delegates specialist questions to a remote expert agent.",
             "path": "samples/python/hosted-agents/langgraph/a2a/a2a-caller",
             "requiresModel": true
@@ -805,7 +823,7 @@
             "language": "python",
             "framework": "langgraph",
             "protocol": "responses",
-            "displayName": "A2a Executor",
+            "displayName": "A2A Executor",
             "description": "Math expert agent that answers questions and explains steps, callable by other agents.",
             "path": "samples/python/hosted-agents/langgraph/a2a/a2a-executor",
             "requiresModel": true
@@ -814,7 +832,7 @@
             "language": "python",
             "framework": "langgraph",
             "protocol": "invocations",
-            "displayName": "Langgraph Chat",
+            "displayName": "Tool-Enabled Chat",
             "description": "Multi-turn chat agent with tools for current time and math calculations.",
             "path": "samples/python/hosted-agents/langgraph/invocations/01-langgraph-chat",
             "requiresModel": true
@@ -823,43 +841,7 @@
             "language": "python",
             "framework": "langgraph",
             "protocol": "responses",
-            "displayName": "Langgraph Chat",
-            "description": "Chat agent with tools for current time and math calculations.",
-            "path": "samples/python/hosted-agents/langgraph/responses/01-langgraph-chat",
-            "requiresModel": true
-        },
-        {
-            "language": "python",
-            "framework": "langgraph",
-            "protocol": "responses",
-            "displayName": "Langgraph Toolbox",
-            "description": "Agent that uses a toolbox for web search and GitHub Copilot MCP tools with managed credentials.",
-            "path": "samples/python/hosted-agents/langgraph/responses/02-langgraph-toolbox",
-            "requiresModel": true
-        },
-        {
-            "language": "python",
-            "framework": "langgraph",
-            "protocol": "responses",
-            "displayName": "MCP",
-            "description": "Agent that discovers and invokes tools from a remote server for enhanced capabilities.",
-            "path": "samples/python/hosted-agents/langgraph/responses/04-mcp",
-            "requiresModel": true
-        },
-        {
-            "language": "python",
-            "framework": "langgraph",
-            "protocol": "responses",
-            "displayName": "Workflows",
-            "description": "Processes a request through slogan writing, legal review, and formatting steps.",
-            "path": "samples/python/hosted-agents/langgraph/responses/05-workflows",
-            "requiresModel": true
-        },
-        {
-            "language": "python",
-            "framework": "langgraph",
-            "protocol": "responses",
-            "displayName": "Files",
+            "displayName": "File Manipulation",
             "description": "Agent that analyzes and manipulates files using local and sandboxed tools.",
             "path": "samples/python/hosted-agents/langgraph/responses/06-files",
             "requiresModel": true
