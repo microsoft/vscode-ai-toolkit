@@ -880,13 +880,14 @@ body {
 .start-options {
     display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: stretch;
     gap: 8px;
 }
 .start-option {
     min-width: 0;
     min-height: 40px;
-    flex: 1 1 0;
+    flex: 1 1 120px;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -930,7 +931,8 @@ body {
     font-size: 11px;
     line-height: 15px;
     font-weight: 600;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 .preview-card {
     display: flex;
