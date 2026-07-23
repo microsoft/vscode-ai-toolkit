@@ -13,6 +13,11 @@ on:
         required: false
         type: boolean
         default: false
+      ignore_existing_catalog:
+        description: "Ignore the previous catalog's displayName/description (regenerate from scratch). Use for the first AI refine so existing values don't anchor the result."
+        required: false
+        type: boolean
+        default: false
 
 # Least-privilege for the default GITHUB_TOKEN: only what `actions/checkout`
 # needs. All writes (push branch + create PR) are performed via the GitHub
@@ -86,6 +91,7 @@ jobs:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
           AI_REFINE: ${{ inputs.refine_with_ai }}
+          IGNORE_EXISTING: ${{ inputs.ignore_existing_catalog }}
         run: node .github/scripts/generate_sample_catalog.mjs "${{ steps.resolve-sha.outputs.sha }}"
 
       - name: Detect catalog changes

@@ -445,6 +445,14 @@ const AZURE_OPENAI_REASONING_EFFORT = process.env.AZURE_OPENAI_REASONING_EFFORT 
 // fields and never touches values that are already present.
 const AI_REFINE = /^(true|1|yes)$/i.test(process.env.AI_REFINE || '');
 
+// When true (workflow `ignore_existing_catalog` input), the previous catalog's
+// displayName/description values are NOT carried over. Every field starts empty,
+// so a fresh run — typically the first AI refine — regenerates all values instead
+// of being anchored by the "keep it if it already fits" logic. Off by default,
+// so normal runs keep preserving PM-curated values.
+const IGNORE_EXISTING = /^(true|1|yes)$/i.test(process.env.IGNORE_EXISTING || '');
+
+
 // Retry knobs for the Azure OpenAI calls. The refine path fires one request
 // per template (~90 in a full run); even with ample TPM/RPM quota a burst can
 // momentarily trip the rate limiter (HTTP 429) at the sliding-window edge.
@@ -1108,8 +1116,14 @@ async function main() {
     const templates = await scanTemplates(commitSha);
     console.log(`Found ${templates.length} templates`);
 
-    // Step 1: Preserve existing PM-curated displayName/description values.
-    mergeExistingDisplayFields(templates);
+    // Step 1: Preserve existing PM-curated displayName/description values,
+    // unless a fresh run was requested (ignore_existing_catalog) — then every
+    // field starts empty so nothing anchors the regeneration.
+    if (IGNORE_EXISTING) {
+        console.log('IGNORE_EXISTING is set; not carrying over displayName/description from the previous catalog.');
+    } else {
+        mergeExistingDisplayFields(templates);
+    }
 
     // Step 2: Apply source-controlled per-path overrides (structural fields like
     // `framework` that the upstream tree layout cannot express on its own).
