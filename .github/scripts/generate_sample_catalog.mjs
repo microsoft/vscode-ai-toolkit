@@ -651,7 +651,6 @@ ${readmeContent.substring(0, 2000)}`;
     return { displayName, description };
 }
 
-
 /**
  * Brand and acronym casing overrides applied during displayName derivation.
  * Keys are lower-case tokens; values are the canonical user-facing rendering.
