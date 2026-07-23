@@ -1,4 +1,4 @@
-// Foundry Agent Canvas — client SPA.
+// Microsoft Foundry canvas — client SPA.
 // A single build view. Add & Deploy affordances POST a prompt to /api/send,
 // which the extension forwards to the chat via session.send(). Live project
 // data (deployments, toolboxes, skills, guardrails) is read from /api/* routes.
@@ -142,7 +142,7 @@ async function sendToChat(prompt, refresh) {
         const isNetwork = err instanceof TypeError || /failed to fetch/i.test(err.message || "");
         toast(
             isNetwork
-                ? "Lost connection to the builder. Reopen the Foundry Agent Canvas, then try again."
+                ? "Lost connection to the builder. Reopen the Microsoft Foundry canvas, then try again."
                 : "Could not send: " + err.message,
         );
     }

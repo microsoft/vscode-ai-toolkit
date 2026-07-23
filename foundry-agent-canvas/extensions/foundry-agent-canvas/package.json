@@ -1,9 +1,0 @@
-{
-    "name": "foundry-agent-canvas",
-    "version": "1.0.0",
-    "private": true,
-    "type": "module",
-    "description": "Interactive Copilot canvas for designing, configuring, testing, and deploying Microsoft Foundry hosted agents.",
-    "author": "Microsoft",
-    "license": "MIT"
-}

@@ -1,4 +1,4 @@
-# Foundry Agent Canvas
+# Microsoft Foundry
 
 A GitHub Copilot App canvas extension for designing Microsoft Foundry hosted
 agents from a side panel. It combines live Foundry project discovery with
@@ -22,9 +22,9 @@ Inspector.
 
 ## Install
 
-Open GitHub Copilot App, search `foundry-agent-canvas` from Settings -> Plugins, then install it. 
+Open GitHub Copilot App, search `microsoft-foundry` from Settings -> Plugins, then install it. 
 
-Or you can go to https://awesome-copilot.github.com/extension/foundry-agent-canvas/, and click the button `+ Open in GitHub Copilot App` to install it.
+Or you can go to https://awesome-copilot.github.com/extension/microsoft-foundry/, and click the button `+ Open in GitHub Copilot App` to install it.
 
 ## Usage
 

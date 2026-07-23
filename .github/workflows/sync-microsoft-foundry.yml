@@ -1,4 +1,4 @@
-name: Sync Foundry Agent Canvas
+name: Sync Microsoft Foundry
 
 on:
   workflow_dispatch:
@@ -21,7 +21,7 @@ env:
   MARKETPLACE_VERSION: ${{ inputs.marketplace_version || '' }}
 
 concurrency:
-  group: sync-foundry-agent-canvas
+  group: sync-microsoft-foundry
   cancel-in-progress: false
 
 jobs:
@@ -74,6 +74,7 @@ jobs:
         run: |
           set -euo pipefail
           test -f dist/pkg/extension.mjs
+          test -f dist/pkg/package.json
           test -d dist/pkg/public
           test -d dist/pkg/inspector-ui
           node --check dist/pkg/extension.mjs
@@ -81,9 +82,10 @@ jobs:
       - name: Upload runtime package
         uses: actions/upload-artifact@v4
         with:
-          name: foundry-agent-canvas-${{ steps.source.outputs.short_sha }}
+          name: microsoft-foundry-${{ steps.source.outputs.short_sha }}
           path: |
             source/dist/pkg/extension.mjs
+            source/dist/pkg/package.json
             source/dist/pkg/public
             source/dist/pkg/inspector-ui
           if-no-files-found: error
@@ -127,15 +129,15 @@ jobs:
       - name: Download runtime package
         uses: actions/download-artifact@v4
         with:
-          name: foundry-agent-canvas-${{ needs.build.outputs.source_short_sha }}
+          name: microsoft-foundry-${{ needs.build.outputs.source_short_sha }}
           path: bundle
 
       - name: Sync runtime package
         run: |
-          node automation/.github/scripts/sync_foundry_agent_canvas.mjs \
+          node automation/.github/scripts/sync_microsoft_foundry.mjs \
             bundle \
-            target/foundry-agent-canvas/extensions/foundry-agent-canvas \
-            target/foundry-agent-canvas/.github/plugin/plugin.json \
+            target/microsoft-foundry/extensions/microsoft-foundry \
+            target/microsoft-foundry/.github/plugin/plugin.json \
             "$MARKETPLACE_VERSION"
 
       - name: Resolve pull request metadata
@@ -148,11 +150,11 @@ jobs:
 
           if [[ -n "$MARKETPLACE_VERSION" ]]; then
             branch_suffix="v$MARKETPLACE_VERSION"
-            title="chore: sync foundry-agent-canvas v$MARKETPLACE_VERSION"
+            title="chore: sync microsoft-foundry v$MARKETPLACE_VERSION"
             version_label="$MARKETPLACE_VERSION"
           else
             branch_suffix="$SOURCE_SHORT_SHA"
-            title="chore: sync foundry-agent-canvas ($SOURCE_SHORT_SHA)"
+            title="chore: sync microsoft-foundry ($SOURCE_SHORT_SHA)"
             version_label="unchanged"
           fi
 
@@ -169,22 +171,23 @@ jobs:
           set -euo pipefail
 
           git -C target add -- \
-            foundry-agent-canvas/.github/plugin/plugin.json \
-            foundry-agent-canvas/extensions/foundry-agent-canvas/extension.mjs \
-            foundry-agent-canvas/extensions/foundry-agent-canvas/public \
-            foundry-agent-canvas/extensions/foundry-agent-canvas/inspector-ui
+            microsoft-foundry/.github/plugin/plugin.json \
+            microsoft-foundry/extensions/microsoft-foundry/extension.mjs \
+            microsoft-foundry/extensions/microsoft-foundry/package.json \
+            microsoft-foundry/extensions/microsoft-foundry/public \
+            microsoft-foundry/extensions/microsoft-foundry/inspector-ui
 
-          if git -C target diff --cached --quiet -- foundry-agent-canvas; then
+          if git -C target diff --cached --quiet -- microsoft-foundry; then
             echo "No package changes detected."
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          git -C target diff --cached --stat -- foundry-agent-canvas
+          git -C target diff --cached --stat -- microsoft-foundry
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
 
           {
-            echo "## Foundry Agent Canvas Sync"
+            echo "## Microsoft Foundry Sync"
             echo
             echo "- Source: \`SmallBlackHole/foundry-agent-canvas@${{ needs.build.outputs.source_sha }}\`"
             echo "- Marketplace version: \`${{ steps.metadata.outputs.version_label }}\`"
@@ -192,7 +195,7 @@ jobs:
             echo "### Changed files"
             echo
             echo '```text'
-            git -C target diff --cached --name-status -- foundry-agent-canvas
+            git -C target diff --cached --name-status -- microsoft-foundry
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -204,14 +207,14 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           path: target
           base: main
-          branch: bot/sync-foundry-agent-canvas-${{ steps.metadata.outputs.branch_suffix }}
+          branch: bot/sync-microsoft-foundry-${{ steps.metadata.outputs.branch_suffix }}
           delete-branch: true
           draft: always-true
           commit-message: ${{ steps.metadata.outputs.title }}
           title: ${{ steps.metadata.outputs.title }}
           body: |
             ## Summary
-            This automated draft PR updates the bundled Foundry Agent Canvas runtime.
+            This automated draft PR updates the bundled Microsoft Foundry runtime.
 
             ## Source
             - Repository: `SmallBlackHole/foundry-agent-canvas`
@@ -226,10 +229,11 @@ jobs:
             - `npm run package`
             - `node --check dist/pkg/extension.mjs`
           add-paths: |
-            foundry-agent-canvas/.github/plugin/plugin.json
-            foundry-agent-canvas/extensions/foundry-agent-canvas/extension.mjs
-            foundry-agent-canvas/extensions/foundry-agent-canvas/public
-            foundry-agent-canvas/extensions/foundry-agent-canvas/inspector-ui
+            microsoft-foundry/.github/plugin/plugin.json
+            microsoft-foundry/extensions/microsoft-foundry/extension.mjs
+            microsoft-foundry/extensions/microsoft-foundry/package.json
+            microsoft-foundry/extensions/microsoft-foundry/public
+            microsoft-foundry/extensions/microsoft-foundry/inspector-ui
 
       - name: Report pull request
         if: steps.diff.outputs.has_changes == 'true'

@@ -15,7 +15,7 @@ const [sourceArg, targetArg, pluginManifestArg, nextVersion] =
 
 if (!sourceArg || !targetArg || !pluginManifestArg) {
   throw new Error(
-    "Usage: sync_foundry_agent_canvas.mjs <source-package> <target-extension> <plugin-manifest> [version]",
+    "Usage: sync_microsoft_foundry.mjs <source-package> <target-extension> <plugin-manifest> [version]",
   );
 }
 
@@ -25,6 +25,7 @@ const pluginManifestPath = resolve(pluginManifestArg);
 const extensionManifestPath = join(targetRoot, "package.json");
 const payload = [
   { path: "extension.mjs", type: "file" },
+  { path: "package.json", type: "file" },
   { path: "public", type: "directory" },
   { path: "inspector-ui", type: "directory" },
 ];
@@ -64,14 +65,14 @@ for (const entry of payload) {
 }
 
 const pluginManifest = JSON.parse(readFileSync(pluginManifestPath, "utf8"));
-if (pluginManifest.name !== "foundry-agent-canvas") {
+if (pluginManifest.name !== "microsoft-foundry") {
   throw new Error(`Unexpected plugin name: ${pluginManifest.name}`);
 }
 
 const extensionManifest = JSON.parse(
   readFileSync(extensionManifestPath, "utf8"),
 );
-if (extensionManifest.name !== "foundry-agent-canvas") {
+if (extensionManifest.name !== "microsoft-foundry") {
   throw new Error(`Unexpected extension name: ${extensionManifest.name}`);
 }
 
@@ -109,10 +110,10 @@ if (nextVersion) {
     `${JSON.stringify(pluginManifest, null, 2)}\n`,
   );
   console.log(
-    `Synced foundry-agent-canvas payload and updated plugin version to ${nextVersion}`,
+    `Synced microsoft-foundry payload and updated plugin version to ${nextVersion}`,
   );
 } else {
   console.log(
-    `Synced foundry-agent-canvas payload and preserved plugin version ${pluginManifest.version}`,
+    `Synced microsoft-foundry payload and preserved plugin version ${pluginManifest.version}`,
   );
 }
