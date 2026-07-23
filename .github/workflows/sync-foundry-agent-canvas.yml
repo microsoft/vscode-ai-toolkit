@@ -89,13 +89,20 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
 
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SYNC_APP_ID }}
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+
       - name: Checkout foundry-toolkit
         uses: actions/checkout@v4
         with:
+          token: ${{ steps.app-token.outputs.token }}
           ref: main
           fetch-depth: 0
           path: target
@@ -153,7 +160,7 @@ jobs:
         id: cpr
         uses: peter-evans/create-pull-request@v8
         with:
-          token: ${{ github.token }}
+          token: ${{ steps.app-token.outputs.token }}
           path: target
           base: main
           branch: bot/sync-foundry-agent-canvas-v${{ inputs.marketplace_version }}
