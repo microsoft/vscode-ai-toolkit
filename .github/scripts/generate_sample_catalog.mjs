@@ -439,6 +439,12 @@ const AZURE_OPENAI_MAX_COMPLETION_TOKENS = Number(process.env.AZURE_OPENAI_MAX_C
 // o-series use `low`.
 const AZURE_OPENAI_REASONING_EFFORT = process.env.AZURE_OPENAI_REASONING_EFFORT || '';
 
+// When true (workflow `refine_with_ai` input), the LLM reviews EVERY template's
+// existing displayName/description and rewrites them only when they no longer
+// fit the sample's README. When false (default), the LLM only fills BLANK
+// fields and never touches values that are already present.
+const AI_REFINE = /^(true|1|yes)$/i.test(process.env.AI_REFINE || '');
+
 /**
  * Fetch README.md content for a sample directory.
  * @param {string} samplePath
@@ -455,45 +461,23 @@ async function fetchReadme(samplePath, ref) {
 }
 
 /**
- * Call Azure OpenAI to generate a description from README content. We
- * intentionally do NOT ask the LLM for displayName — the folder name (with
- * numeric-prefix stripped, dashes turned into spaces, and Title Case)
- * produces more consistent results across the catalog and is easier for PMs
- * to predict at review time.
+ * Low-level Azure OpenAI chat call that expects a single JSON object back.
+ * Centralizes the request shape, error handling, and JSON extraction so the
+ * description-only and displayName+description prompts share one code path.
+ * Returns the parsed object, or `null` when the LLM is not configured or the
+ * call/parse fails (each failure mode is surfaced via `warn`).
  *
- * @param {string} readmeContent
- * @param {string} samplePath
- * @returns {Promise<{ description: string } | null>}
+ * @param {string} systemPrompt
+ * @param {string} userPrompt
+ * @param {string} samplePath Used only for diagnostic messages.
+ * @returns {Promise<Record<string, unknown> | null>}
  */
-async function generateWithLLM(readmeContent, samplePath) {
+async function callLLMForJson(systemPrompt, userPrompt, samplePath) {
     if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
         return null;
     }
 
     const apiUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/${AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version=${AZURE_OPENAI_API_VERSION}`;
-
-    const systemPrompt = `You generate one-sentence descriptions for a VS Code template picker.
-The user has already selected language, framework, and protocol before seeing these items, so the description must NOT repeat those choices.
-
-Rules:
-- One sentence, max 100 characters
-- Plain text, no markdown
-- Describe what the sample does, not how it is implemented
-- Do NOT include language names, protocol names, framework names, or words like "Sample" / "Demo"
-
-Examples:
-  {"description": "Minimal agent that echoes a response from a Foundry model."}
-  {"description": "Conversational agent with multi-turn session history."}
-  {"description": "Agent with local function tools for hotel search."}
-  {"description": "Agent that discovers and invokes tools from a remote MCP server."}
-  {"description": "Agent that saves and retrieves notes using function calling."}
-
-Respond ONLY with a JSON object: {"description": "..."}`;
-
-    const userPrompt = `Path: ${samplePath}
-
-README.md:
-${readmeContent.substring(0, 2000)}`;
 
     /** @type {{ messages: Array<{role: string, content: string}>, max_completion_tokens: number, reasoning_effort?: string }} */
     const body = {
@@ -503,7 +487,7 @@ ${readmeContent.substring(0, 2000)}`;
         ],
         // `max_completion_tokens` (not the legacy `max_tokens`) so newer models
         // accept the request. Kept generous because reasoning models spend part
-        // of the budget on hidden reasoning tokens before emitting the sentence.
+        // of the budget on hidden reasoning tokens before emitting the answer.
         // `temperature` is intentionally omitted: several newer models only
         // support the default value and 400 on anything else.
         max_completion_tokens: AZURE_OPENAI_MAX_COMPLETION_TOKENS,
@@ -532,7 +516,7 @@ ${readmeContent.substring(0, 2000)}`;
             } catch {
                 // ignore body read failures
             }
-            warn(`LLM API returned ${response.status} for ${samplePath}; description will be left empty.${detail ? ` Response: ${detail}` : ''}`);
+            warn(`LLM API returned ${response.status} for ${samplePath}.${detail ? ` Response: ${detail}` : ''}`);
             return null;
         }
 
@@ -543,30 +527,130 @@ ${readmeContent.substring(0, 2000)}`;
             // A successful (200) call with empty content is almost always a
             // reasoning model exhausting `max_completion_tokens` on hidden
             // reasoning (finish_reason: "length"). Surface it instead of
-            // silently leaving the description empty, and hint at the knobs.
+            // silently returning nothing, and hint at the knobs.
             const finishReason = choice?.finish_reason ?? 'unknown';
             const reasoningTokens = data.usage?.completion_tokens_details?.reasoning_tokens;
             const usageHint = reasoningTokens !== undefined ? ` (reasoning_tokens=${reasoningTokens})` : '';
-            warn(`LLM returned empty content for ${samplePath} (finish_reason=${finishReason}${usageHint}); description left empty. If finish_reason is "length", raise AZURE_OPENAI_MAX_COMPLETION_TOKENS or set AZURE_OPENAI_REASONING_EFFORT.`);
+            warn(`LLM returned empty content for ${samplePath} (finish_reason=${finishReason}${usageHint}). If finish_reason is "length", raise AZURE_OPENAI_MAX_COMPLETION_TOKENS or set AZURE_OPENAI_REASONING_EFFORT.`);
             return null;
         }
 
-        // Parse JSON response — strip markdown code fences if present
+        // Parse JSON response — strip markdown code fences if present.
         const jsonStr = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
         const parsed = JSON.parse(jsonStr);
-
-        const description = typeof parsed.description === 'string' ? parsed.description.trim() : '';
-        if (!description) {
-            warn(`LLM response for ${samplePath} had no usable "description" field; description left empty.`);
+        if (!parsed || typeof parsed !== 'object') {
+            warn(`LLM response for ${samplePath} was not a JSON object.`);
             return null;
         }
-
-        return { description };
+        return /** @type {Record<string, unknown>} */ (parsed);
     } catch (/** @type {any} */ err) {
         warn(`LLM call failed for ${samplePath}: ${err.message}`);
         return null;
     }
 }
+
+// Shared guidance describing what a good picker description looks like, reused
+// by both the description-only prompt and the combined refine prompt so the
+// two paths stay consistent.
+const DESCRIPTION_GUIDANCE = `A good description:
+- Is one sentence, max 100 characters, plain text (no markdown)
+- Describes what the sample does, not how it is implemented
+- Does NOT include language, protocol, or framework names, or words like "Sample" / "Demo"
+Examples:
+  "Minimal agent that echoes a response from a Foundry model."
+  "Conversational agent with multi-turn session history."
+  "Agent with local function tools for hotel search."
+  "Agent that discovers and invokes tools from a remote MCP server."`;
+
+/**
+ * Generate a one-sentence description from README content (used when only
+ * BLANK descriptions are being filled — the default, non-refine path).
+ * displayName is intentionally NOT requested here; when not refining it is
+ * derived deterministically from the folder name.
+ *
+ * @param {string} readmeContent
+ * @param {string} samplePath
+ * @returns {Promise<{ description: string } | null>}
+ */
+async function generateWithLLM(readmeContent, samplePath) {
+    const systemPrompt = `You generate one-sentence descriptions for a VS Code template picker.
+The user has already selected language, framework, and protocol before seeing these items, so the description must NOT repeat those choices.
+
+${DESCRIPTION_GUIDANCE}
+
+Respond ONLY with a JSON object: {"description": "..."}`;
+
+    const userPrompt = `Path: ${samplePath}
+
+README.md:
+${readmeContent.substring(0, 2000)}`;
+
+    const parsed = await callLLMForJson(systemPrompt, userPrompt, samplePath);
+    if (!parsed) {
+        return null;
+    }
+    const description = typeof parsed.description === 'string' ? parsed.description.trim() : '';
+    if (!description) {
+        warn(`LLM response for ${samplePath} had no usable "description" field; description left empty.`);
+        return null;
+    }
+    return { description };
+}
+
+/**
+ * Review and (only when needed) rewrite a template's displayName AND
+ * description against its README (used by the opt-in `refine_with_ai` path).
+ *
+ * The current displayName and description are passed to the model so it can
+ * KEEP them verbatim when they already fit the sample's scenario — refinement
+ * is not a forced rewrite. displayName follows the Foundry Sample Finder
+ * convention: a short, human-friendly Title-Case name for the scenario
+ * (e.g. "Basic Agent", "Foundry Toolbox", "Azure Search RAG") rather than the
+ * raw folder name.
+ *
+ * @param {string} readmeContent
+ * @param {string} samplePath
+ * @param {string} currentDisplayName
+ * @param {string} currentDescription
+ * @returns {Promise<{ displayName: string, description: string } | null>}
+ */
+async function refineDisplayFieldsWithLLM(readmeContent, samplePath, currentDisplayName, currentDescription) {
+    const systemPrompt = `You curate the displayName and description of a hosted-agent sample shown in a VS Code template picker.
+The user has already selected language, framework, and protocol before seeing these items, so neither field should repeat those choices.
+
+You are given the CURRENT displayName and description. If they already fit the sample's README scenario, KEEP them exactly as-is. Only rewrite a field when it is empty, inaccurate, or unclear.
+
+displayName rules:
+- A short, human-friendly Title Case name for the scenario (2-4 words)
+- Name what the sample demonstrates, not the folder (e.g. "Basic Agent", "Foundry Toolbox", "Azure Search RAG", "Human-in-the-Loop")
+- No leading numbers, no raw folder tokens, no words like "Sample" / "Demo"
+- Keep known acronyms uppercased (MCP, RAG, SDK, API, UI)
+
+description rules:
+${DESCRIPTION_GUIDANCE}
+
+Respond ONLY with a JSON object: {"displayName": "...", "description": "..."}`;
+
+    const userPrompt = `Path: ${samplePath}
+Current displayName: ${currentDisplayName || '(empty)'}
+Current description: ${currentDescription || '(empty)'}
+
+README.md:
+${readmeContent.substring(0, 2000)}`;
+
+    const parsed = await callLLMForJson(systemPrompt, userPrompt, samplePath);
+    if (!parsed) {
+        return null;
+    }
+    const displayName = typeof parsed.displayName === 'string' ? parsed.displayName.trim() : '';
+    const description = typeof parsed.description === 'string' ? parsed.description.trim() : '';
+    if (!displayName && !description) {
+        warn(`LLM refine response for ${samplePath} had no usable "displayName"/"description" fields; leaving values unchanged.`);
+        return null;
+    }
+    return { displayName, description };
+}
+
 
 /**
  * Brand and acronym casing overrides applied during displayName derivation.
@@ -814,22 +898,50 @@ function applyOverrides(templates, overrides) {
 }
 
 /**
- * Auto-fill empty displayName and description fields.
+ * Fill and (optionally) refine displayName and description fields.
  *
- * displayName is ALWAYS derived from the template's directory name when empty
- * — the LLM is not consulted, because folder-name derivation is deterministic
- * and PM-predictable. Existing PM-curated displayName values are preserved by
- * the prior `mergeExistingDisplayFields` step, so this only affects newly
- * scanned templates.
+ * Default path (AI_REFINE off): empty displayName is derived deterministically
+ * from the folder name; empty description is filled by the LLM when configured.
+ * Values that already exist (PM-curated or preserved from the prior catalog)
+ * are left untouched.
  *
- * description is filled by the LLM (when configured) using the sample's
- * README as context. Without LLM credentials the description stays empty and
- * gets surfaced as an anomaly in the step summary.
+ * Refine path (AI_REFINE on, opt-in via the `refine_with_ai` workflow input):
+ * the LLM reviews BOTH fields of every template against its README and rewrites
+ * them only when they no longer fit — existing values that already match the
+ * scenario are kept verbatim. Without LLM credentials this path degrades to the
+ * default behavior.
  *
  * @param {Array<{displayName: string, description: string, path: string}>} templates
  * @param {string} commitSha
  */
 async function autoFillDisplayFields(templates, commitSha) {
+    const hasLLM = Boolean(AZURE_OPENAI_ENDPOINT && AZURE_OPENAI_API_KEY);
+
+    if (AI_REFINE && hasLLM) {
+        await refineAllWithLLM(templates, commitSha);
+    } else {
+        if (AI_REFINE && !hasLLM) {
+            warn('refine_with_ai was requested but no Azure OpenAI credentials are configured; falling back to filling blanks only.');
+        }
+        await fillBlankDisplayFields(templates, commitSha, hasLLM);
+    }
+
+    for (const template of templates) {
+        if (!template.description) {
+            warn(`Template "${template.path}" is missing: description. PM should fill it before merge.`);
+        }
+    }
+}
+
+/**
+ * Default path: derive empty displayName from the folder name and fill empty
+ * descriptions via the LLM. Never touches values that already exist.
+ *
+ * @param {Array<{displayName: string, description: string, path: string}>} templates
+ * @param {string} commitSha
+ * @param {boolean} hasLLM
+ */
+async function fillBlankDisplayFields(templates, commitSha, hasLLM) {
     // Fill displayName first — deterministic, no API calls.
     for (const template of templates) {
         if (!template.displayName) {
@@ -840,33 +952,62 @@ async function autoFillDisplayFields(templates, commitSha) {
     const needsDescription = templates.filter((t) => !t.description);
     if (needsDescription.length === 0) {
         console.log('All templates already have a description.');
-    } else {
-        const hasLLM = Boolean(AZURE_OPENAI_ENDPOINT && AZURE_OPENAI_API_KEY);
-        if (hasLLM) {
-            console.log(`Generating descriptions for ${needsDescription.length} templates using LLM...`);
-            for (const template of needsDescription) {
-                const readme = await fetchReadme(template.path, commitSha);
-                if (!readme) {
-                    continue;
-                }
-                const result = await generateWithLLM(readme, template.path);
-                if (result?.description) {
-                    template.description = result.description;
-                }
-            }
-        } else {
-            console.log(`${needsDescription.length} templates need a description but no LLM is configured; leaving empty (will be flagged as anomalies).`);
-        }
+        return;
+    }
+    if (!hasLLM) {
+        console.log(`${needsDescription.length} templates need a description but no LLM is configured; leaving empty (will be flagged as anomalies).`);
+        return;
     }
 
-    // displayName always gets filled by the folder-name fallback above, so
-    // anomaly detection here is description-only.
-    for (const template of templates) {
-        if (!template.description) {
-            warn(`Template "${template.path}" is missing: description. PM should fill it before merge.`);
+    console.log(`Generating descriptions for ${needsDescription.length} templates using LLM...`);
+    for (const template of needsDescription) {
+        const readme = await fetchReadme(template.path, commitSha);
+        if (!readme) {
+            continue;
+        }
+        const result = await generateWithLLM(readme, template.path);
+        if (result?.description) {
+            template.description = result.description;
         }
     }
 }
+
+/**
+ * Refine path: ask the LLM to review displayName + description for every
+ * template against its README, keeping values that already fit and rewriting
+ * only those that do not. Templates whose README cannot be fetched fall back
+ * to folder-name derivation for an empty displayName so nothing is left blank.
+ *
+ * @param {Array<{displayName: string, description: string, path: string}>} templates
+ * @param {string} commitSha
+ */
+async function refineAllWithLLM(templates, commitSha) {
+    console.log(`Refining displayName/description for ${templates.length} templates using LLM...`);
+    for (const template of templates) {
+        const readme = await fetchReadme(template.path, commitSha);
+        if (!readme) {
+            if (!template.displayName) {
+                template.displayName = displayNameFromPath(template.path);
+            }
+            continue;
+        }
+        const result = await refineDisplayFieldsWithLLM(
+            readme,
+            template.path,
+            template.displayName,
+            template.description
+        );
+        if (result?.displayName) {
+            template.displayName = result.displayName;
+        } else if (!template.displayName) {
+            template.displayName = displayNameFromPath(template.path);
+        }
+        if (result?.description) {
+            template.description = result.description;
+        }
+    }
+}
+
 
 /**
  * Reorder templates so the curated pins come first, in the declared

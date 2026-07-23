@@ -8,6 +8,11 @@ on:
         required: false
         type: string
         default: ""
+      refine_with_ai:
+        description: "Let AI review and refine existing displayName/description (not just fill empty ones). Leave off to only fill blanks."
+        required: false
+        type: boolean
+        default: false
 
 # Least-privilege for the default GITHUB_TOKEN: only what `actions/checkout`
 # needs. All writes (push branch + create PR) are performed via the GitHub
@@ -80,6 +85,7 @@ jobs:
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          AI_REFINE: ${{ inputs.refine_with_ai }}
         run: node .github/scripts/generate_sample_catalog.mjs "${{ steps.resolve-sha.outputs.sha }}"
 
       - name: Detect catalog changes
