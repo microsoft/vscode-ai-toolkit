@@ -1,0 +1,200 @@
+name: Sync Foundry Agent Canvas
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "Branch, tag, or commit from SmallBlackHole/foundry-agent-canvas"
+        required: true
+        default: "main"
+        type: string
+      marketplace_version:
+        description: "New marketplace version using stable X.Y.Z format"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-foundry-agent-canvas
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
+      source_short_sha: ${{ steps.source.outputs.short_sha }}
+
+    steps:
+      - name: Checkout canvas source
+        uses: actions/checkout@v4
+        with:
+          repository: SmallBlackHole/foundry-agent-canvas
+          ref: ${{ inputs.source_ref }}
+          path: source
+          persist-credentials: false
+
+      - name: Resolve source commit
+        id: source
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19"
+
+      - name: Install dependencies
+        working-directory: source
+        run: npm ci
+
+      - name: Run tests
+        working-directory: source
+        run: npm test
+
+      - name: Build package
+        working-directory: source
+        run: npm run package
+
+      - name: Validate package
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/pkg/extension.mjs
+          test -d dist/pkg/public
+          test -d dist/pkg/inspector-ui
+          node --check dist/pkg/extension.mjs
+
+      - name: Upload runtime package
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundry-agent-canvas-${{ steps.source.outputs.short_sha }}
+          path: |
+            source/dist/pkg/extension.mjs
+            source/dist/pkg/public
+            source/dist/pkg/inspector-ui
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout foundry-toolkit
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          path: target
+
+      - name: Download runtime package
+        uses: actions/download-artifact@v4
+        with:
+          name: foundry-agent-canvas-${{ needs.build.outputs.source_short_sha }}
+          path: bundle
+
+      - name: Sync runtime package
+        run: |
+          node target/.github/scripts/sync_foundry_agent_canvas.mjs \
+            bundle \
+            target/foundry-agent-canvas/extensions/foundry-agent-canvas \
+            target/foundry-agent-canvas/.github/plugin/plugin.json \
+            "${{ inputs.marketplace_version }}"
+
+      - name: Detect package changes
+        id: diff
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git -C target add -- \
+            foundry-agent-canvas/.github/plugin/plugin.json \
+            foundry-agent-canvas/extensions/foundry-agent-canvas/extension.mjs \
+            foundry-agent-canvas/extensions/foundry-agent-canvas/public \
+            foundry-agent-canvas/extensions/foundry-agent-canvas/inspector-ui
+
+          if git -C target diff --cached --quiet -- foundry-agent-canvas; then
+            echo "No package changes detected."
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git -C target diff --cached --stat -- foundry-agent-canvas
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## Foundry Agent Canvas Sync"
+            echo
+            echo "- Source: \`SmallBlackHole/foundry-agent-canvas@${{ needs.build.outputs.source_sha }}\`"
+            echo "- Marketplace version: \`${{ inputs.marketplace_version }}\`"
+            echo
+            echo "### Changed files"
+            echo
+            echo '```text'
+            git -C target diff --cached --name-status -- foundry-agent-canvas
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create draft pull request
+        if: steps.diff.outputs.has_changes == 'true'
+        id: cpr
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ github.token }}
+          path: target
+          base: main
+          branch: bot/sync-foundry-agent-canvas-v${{ inputs.marketplace_version }}
+          delete-branch: true
+          draft: always-true
+          commit-message: "chore: sync foundry-agent-canvas v${{ inputs.marketplace_version }}"
+          title: "chore: sync foundry-agent-canvas v${{ inputs.marketplace_version }}"
+          body: |
+            ## Summary
+            This automated draft PR updates the bundled Foundry Agent Canvas runtime.
+
+            ## Source
+            - Repository: `SmallBlackHole/foundry-agent-canvas`
+            - Requested ref: `${{ inputs.source_ref }}`
+            - Resolved commit: `${{ needs.build.outputs.source_sha }}`
+            - Marketplace version: `${{ inputs.marketplace_version }}`
+            - Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            ## Validation
+            - `npm ci`
+            - `npm test`
+            - `npm run package`
+            - `node --check dist/pkg/extension.mjs`
+          add-paths: |
+            foundry-agent-canvas/.github/plugin/plugin.json
+            foundry-agent-canvas/extensions/foundry-agent-canvas/extension.mjs
+            foundry-agent-canvas/extensions/foundry-agent-canvas/public
+            foundry-agent-canvas/extensions/foundry-agent-canvas/inspector-ui
+
+      - name: Report pull request
+        if: steps.diff.outputs.has_changes == 'true'
+        shell: bash
+        env:
+          PR_OPERATION: ${{ steps.cpr.outputs.pull-request-operation }}
+          PR_URL: ${{ steps.cpr.outputs.pull-request-url }}
+          PR_NUMBER: ${{ steps.cpr.outputs.pull-request-number }}
+        run: |
+          {
+            echo
+            echo "## Pull Request"
+            echo
+            echo "- Operation: \`${PR_OPERATION:-unknown}\`"
+            echo "- PR: [#${PR_NUMBER:-?}](${PR_URL})"
+          } >> "$GITHUB_STEP_SUMMARY"
