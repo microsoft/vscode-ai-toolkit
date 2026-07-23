@@ -1239,6 +1239,44 @@ function reorderPinnedFirst(templates) {
     return [...pinned, ...rest];
 }
 
+/**
+ * Warn about templates that share the same displayName WITHIN a single
+ * language+framework+protocol group — i.e. the set a user actually sees at once
+ * in the picker after choosing those dimensions. Duplicate names across
+ * DIFFERENT groups are fine (the user never sees them side by side) and are not
+ * reported. This is detection-only: the catalog is left unchanged so a PM can
+ * disambiguate the flagged names when reviewing the generated PR.
+ *
+ * @param {Array<{displayName: string, language: string, framework: string, protocol: string, path: string}>} templates
+ */
+function warnDuplicateDisplayNames(templates) {
+    /** @type {Map<string, Map<string, string[]>>} */
+    const groups = new Map();
+    for (const t of templates) {
+        const groupKey = `${t.language} / ${t.framework} / ${t.protocol}`;
+        const nameKey = t.displayName.trim().toLowerCase();
+        if (!nameKey) {
+            continue;
+        }
+        let byName = groups.get(groupKey);
+        if (!byName) {
+            byName = new Map();
+            groups.set(groupKey, byName);
+        }
+        const paths = byName.get(nameKey) ?? [];
+        paths.push(t.path);
+        byName.set(nameKey, paths);
+    }
+
+    for (const [groupKey, byName] of groups) {
+        for (const [, paths] of byName) {
+            if (paths.length > 1) {
+                warn(`Duplicate displayName within "${groupKey}" (users see these together): ${paths.join(', ')}. A PM should disambiguate these names before merge.`);
+            }
+        }
+    }
+}
+
 async function main() {
     const commitSha = parseCommitShaArg();
     console.log(`Using commit: ${commitSha}`);
@@ -1263,6 +1301,9 @@ async function main() {
     // Step 3: Fill remaining empties — displayName from folder name (always),
     // description from the LLM when configured.
     await autoFillDisplayFields(templates, commitSha);
+
+    // Flag same-name collisions a user would see together (detection only).
+    warnDuplicateDisplayNames(templates);
 
     const dimensions = buildDimensions(templates);
     const orderedTemplates = reorderPinnedFirst(templates);
