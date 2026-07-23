@@ -84,6 +84,28 @@ const TEMPLATE_SELECTION = {
     placeholder: 'Choose a template for your agent',
 };
 
+// Sample paths pinned to the top of the gallery, in display order. Curated by
+// PM — the framework-level "hello world" and most-requested samples. These are
+// moved to the front of the generated `templates` array by reorderPinnedFirst
+// (a pin with no matching scanned template is skipped with a warning). The
+// generated `templates` order IS the gallery order — the VS Code webview renders
+// it as-is, with no client-side pinning.
+/** @type {string[]} */
+const PINNED_TEMPLATE_PATHS = [
+    // Framework-level hello world samples
+    'samples/python/hosted-agents/agent-framework/responses/01-basic', // MAF Hello World (Python, Responses)
+    'samples/python/hosted-agents/bring-your-own/invocations/github-copilot', // Copilot SDK
+    'samples/python/hosted-agents/langgraph/responses/01-langgraph-chat', // LangGraph Chat (Responses)
+    // Most requested: Toolbox, MCP, Workflow, BYO samples
+    'samples/python/hosted-agents/langgraph/responses/02-langgraph-toolbox', // LG Foundry Toolbox (Responses)
+    'samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox', // MAF Foundry Toolbox
+    'samples/python/hosted-agents/agent-framework/responses/05-workflows', // MAF Workflows
+    'samples/python/hosted-agents/langgraph/responses/05-workflows', // LG Workflows
+    'samples/python/hosted-agents/agent-framework/responses/11-azure-search-rag', // MAF Azure Search RAG
+    'samples/python/hosted-agents/bring-your-own/invocations/claude-agent-sdk', // BYO Claude Agent SDK
+    'samples/python/hosted-agents/bring-your-own/responses/openai-agents-sdk', // BYO OpenAI Agent SDK
+];
+
 // Path segments must be alphanumeric, hyphens, underscores, or dots
 const SAFE_PATH_SEGMENT = /^[a-zA-Z0-9._-]+$/;
 
@@ -846,6 +868,37 @@ async function autoFillDisplayFields(templates, commitSha) {
     }
 }
 
+/**
+ * Reorder templates so the curated pins come first, in the declared
+ * PINNED_TEMPLATE_PATHS order, followed by every other template in its existing
+ * scan order. A pinned path with no matching template is skipped and surfaced
+ * as a warning. This makes the generated `templates` array itself the single
+ * source of truth for gallery order — the VS Code webview renders it as-is,
+ * with no client-side pinning.
+ *
+ * @template {{ path: string }} T
+ * @param {T[]} templates
+ * @returns {T[]}
+ */
+function reorderPinnedFirst(templates) {
+    const byPath = new Map(templates.map((t) => [t.path, t]));
+    /** @type {T[]} */
+    const pinned = [];
+    /** @type {Set<string>} */
+    const pinnedPaths = new Set();
+    for (const path of PINNED_TEMPLATE_PATHS) {
+        const template = byPath.get(path);
+        if (template) {
+            pinned.push(template);
+            pinnedPaths.add(path);
+        } else {
+            warn(`Pinned path "${path}" matches no scanned template; it will not be pinned (check PINNED_TEMPLATE_PATHS — upstream may have renamed or removed the sample).`);
+        }
+    }
+    const rest = templates.filter((t) => !pinnedPaths.has(t.path));
+    return [...pinned, ...rest];
+}
+
 async function main() {
     const commitSha = parseCommitShaArg();
     console.log(`Using commit: ${commitSha}`);
@@ -866,6 +919,7 @@ async function main() {
     await autoFillDisplayFields(templates, commitSha);
 
     const dimensions = buildDimensions(templates);
+    const orderedTemplates = reorderPinnedFirst(templates);
 
     const catalog = {
         commitSha,
@@ -873,7 +927,7 @@ async function main() {
         generatedAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
         dimensions,
         templateSelection: TEMPLATE_SELECTION,
-        templates,
+        templates: orderedTemplates,
     };
 
     const outputDir = dirname(OUTPUT_PATH);
