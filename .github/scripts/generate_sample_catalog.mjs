@@ -84,6 +84,28 @@ const TEMPLATE_SELECTION = {
     placeholder: 'Choose a template for your agent',
 };
 
+// Sample paths pinned to the top of the gallery, in display order. Curated by
+// PM — the framework-level "hello world" and most-requested samples. These are
+// moved to the front of the generated `templates` array by reorderPinnedFirst
+// (a pin with no matching scanned template is skipped with a warning). The
+// generated `templates` order IS the gallery order — the VS Code webview renders
+// it as-is, with no client-side pinning.
+/** @type {string[]} */
+const PINNED_TEMPLATE_PATHS = [
+    // Framework-level hello world samples
+    'samples/python/hosted-agents/agent-framework/responses/01-basic', // MAF Hello World (Python, Responses)
+    'samples/python/hosted-agents/bring-your-own/invocations/github-copilot', // Copilot SDK
+    'samples/python/hosted-agents/langgraph/responses/01-langgraph-chat', // LangGraph Chat (Responses)
+    // Most requested: Toolbox, MCP, Workflow, BYO samples
+    'samples/python/hosted-agents/langgraph/responses/02-langgraph-toolbox', // LG Foundry Toolbox (Responses)
+    'samples/python/hosted-agents/agent-framework/responses/04-foundry-toolbox', // MAF Foundry Toolbox
+    'samples/python/hosted-agents/agent-framework/responses/05-workflows', // MAF Workflows
+    'samples/python/hosted-agents/langgraph/responses/05-workflows', // LG Workflows
+    'samples/python/hosted-agents/agent-framework/responses/11-azure-search-rag', // MAF Azure Search RAG
+    'samples/python/hosted-agents/bring-your-own/invocations/claude-agent-sdk', // BYO Claude Agent SDK
+    'samples/python/hosted-agents/bring-your-own/responses/openai-agents-sdk', // BYO OpenAI Agent SDK
+];
+
 // Path segments must be alphanumeric, hyphens, underscores, or dots
 const SAFE_PATH_SEGMENT = /^[a-zA-Z0-9._-]+$/;
 
@@ -399,6 +421,23 @@ async function fetchAzureYaml(samplePath, ref) {
 const AZURE_OPENAI_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT || '';
 const AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY || '';
 const AZURE_OPENAI_DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini';
+// Must be >= 2024-09-01-preview so `max_completion_tokens` is accepted. Newer
+// models (gpt-5.x / reasoning) reject the legacy `max_tokens` param and any
+// non-default `temperature`; override via env if your deployment needs a
+// newer api-version.
+const AZURE_OPENAI_API_VERSION = process.env.AZURE_OPENAI_API_VERSION || '2024-10-21';
+// Reasoning models (gpt-5.x / o-series) spend part of the completion budget on
+// hidden reasoning tokens BEFORE emitting any visible content. If the budget
+// is too small the reasoning alone exhausts it and `message.content` comes
+// back EMPTY (finish_reason: "length"), which is why a too-low value silently
+// dropped ~1/4 of descriptions. The visible output is a single short sentence,
+// so a generous budget costs little but leaves ample headroom for reasoning.
+const AZURE_OPENAI_MAX_COMPLETION_TOKENS = Number(process.env.AZURE_OPENAI_MAX_COMPLETION_TOKENS) || 2000;
+// Optional: cap the hidden reasoning for a trivial summarization task. Only
+// sent when set, because non-reasoning deployments (and older api-versions)
+// 400 on an unknown `reasoning_effort` param. For gpt-5.x use `minimal`; for
+// o-series use `low`.
+const AZURE_OPENAI_REASONING_EFFORT = process.env.AZURE_OPENAI_REASONING_EFFORT || '';
 
 /**
  * Fetch README.md content for a sample directory.
@@ -431,7 +470,7 @@ async function generateWithLLM(readmeContent, samplePath) {
         return null;
     }
 
-    const apiUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/${AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version=2024-08-01-preview`;
+    const apiUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/${AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version=${AZURE_OPENAI_API_VERSION}`;
 
     const systemPrompt = `You generate one-sentence descriptions for a VS Code template picker.
 The user has already selected language, framework, and protocol before seeing these items, so the description must NOT repeat those choices.
@@ -456,14 +495,22 @@ Respond ONLY with a JSON object: {"description": "..."}`;
 README.md:
 ${readmeContent.substring(0, 2000)}`;
 
+    /** @type {{ messages: Array<{role: string, content: string}>, max_completion_tokens: number, reasoning_effort?: string }} */
     const body = {
         messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
         ],
-        temperature: 0,
-        max_tokens: 120,
+        // `max_completion_tokens` (not the legacy `max_tokens`) so newer models
+        // accept the request. Kept generous because reasoning models spend part
+        // of the budget on hidden reasoning tokens before emitting the sentence.
+        // `temperature` is intentionally omitted: several newer models only
+        // support the default value and 400 on anything else.
+        max_completion_tokens: AZURE_OPENAI_MAX_COMPLETION_TOKENS,
     };
+    if (AZURE_OPENAI_REASONING_EFFORT) {
+        body.reasoning_effort = AZURE_OPENAI_REASONING_EFFORT;
+    }
 
     try {
         const response = await fetch(apiUrl, {
@@ -476,13 +523,31 @@ ${readmeContent.substring(0, 2000)}`;
         });
 
         if (!response.ok) {
-            warn(`LLM API returned ${response.status} for ${samplePath}; description will be left empty.`);
+            // Include a truncated response body so the exact reason (e.g. an
+            // unsupported param, a missing deployment, or a wrong endpoint) is
+            // visible in the CI log instead of a bare status code.
+            let detail = '';
+            try {
+                detail = (await response.text()).replace(/\s+/g, ' ').trim().slice(0, 400);
+            } catch {
+                // ignore body read failures
+            }
+            warn(`LLM API returned ${response.status} for ${samplePath}; description will be left empty.${detail ? ` Response: ${detail}` : ''}`);
             return null;
         }
 
         const data = await response.json();
-        const content = data.choices?.[0]?.message?.content?.trim();
+        const choice = data.choices?.[0];
+        const content = choice?.message?.content?.trim();
         if (!content) {
+            // A successful (200) call with empty content is almost always a
+            // reasoning model exhausting `max_completion_tokens` on hidden
+            // reasoning (finish_reason: "length"). Surface it instead of
+            // silently leaving the description empty, and hint at the knobs.
+            const finishReason = choice?.finish_reason ?? 'unknown';
+            const reasoningTokens = data.usage?.completion_tokens_details?.reasoning_tokens;
+            const usageHint = reasoningTokens !== undefined ? ` (reasoning_tokens=${reasoningTokens})` : '';
+            warn(`LLM returned empty content for ${samplePath} (finish_reason=${finishReason}${usageHint}); description left empty. If finish_reason is "length", raise AZURE_OPENAI_MAX_COMPLETION_TOKENS or set AZURE_OPENAI_REASONING_EFFORT.`);
             return null;
         }
 
@@ -492,6 +557,7 @@ ${readmeContent.substring(0, 2000)}`;
 
         const description = typeof parsed.description === 'string' ? parsed.description.trim() : '';
         if (!description) {
+            warn(`LLM response for ${samplePath} had no usable "description" field; description left empty.`);
             return null;
         }
 
@@ -802,6 +868,37 @@ async function autoFillDisplayFields(templates, commitSha) {
     }
 }
 
+/**
+ * Reorder templates so the curated pins come first, in the declared
+ * PINNED_TEMPLATE_PATHS order, followed by every other template in its existing
+ * scan order. A pinned path with no matching template is skipped and surfaced
+ * as a warning. This makes the generated `templates` array itself the single
+ * source of truth for gallery order — the VS Code webview renders it as-is,
+ * with no client-side pinning.
+ *
+ * @template {{ path: string }} T
+ * @param {T[]} templates
+ * @returns {T[]}
+ */
+function reorderPinnedFirst(templates) {
+    const byPath = new Map(templates.map((t) => [t.path, t]));
+    /** @type {T[]} */
+    const pinned = [];
+    /** @type {Set<string>} */
+    const pinnedPaths = new Set();
+    for (const path of PINNED_TEMPLATE_PATHS) {
+        const template = byPath.get(path);
+        if (template) {
+            pinned.push(template);
+            pinnedPaths.add(path);
+        } else {
+            warn(`Pinned path "${path}" matches no scanned template; it will not be pinned (check PINNED_TEMPLATE_PATHS — upstream may have renamed or removed the sample).`);
+        }
+    }
+    const rest = templates.filter((t) => !pinnedPaths.has(t.path));
+    return [...pinned, ...rest];
+}
+
 async function main() {
     const commitSha = parseCommitShaArg();
     console.log(`Using commit: ${commitSha}`);
@@ -822,6 +919,7 @@ async function main() {
     await autoFillDisplayFields(templates, commitSha);
 
     const dimensions = buildDimensions(templates);
+    const orderedTemplates = reorderPinnedFirst(templates);
 
     const catalog = {
         commitSha,
@@ -829,7 +927,7 @@ async function main() {
         generatedAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
         dimensions,
         templateSelection: TEMPLATE_SELECTION,
-        templates,
+        templates: orderedTemplates,
     };
 
     const outputDir = dirname(OUTPUT_PATH);
