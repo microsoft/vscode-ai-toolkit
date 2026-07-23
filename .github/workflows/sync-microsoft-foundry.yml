@@ -1,4 +1,4 @@
-name: Sync Microsoft Foundry
+name: Sync microsoft-foundry canvas
 
 on:
   workflow_dispatch:
@@ -187,7 +187,7 @@ jobs:
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
 
           {
-            echo "## Microsoft Foundry Sync"
+            echo "## Sync microsoft-foundry canvas"
             echo
             echo "- Source: \`SmallBlackHole/foundry-agent-canvas@${{ needs.build.outputs.source_sha }}\`"
             echo "- Marketplace version: \`${{ steps.metadata.outputs.version_label }}\`"
