@@ -819,6 +819,7 @@ body {
     font-size: 11px;
     line-height: 15px;
     font-weight: 400;
+    overflow-wrap: anywhere;
     white-space: normal;
 }
 .accordion-chev {

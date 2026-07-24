@@ -329,17 +329,34 @@ function hostedAgentDeploymentFromResult(result) {
     };
 }
 
+function hostedAgentDeploymentDescription(deployment) {
+    if (!deployment?.deployed) return "";
+    const agentName = String(deployment.agentName || "").trim();
+    const version = String(deployment.version || "").trim();
+    if (agentName && version) return `Deployed as ${agentName}, version ${version}.`;
+    if (agentName) return `Deployed as ${agentName}.`;
+    if (version) return `Deployed version ${version}.`;
+    return "Deployed to Microsoft Foundry.";
+}
+
 function renderHostedAgentDeployment() {
     const link = document.getElementById("testPlaygroundLink");
-    if (!link) return;
+    const description = document.getElementById("deployDescription");
+    if (!link && !description) return;
     const deployment = state.hostedAgentDeployment;
+    const descriptionText = hostedAgentDeploymentDescription(deployment);
+    if (description) {
+        description.textContent = descriptionText;
+        description.hidden = !descriptionText;
+    }
+    if (!link) return;
     const visible = hasAvailableHostedAgentDeployment(deployment);
     link.hidden = !visible;
     link.closest(".row-deploy")?.classList.toggle("has-playground", visible);
     if (visible) link.href = deployment.portalUrl;
     else link.removeAttribute("href");
     link.title = visible && deployment.version
-        ? `Test ${deployment.agentName} version ${deployment.version} in Microsoft Foundry Playground`
+        ? `Test ${deployment.agentName} version ${deployment.version} in Microsoft Foundry Portal`
         : "";
 }
 
