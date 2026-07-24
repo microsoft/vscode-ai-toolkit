@@ -142,6 +142,155 @@ function warn(message) {
 }
 
 /**
+ * HTTP error carrying the response status so callers can distinguish a
+ * genuine 404 (resource does not exist) from a transient failure
+ * (429 rate-limit / 5xx) that is worth retrying and must NOT be silently
+ * treated as "missing".
+ */
+class HttpError extends Error {
+    /**
+     * @param {number} status
+     * @param {string} url
+     */
+    constructor(status, url) {
+        super(`HTTP ${status} for ${url}`);
+        this.name = 'HttpError';
+        this.status = status;
+    }
+}
+
+// Retry knobs for the raw.githubusercontent.com / GitHub API fetches. These
+// endpoints rate-limit (429) and occasionally 5xx under the ~90-request
+// serial scan, which previously surfaced as random "missing" templates when
+// the error was swallowed. Retry transient failures with exponential backoff
+// (plus jitter, and honoring a server `Retry-After`) before giving up.
+// Overridable via env for local debugging.
+const FETCH_MAX_ATTEMPTS = Number(process.env.FETCH_MAX_ATTEMPTS) || 4;
+const FETCH_BASE_DELAY_MS = Number(process.env.FETCH_BASE_DELAY_MS) || 500;
+// Cap a single wait so a large server `Retry-After` (GitHub can return tens of
+// seconds) cannot stall one request indefinitely.
+const FETCH_MAX_DELAY_MS = Number(process.env.FETCH_MAX_DELAY_MS) || 20_000;
+// Cap the cumulative time spent sleeping across ALL requests. Without this,
+// many requests each hitting the rate limit could sum to more than the job
+// timeout; once exceeded, retries stop and the run fails fast (and loudly)
+// rather than hanging.
+const FETCH_TOTAL_BACKOFF_BUDGET_MS = Number(process.env.FETCH_TOTAL_BACKOFF_BUDGET_MS) || 120_000;
+
+// Running total of time spent in backoff sleeps, enforced against
+// FETCH_TOTAL_BACKOFF_BUDGET_MS.
+let totalBackoffMs = 0;
+
+/**
+ * @param {number} ms
+ * @returns {Promise<void>}
+ */
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * A failure is transient (worth retrying) when it is a network-level error
+ * (no HttpError status, e.g. ECONNRESET / socket timeout) or an HTTP 429 /
+ * 5xx. A 4xx other than 429 (notably 404) is permanent and not retried.
+ * @param {unknown} error
+ * @returns {boolean}
+ */
+function isTransientError(error) {
+    if (error instanceof HttpError) {
+        return error.status === 429 || error.status >= 500;
+    }
+    return true;
+}
+
+/**
+ * Parse a `Retry-After` header (RFC 7231): either delay-seconds or an HTTP
+ * date. Returns the delay in milliseconds, or `undefined` when absent or
+ * unparseable. When a server tells us how long to wait, we honor it instead
+ * of our own exponential backoff — but still clamp it to FETCH_MAX_DELAY_MS.
+ * @param {Response} response
+ * @returns {number | undefined}
+ */
+function parseRetryAfterMs(response) {
+    const value = response.headers.get('retry-after');
+    if (!value) {
+        return undefined;
+    }
+    const seconds = Number(value);
+    if (Number.isFinite(seconds)) {
+        return Math.max(0, seconds * 1000);
+    }
+    const dateMs = Date.parse(value);
+    if (!Number.isNaN(dateMs)) {
+        return Math.max(0, dateMs - Date.now());
+    }
+    return undefined;
+}
+
+/**
+ * Compute the backoff for a given attempt: prefer the server's `Retry-After`
+ * when present, otherwise exponential backoff with full jitter
+ * (`random * base * 2^(n-1)`), which AWS recommends to avoid synchronized
+ * retry storms. Either way the result is clamped to FETCH_MAX_DELAY_MS.
+ * @param {number} attempt 1-based attempt number that just failed.
+ * @param {number | undefined} retryAfterMs
+ * @returns {number}
+ */
+function computeBackoffMs(attempt, retryAfterMs) {
+    if (retryAfterMs !== undefined) {
+        return Math.min(retryAfterMs, FETCH_MAX_DELAY_MS);
+    }
+    const ceiling = FETCH_BASE_DELAY_MS * 2 ** (attempt - 1);
+    const jittered = Math.random() * ceiling;
+    return Math.min(jittered, FETCH_MAX_DELAY_MS);
+}
+
+/**
+ * Fetch a URL, retrying transient failures with jittered exponential backoff
+ * (honoring a server `Retry-After`). Throws the last error once attempts are
+ * exhausted OR the global backoff budget is spent, so the caller can decide
+ * whether a 404 is acceptable while a transient error becomes fatal.
+ * @param {string} url
+ * @param {Record<string, string>} headers
+ * @returns {Promise<Response>}
+ */
+async function fetchWithRetry(url, headers) {
+    /** @type {unknown} */
+    let lastError;
+    for (let attempt = 1; attempt <= FETCH_MAX_ATTEMPTS; attempt++) {
+        /** @type {number | undefined} */
+        let retryAfterMs;
+        try {
+            const response = await fetch(url, { headers });
+            if (!response.ok) {
+                if (response.status === 429 || response.status >= 500) {
+                    retryAfterMs = parseRetryAfterMs(response);
+                }
+                throw new HttpError(response.status, url);
+            }
+            return response;
+        } catch (error) {
+            lastError = error;
+            if (!isTransientError(error) || attempt === FETCH_MAX_ATTEMPTS) {
+                throw error;
+            }
+            const message = error instanceof Error ? error.message : String(error);
+            const backoff = computeBackoffMs(attempt, retryAfterMs);
+            if (totalBackoffMs + backoff > FETCH_TOTAL_BACKOFF_BUDGET_MS) {
+                throw new Error(
+                    `Exhausted total backoff budget (${FETCH_TOTAL_BACKOFF_BUDGET_MS}ms) while retrying ${url}; last error: ${message}`
+                );
+            }
+            totalBackoffMs += backoff;
+            const source = retryAfterMs !== undefined ? 'server Retry-After' : 'jittered backoff';
+            console.warn(`Transient fetch failure (attempt ${attempt}/${FETCH_MAX_ATTEMPTS}) for ${url}: ${message}; retrying in ${Math.round(backoff)}ms (${source}).`);
+            await delay(backoff);
+        }
+    }
+    // Unreachable — the loop either returns or throws — but satisfies the type checker.
+    throw lastError;
+}
+
+/**
  * @param {string} url
  * @returns {Promise<any>}
  */
@@ -154,10 +303,7 @@ async function fetchJson(url) {
     if (GITHUB_TOKEN) {
         headers['Authorization'] = `Bearer ${GITHUB_TOKEN}`;
     }
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status} for ${url}`);
-    }
+    const response = await fetchWithRetry(url, headers);
     return response.json();
 }
 
@@ -171,10 +317,7 @@ async function fetchText(url) {
     if (GITHUB_TOKEN) {
         headers['Authorization'] = `Bearer ${GITHUB_TOKEN}`;
     }
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status} for ${url}`);
-    }
+    const response = await fetchWithRetry(url, headers);
     return response.text();
 }
 
@@ -403,6 +546,13 @@ function parseAzureYaml(content) {
 
 /**
  * Fetch and parse a sample directory's azure.yaml.
+ *
+ * Returns `null` ONLY when the file genuinely does not exist (HTTP 404) — a
+ * legitimate signal that the directory is not a template. A transient failure
+ * (429 / 5xx / network) that survives retries is re-thrown so the run fails
+ * loudly instead of silently dropping a real template (which is how the same
+ * upstream commit could yield 88 vs 89 templates across runs).
+ *
  * @param {string} samplePath
  * @param {string} ref
  * @returns {Promise<{ protocols: string[], requiresModel: boolean } | null>}
@@ -412,8 +562,11 @@ async function fetchAzureYaml(samplePath, ref) {
     try {
         const content = await fetchText(rawUrl);
         return parseAzureYaml(content);
-    } catch {
-        return null;
+    } catch (error) {
+        if (error instanceof HttpError && error.status === 404) {
+            return null;
+        }
+        throw error;
     }
 }
 
@@ -439,6 +592,32 @@ const AZURE_OPENAI_MAX_COMPLETION_TOKENS = Number(process.env.AZURE_OPENAI_MAX_C
 // o-series use `low`.
 const AZURE_OPENAI_REASONING_EFFORT = process.env.AZURE_OPENAI_REASONING_EFFORT || '';
 
+// When true (workflow `refine_with_ai` input), the LLM reviews EVERY template's
+// existing displayName/description and rewrites them only when they no longer
+// fit the sample's README. When false (default), the LLM only fills BLANK
+// fields and never touches values that are already present.
+const AI_REFINE = /^(true|1|yes)$/i.test(process.env.AI_REFINE || '');
+
+// When true (workflow `ignore_existing_catalog` input), the previous catalog's
+// displayName/description values are NOT carried over. Every field starts empty,
+// so a fresh run — typically the first AI refine — regenerates all values instead
+// of being anchored by the "keep it if it already fits" logic. Off by default,
+// so normal runs keep preserving PM-curated values.
+const IGNORE_EXISTING = /^(true|1|yes)$/i.test(process.env.IGNORE_EXISTING || '');
+
+
+// Retry knobs for the Azure OpenAI calls. The refine path fires one request
+// per template (~90 in a full run); even with ample TPM/RPM quota a burst can
+// momentarily trip the rate limiter (HTTP 429) at the sliding-window edge.
+// Retry those (and transient 5xx / network errors) with jittered exponential
+// backoff, honoring a server `Retry-After` (reusing the shared `delay` and
+// `parseRetryAfterMs` helpers), so an occasional throttle self-heals instead of
+// dropping the field. Overridable via env for local debugging.
+const LLM_MAX_ATTEMPTS = Number(process.env.LLM_MAX_ATTEMPTS) || 5;
+const LLM_BASE_DELAY_MS = Number(process.env.LLM_BASE_DELAY_MS) || 1000;
+const LLM_MAX_DELAY_MS = Number(process.env.LLM_MAX_DELAY_MS) || 30_000;
+
+
 /**
  * Fetch README.md content for a sample directory.
  * @param {string} samplePath
@@ -455,45 +634,23 @@ async function fetchReadme(samplePath, ref) {
 }
 
 /**
- * Call Azure OpenAI to generate a description from README content. We
- * intentionally do NOT ask the LLM for displayName — the folder name (with
- * numeric-prefix stripped, dashes turned into spaces, and Title Case)
- * produces more consistent results across the catalog and is easier for PMs
- * to predict at review time.
+ * Low-level Azure OpenAI chat call that expects a single JSON object back.
+ * Centralizes the request shape, error handling, and JSON extraction so the
+ * description-only and displayName+description prompts share one code path.
+ * Returns the parsed object, or `null` when the LLM is not configured or the
+ * call/parse fails (each failure mode is surfaced via `warn`).
  *
- * @param {string} readmeContent
- * @param {string} samplePath
- * @returns {Promise<{ description: string } | null>}
+ * @param {string} systemPrompt
+ * @param {string} userPrompt
+ * @param {string} samplePath Used only for diagnostic messages.
+ * @returns {Promise<Record<string, unknown> | null>}
  */
-async function generateWithLLM(readmeContent, samplePath) {
+async function callLLMForJson(systemPrompt, userPrompt, samplePath) {
     if (!AZURE_OPENAI_ENDPOINT || !AZURE_OPENAI_API_KEY) {
         return null;
     }
 
     const apiUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/${AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version=${AZURE_OPENAI_API_VERSION}`;
-
-    const systemPrompt = `You generate one-sentence descriptions for a VS Code template picker.
-The user has already selected language, framework, and protocol before seeing these items, so the description must NOT repeat those choices.
-
-Rules:
-- One sentence, max 100 characters
-- Plain text, no markdown
-- Describe what the sample does, not how it is implemented
-- Do NOT include language names, protocol names, framework names, or words like "Sample" / "Demo"
-
-Examples:
-  {"description": "Minimal agent that echoes a response from a Foundry model."}
-  {"description": "Conversational agent with multi-turn session history."}
-  {"description": "Agent with local function tools for hotel search."}
-  {"description": "Agent that discovers and invokes tools from a remote MCP server."}
-  {"description": "Agent that saves and retrieves notes using function calling."}
-
-Respond ONLY with a JSON object: {"description": "..."}`;
-
-    const userPrompt = `Path: ${samplePath}
-
-README.md:
-${readmeContent.substring(0, 2000)}`;
 
     /** @type {{ messages: Array<{role: string, content: string}>, max_completion_tokens: number, reasoning_effort?: string }} */
     const body = {
@@ -503,7 +660,7 @@ ${readmeContent.substring(0, 2000)}`;
         ],
         // `max_completion_tokens` (not the legacy `max_tokens`) so newer models
         // accept the request. Kept generous because reasoning models spend part
-        // of the budget on hidden reasoning tokens before emitting the sentence.
+        // of the budget on hidden reasoning tokens before emitting the answer.
         // `temperature` is intentionally omitted: several newer models only
         // support the default value and 400 on anything else.
         max_completion_tokens: AZURE_OPENAI_MAX_COMPLETION_TOKENS,
@@ -512,60 +669,182 @@ ${readmeContent.substring(0, 2000)}`;
         body.reasoning_effort = AZURE_OPENAI_REASONING_EFFORT;
     }
 
-    try {
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'api-key': AZURE_OPENAI_API_KEY,
-            },
-            body: JSON.stringify(body),
-        });
+    for (let attempt = 1; attempt <= LLM_MAX_ATTEMPTS; attempt++) {
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'api-key': AZURE_OPENAI_API_KEY,
+                },
+                body: JSON.stringify(body),
+            });
 
-        if (!response.ok) {
-            // Include a truncated response body so the exact reason (e.g. an
-            // unsupported param, a missing deployment, or a wrong endpoint) is
-            // visible in the CI log instead of a bare status code.
-            let detail = '';
-            try {
-                detail = (await response.text()).replace(/\s+/g, ' ').trim().slice(0, 400);
-            } catch {
-                // ignore body read failures
+            if (!response.ok) {
+                // Retry rate-limit (429) and transient 5xx, honoring a server
+                // `Retry-After`; give up on other 4xx (bad request, auth, etc.).
+                const retryable = response.status === 429 || response.status >= 500;
+                if (retryable && attempt < LLM_MAX_ATTEMPTS) {
+                    const retryAfter = parseRetryAfterMs(response);
+                    const backoff = retryAfter !== undefined
+                        ? Math.min(retryAfter, LLM_MAX_DELAY_MS)
+                        : Math.min(Math.random() * LLM_BASE_DELAY_MS * 2 ** (attempt - 1), LLM_MAX_DELAY_MS);
+                    const source = retryAfter !== undefined ? 'server Retry-After' : 'jittered backoff';
+                    console.warn(`LLM API returned ${response.status} for ${samplePath} (attempt ${attempt}/${LLM_MAX_ATTEMPTS}); retrying in ${Math.round(backoff)}ms (${source}).`);
+                    await delay(backoff);
+                    continue;
+                }
+                // Include a truncated response body so the exact reason (e.g. an
+                // unsupported param, a missing deployment, or a wrong endpoint) is
+                // visible in the CI log instead of a bare status code.
+                let detail = '';
+                try {
+                    detail = (await response.text()).replace(/\s+/g, ' ').trim().slice(0, 400);
+                } catch {
+                    // ignore body read failures
+                }
+                warn(`LLM API returned ${response.status} for ${samplePath}.${detail ? ` Response: ${detail}` : ''}`);
+                return null;
             }
-            warn(`LLM API returned ${response.status} for ${samplePath}; description will be left empty.${detail ? ` Response: ${detail}` : ''}`);
+
+            const data = await response.json();
+            const choice = data.choices?.[0];
+            const content = choice?.message?.content?.trim();
+            if (!content) {
+                // A successful (200) call with empty content is almost always a
+                // reasoning model exhausting `max_completion_tokens` on hidden
+                // reasoning (finish_reason: "length"). Surface it instead of
+                // silently returning nothing, and hint at the knobs.
+                const finishReason = choice?.finish_reason ?? 'unknown';
+                const reasoningTokens = data.usage?.completion_tokens_details?.reasoning_tokens;
+                const usageHint = reasoningTokens !== undefined ? ` (reasoning_tokens=${reasoningTokens})` : '';
+                warn(`LLM returned empty content for ${samplePath} (finish_reason=${finishReason}${usageHint}). If finish_reason is "length", raise AZURE_OPENAI_MAX_COMPLETION_TOKENS or set AZURE_OPENAI_REASONING_EFFORT.`);
+                return null;
+            }
+
+            // Parse JSON response — strip markdown code fences if present.
+            const jsonStr = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            const parsed = JSON.parse(jsonStr);
+            if (!parsed || typeof parsed !== 'object') {
+                warn(`LLM response for ${samplePath} was not a JSON object.`);
+                return null;
+            }
+            return /** @type {Record<string, unknown>} */ (parsed);
+        } catch (/** @type {any} */ err) {
+            // Network-level errors (ECONNRESET, socket timeout) are transient.
+            if (attempt < LLM_MAX_ATTEMPTS) {
+                const backoff = Math.min(Math.random() * LLM_BASE_DELAY_MS * 2 ** (attempt - 1), LLM_MAX_DELAY_MS);
+                console.warn(`LLM call failed for ${samplePath} (attempt ${attempt}/${LLM_MAX_ATTEMPTS}): ${err.message}; retrying in ${Math.round(backoff)}ms.`);
+                await delay(backoff);
+                continue;
+            }
+            warn(`LLM call failed for ${samplePath}: ${err.message}`);
             return null;
         }
+    }
+    return null;
+}
 
-        const data = await response.json();
-        const choice = data.choices?.[0];
-        const content = choice?.message?.content?.trim();
-        if (!content) {
-            // A successful (200) call with empty content is almost always a
-            // reasoning model exhausting `max_completion_tokens` on hidden
-            // reasoning (finish_reason: "length"). Surface it instead of
-            // silently leaving the description empty, and hint at the knobs.
-            const finishReason = choice?.finish_reason ?? 'unknown';
-            const reasoningTokens = data.usage?.completion_tokens_details?.reasoning_tokens;
-            const usageHint = reasoningTokens !== undefined ? ` (reasoning_tokens=${reasoningTokens})` : '';
-            warn(`LLM returned empty content for ${samplePath} (finish_reason=${finishReason}${usageHint}); description left empty. If finish_reason is "length", raise AZURE_OPENAI_MAX_COMPLETION_TOKENS or set AZURE_OPENAI_REASONING_EFFORT.`);
-            return null;
-        }
+// Shared guidance describing what a good picker description looks like, reused
+// by both the description-only prompt and the combined refine prompt so the
+// two paths stay consistent.
+const DESCRIPTION_GUIDANCE = `A good description:
+- Is one sentence, max 100 characters, plain text (no markdown)
+- Describes what the sample does, not how it is implemented
+- Does NOT include language, protocol, or framework names, or words like "Sample" / "Demo"
+Examples:
+  "Minimal agent that echoes a response from a Foundry model."
+  "Conversational agent with multi-turn session history."
+  "Agent with local function tools for hotel search."
+  "Agent that discovers and invokes tools from a remote MCP server."`;
 
-        // Parse JSON response — strip markdown code fences if present
-        const jsonStr = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        const parsed = JSON.parse(jsonStr);
+/**
+ * Generate a one-sentence description from README content (used when only
+ * BLANK descriptions are being filled — the default, non-refine path).
+ * displayName is intentionally NOT requested here; when not refining it is
+ * derived deterministically from the folder name.
+ *
+ * @param {string} readmeContent
+ * @param {string} samplePath
+ * @returns {Promise<{ description: string } | null>}
+ */
+async function generateWithLLM(readmeContent, samplePath) {
+    const systemPrompt = `You generate one-sentence descriptions for a VS Code template picker.
+The user has already selected language, framework, and protocol before seeing these items, so the description must NOT repeat those choices.
 
-        const description = typeof parsed.description === 'string' ? parsed.description.trim() : '';
-        if (!description) {
-            warn(`LLM response for ${samplePath} had no usable "description" field; description left empty.`);
-            return null;
-        }
+${DESCRIPTION_GUIDANCE}
 
-        return { description };
-    } catch (/** @type {any} */ err) {
-        warn(`LLM call failed for ${samplePath}: ${err.message}`);
+Respond ONLY with a JSON object: {"description": "..."}`;
+
+    const userPrompt = `Path: ${samplePath}
+
+README.md:
+${readmeContent.substring(0, 2000)}`;
+
+    const parsed = await callLLMForJson(systemPrompt, userPrompt, samplePath);
+    if (!parsed) {
         return null;
     }
+    const description = typeof parsed.description === 'string' ? parsed.description.trim() : '';
+    if (!description) {
+        warn(`LLM response for ${samplePath} had no usable "description" field; description left empty.`);
+        return null;
+    }
+    return { description };
+}
+
+/**
+ * Review and (only when needed) rewrite a template's displayName AND
+ * description against its README (used by the opt-in `refine_with_ai` path).
+ *
+ * The current displayName and description are passed to the model so it can
+ * KEEP them verbatim when they already fit the sample's scenario — refinement
+ * is not a forced rewrite. displayName follows the Foundry Sample Finder
+ * convention: a short, human-friendly Title-Case name for the scenario
+ * (e.g. "Basic Agent", "Foundry Toolbox", "Azure Search RAG") rather than the
+ * raw folder name.
+ *
+ * @param {string} readmeContent
+ * @param {string} samplePath
+ * @param {string} currentDisplayName
+ * @param {string} currentDescription
+ * @returns {Promise<{ displayName: string, description: string } | null>}
+ */
+async function refineDisplayFieldsWithLLM(readmeContent, samplePath, currentDisplayName, currentDescription) {
+    const systemPrompt = `You curate the displayName and description of a hosted-agent sample shown in a VS Code template picker.
+The user has already selected language, framework, and protocol before seeing these items, so neither field should repeat those choices.
+
+You are given the CURRENT displayName and description. If they already fit the sample's README scenario, KEEP them exactly as-is. Only rewrite a field when it is empty, inaccurate, or unclear.
+
+displayName rules:
+- A short, human-friendly Title Case name for the scenario (2-4 words)
+- Name what the sample demonstrates, not the folder (e.g. "Basic Agent", "Foundry Toolbox", "Azure Search RAG", "Human-in-the-Loop")
+- No leading numbers, no raw folder tokens, no words like "Sample" / "Demo"
+- Keep known acronyms uppercased (MCP, RAG, SDK, API, UI)
+
+description rules:
+${DESCRIPTION_GUIDANCE}
+
+Respond ONLY with a JSON object: {"displayName": "...", "description": "..."}`;
+
+    const userPrompt = `Path: ${samplePath}
+Current displayName: ${currentDisplayName || '(empty)'}
+Current description: ${currentDescription || '(empty)'}
+
+README.md:
+${readmeContent.substring(0, 2000)}`;
+
+    const parsed = await callLLMForJson(systemPrompt, userPrompt, samplePath);
+    if (!parsed) {
+        return null;
+    }
+    const displayName = typeof parsed.displayName === 'string' ? parsed.displayName.trim() : '';
+    const description = typeof parsed.description === 'string' ? parsed.description.trim() : '';
+    if (!displayName && !description) {
+        warn(`LLM refine response for ${samplePath} had no usable "displayName"/"description" fields; leaving values unchanged.`);
+        return null;
+    }
+    return { displayName, description };
 }
 
 /**
@@ -646,7 +925,11 @@ async function scanTemplates(commitSha) {
             for (const templatePath of templateDirs) {
                 const azureInfo = await fetchAzureYaml(templatePath, commitSha);
                 if (!azureInfo) {
-                    warn(`Could not fetch or parse azure.yaml for "${templatePath}"; skipping this template.`);
+                    // null means a genuine 404 — the directory matched the scan
+                    // prefix but has no azure.yaml, so it is not a template.
+                    // (Transient fetch failures are re-thrown by fetchAzureYaml
+                    // and abort the run instead of silently dropping a sample.)
+                    warn(`No azure.yaml found for "${templatePath}" (HTTP 404); skipping this template.`);
                     continue;
                 }
 
@@ -814,22 +1097,50 @@ function applyOverrides(templates, overrides) {
 }
 
 /**
- * Auto-fill empty displayName and description fields.
+ * Fill and (optionally) refine displayName and description fields.
  *
- * displayName is ALWAYS derived from the template's directory name when empty
- * — the LLM is not consulted, because folder-name derivation is deterministic
- * and PM-predictable. Existing PM-curated displayName values are preserved by
- * the prior `mergeExistingDisplayFields` step, so this only affects newly
- * scanned templates.
+ * Default path (AI_REFINE off): empty displayName is derived deterministically
+ * from the folder name; empty description is filled by the LLM when configured.
+ * Values that already exist (PM-curated or preserved from the prior catalog)
+ * are left untouched.
  *
- * description is filled by the LLM (when configured) using the sample's
- * README as context. Without LLM credentials the description stays empty and
- * gets surfaced as an anomaly in the step summary.
+ * Refine path (AI_REFINE on, opt-in via the `refine_with_ai` workflow input):
+ * the LLM reviews BOTH fields of every template against its README and rewrites
+ * them only when they no longer fit — existing values that already match the
+ * scenario are kept verbatim. Without LLM credentials this path degrades to the
+ * default behavior.
  *
  * @param {Array<{displayName: string, description: string, path: string}>} templates
  * @param {string} commitSha
  */
 async function autoFillDisplayFields(templates, commitSha) {
+    const hasLLM = Boolean(AZURE_OPENAI_ENDPOINT && AZURE_OPENAI_API_KEY);
+
+    if (AI_REFINE && hasLLM) {
+        await refineAllWithLLM(templates, commitSha);
+    } else {
+        if (AI_REFINE && !hasLLM) {
+            warn('refine_with_ai was requested but no Azure OpenAI credentials are configured; falling back to filling blanks only.');
+        }
+        await fillBlankDisplayFields(templates, commitSha, hasLLM);
+    }
+
+    for (const template of templates) {
+        if (!template.description) {
+            warn(`Template "${template.path}" is missing: description. PM should fill it before merge.`);
+        }
+    }
+}
+
+/**
+ * Default path: derive empty displayName from the folder name and fill empty
+ * descriptions via the LLM. Never touches values that already exist.
+ *
+ * @param {Array<{displayName: string, description: string, path: string}>} templates
+ * @param {string} commitSha
+ * @param {boolean} hasLLM
+ */
+async function fillBlankDisplayFields(templates, commitSha, hasLLM) {
     // Fill displayName first — deterministic, no API calls.
     for (const template of templates) {
         if (!template.displayName) {
@@ -840,33 +1151,62 @@ async function autoFillDisplayFields(templates, commitSha) {
     const needsDescription = templates.filter((t) => !t.description);
     if (needsDescription.length === 0) {
         console.log('All templates already have a description.');
-    } else {
-        const hasLLM = Boolean(AZURE_OPENAI_ENDPOINT && AZURE_OPENAI_API_KEY);
-        if (hasLLM) {
-            console.log(`Generating descriptions for ${needsDescription.length} templates using LLM...`);
-            for (const template of needsDescription) {
-                const readme = await fetchReadme(template.path, commitSha);
-                if (!readme) {
-                    continue;
-                }
-                const result = await generateWithLLM(readme, template.path);
-                if (result?.description) {
-                    template.description = result.description;
-                }
-            }
-        } else {
-            console.log(`${needsDescription.length} templates need a description but no LLM is configured; leaving empty (will be flagged as anomalies).`);
-        }
+        return;
+    }
+    if (!hasLLM) {
+        console.log(`${needsDescription.length} templates need a description but no LLM is configured; leaving empty (will be flagged as anomalies).`);
+        return;
     }
 
-    // displayName always gets filled by the folder-name fallback above, so
-    // anomaly detection here is description-only.
-    for (const template of templates) {
-        if (!template.description) {
-            warn(`Template "${template.path}" is missing: description. PM should fill it before merge.`);
+    console.log(`Generating descriptions for ${needsDescription.length} templates using LLM...`);
+    for (const template of needsDescription) {
+        const readme = await fetchReadme(template.path, commitSha);
+        if (!readme) {
+            continue;
+        }
+        const result = await generateWithLLM(readme, template.path);
+        if (result?.description) {
+            template.description = result.description;
         }
     }
 }
+
+/**
+ * Refine path: ask the LLM to review displayName + description for every
+ * template against its README, keeping values that already fit and rewriting
+ * only those that do not. Templates whose README cannot be fetched fall back
+ * to folder-name derivation for an empty displayName so nothing is left blank.
+ *
+ * @param {Array<{displayName: string, description: string, path: string}>} templates
+ * @param {string} commitSha
+ */
+async function refineAllWithLLM(templates, commitSha) {
+    console.log(`Refining displayName/description for ${templates.length} templates using LLM...`);
+    for (const template of templates) {
+        const readme = await fetchReadme(template.path, commitSha);
+        if (!readme) {
+            if (!template.displayName) {
+                template.displayName = displayNameFromPath(template.path);
+            }
+            continue;
+        }
+        const result = await refineDisplayFieldsWithLLM(
+            readme,
+            template.path,
+            template.displayName,
+            template.description
+        );
+        if (result?.displayName) {
+            template.displayName = result.displayName;
+        } else if (!template.displayName) {
+            template.displayName = displayNameFromPath(template.path);
+        }
+        if (result?.description) {
+            template.description = result.description;
+        }
+    }
+}
+
 
 /**
  * Reorder templates so the curated pins come first, in the declared
@@ -899,6 +1239,44 @@ function reorderPinnedFirst(templates) {
     return [...pinned, ...rest];
 }
 
+/**
+ * Warn about templates that share the same displayName WITHIN a single
+ * language+framework+protocol group — i.e. the set a user actually sees at once
+ * in the picker after choosing those dimensions. Duplicate names across
+ * DIFFERENT groups are fine (the user never sees them side by side) and are not
+ * reported. This is detection-only: the catalog is left unchanged so a PM can
+ * disambiguate the flagged names when reviewing the generated PR.
+ *
+ * @param {Array<{displayName: string, language: string, framework: string, protocol: string, path: string}>} templates
+ */
+function warnDuplicateDisplayNames(templates) {
+    /** @type {Map<string, Map<string, string[]>>} */
+    const groups = new Map();
+    for (const t of templates) {
+        const groupKey = `${t.language} / ${t.framework} / ${t.protocol}`;
+        const nameKey = t.displayName.trim().toLowerCase();
+        if (!nameKey) {
+            continue;
+        }
+        let byName = groups.get(groupKey);
+        if (!byName) {
+            byName = new Map();
+            groups.set(groupKey, byName);
+        }
+        const paths = byName.get(nameKey) ?? [];
+        paths.push(t.path);
+        byName.set(nameKey, paths);
+    }
+
+    for (const [groupKey, byName] of groups) {
+        for (const [, paths] of byName) {
+            if (paths.length > 1) {
+                warn(`Duplicate displayName within "${groupKey}" (users see these together): ${paths.join(', ')}. A PM should disambiguate these names before merge.`);
+            }
+        }
+    }
+}
+
 async function main() {
     const commitSha = parseCommitShaArg();
     console.log(`Using commit: ${commitSha}`);
@@ -907,8 +1285,14 @@ async function main() {
     const templates = await scanTemplates(commitSha);
     console.log(`Found ${templates.length} templates`);
 
-    // Step 1: Preserve existing PM-curated displayName/description values.
-    mergeExistingDisplayFields(templates);
+    // Step 1: Preserve existing PM-curated displayName/description values,
+    // unless a fresh run was requested (ignore_existing_catalog) — then every
+    // field starts empty so nothing anchors the regeneration.
+    if (IGNORE_EXISTING) {
+        console.log('IGNORE_EXISTING is set; not carrying over displayName/description from the previous catalog.');
+    } else {
+        mergeExistingDisplayFields(templates);
+    }
 
     // Step 2: Apply source-controlled per-path overrides (structural fields like
     // `framework` that the upstream tree layout cannot express on its own).
@@ -917,6 +1301,9 @@ async function main() {
     // Step 3: Fill remaining empties — displayName from folder name (always),
     // description from the LLM when configured.
     await autoFillDisplayFields(templates, commitSha);
+
+    // Flag same-name collisions a user would see together (detection only).
+    warnDuplicateDisplayNames(templates);
 
     const dimensions = buildDimensions(templates);
     const orderedTemplates = reorderPinnedFirst(templates);
