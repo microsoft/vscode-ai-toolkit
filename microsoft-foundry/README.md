@@ -24,8 +24,6 @@ Inspector.
 
 Open GitHub Copilot App, search `microsoft-foundry` from Settings -> Plugins, then install it. 
 
-Or you can go to https://awesome-copilot.github.com/extension/microsoft-foundry/, and click the button `+ Open in GitHub Copilot App` to install it.
-
 ## Usage
 
 1. Ask Copilot to *create a Foundry hosted agent*, then the Canvas will be opened in the right panel automatically.
