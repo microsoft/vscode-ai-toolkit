@@ -9,12 +9,14 @@ import {
     selectProject as transitionProject,
     selectSubscription as transitionSubscription,
 } from "./selection-state.js";
+import { buildIssueReportUrl, detectOperatingSystem } from "./issue-report.js";
 
 const state = {
     agentName: "",
     selection: emptySelection(),
     model: { name: "", color: "#10a37f" },
     deployPrompt: "deploy it as a Foundry hosted agent",
+    pluginVersion: "",
     // Live project data, lazily loaded when a dropdown first opens.
     // status: idle | loading | ready | error
     deploymentsState: { status: "idle", items: [], source: null, reason: null },
@@ -48,6 +50,18 @@ const state = {
         agentName: "",
         version: "",
         reason: "",
+    },
+    // Hosted agents found in the workspace. The picker only appears when there
+    // is more than one, so single-agent workspaces keep the implicit behavior.
+    hostedAgents: { status: "idle", items: [], selected: "" },
+    // Marketplace update for this extension's plugin, checked when the canvas
+    // opens. The canvas only reports availability; the host performs updates
+    // after it has released this provider's files.
+    pluginUpdate: {
+        status: "idle",
+        installedVersion: "",
+        latestVersion: "",
+        dismissed: false,
     },
 };
 
@@ -202,6 +216,13 @@ function renderBuild() {
     const node = clone("tpl-build");
 
     renderSelectionLabels(node);
+    const issueLink = node.querySelector("#githubIssueLink");
+    if (issueLink) {
+        issueLink.href = buildIssueReportUrl({
+            operatingSystem: detectOperatingSystem(),
+            pluginVersion: state.pluginVersion,
+        });
+    }
 
     // Set portal links for "Deploy new model" / "Add or update toolbox" / "Create new skill" / "Create new guardrail".
     const modelLink = node.querySelector("#deployNewModelLink");
@@ -209,8 +230,8 @@ function renderBuild() {
     const skillLink = node.querySelector("#createSkillLink");
     const guardrailLink = node.querySelector("#createGuardrailLink");
     if (modelLink) modelLink.addEventListener("click", () => { closeModelMenu(); openPortalPage("build/models/deployments"); });
-    if (toolLink) toolLink.addEventListener("click", () => { closeToolMenu(); openPortalPage("build/toolboxes"); });
-    if (skillLink) skillLink.addEventListener("click", () => { closeSkillMenu(); openPortalPage("build/tools"); });
+    if (toolLink) toolLink.addEventListener("click", () => { closeToolMenu(); openPortalPage("build/tools?tab=toolboxes"); });
+    if (skillLink) skillLink.addEventListener("click", () => { closeSkillMenu(); openPortalPage("build/tools?tab=skills"); });
     if (guardrailLink) guardrailLink.addEventListener("click", () => { closeGuardrailMenu(); openPortalPage("build/guardrails/list"); });
 
     root.replaceChildren(node);
@@ -224,6 +245,8 @@ function renderBuild() {
     renderFolds();
     renderRegionSupport();
     renderHostedAgentDeployment();
+    renderHostedAgentPicker();
+    renderPluginUpdate();
 }
 
 // Apply a collapsible card's open/closed state to the DOM. Mirrors the
@@ -313,7 +336,7 @@ function hasAvailableHostedAgentDeployment(deployment) {
 
 function isDefinitiveHostedAgentResult(result) {
     if (result?.ok === true) return true;
-    return ["ambiguous_agent", "no_agent", "no_project"].includes(result?.reason);
+    return ["no_agent", "no_project"].includes(result?.reason);
 }
 
 function hostedAgentDeploymentFromResult(result) {
@@ -376,6 +399,127 @@ async function loadHostedAgentDeployment() {
     return state.hostedAgentDeployment;
 }
 
+// ------------------------------------------------- Hosted agent picker
+// The agents the picker offers. An explicit selection that no longer matches a
+// workspace agent (e.g. one supplied through the canvas input) is kept as the
+// first entry so the user can still see what the actions target.
+function hostedAgentOptions() {
+    const { items, selected } = state.hostedAgents;
+    const options = items.filter((agent) => agent.agentName);
+    if (selected && !options.some((a) => a.agentName.toLowerCase() === selected.toLowerCase())) {
+        return [{ agentName: selected, manifestPath: "" }, ...options];
+    }
+    return options;
+}
+
+function selectedHostedAgentOption(options) {
+    const selected = String(state.hostedAgents.selected || "").toLowerCase();
+    return options.find((a) => a.agentName.toLowerCase() === selected) || options[0];
+}
+
+function renderHostedAgentPicker() {
+    const row = document.getElementById("deployAgentRow");
+    const current = document.getElementById("deployAgentCurrent");
+    const host = document.getElementById("deployAgentList");
+    if (!row || !current || !host) return;
+    const options = hostedAgentOptions();
+    // One agent (or none) keeps the existing implicit behavior — no picker.
+    row.hidden = options.length < 2;
+    if (row.hidden) {
+        closeHostedAgentMenu();
+        current.textContent = "";
+        host.replaceChildren();
+        return;
+    }
+
+    const active = selectedHostedAgentOption(options);
+    current.textContent = active.agentName;
+    // The trigger shows only the name, so spell the role out for screen readers.
+    const trigger = document.getElementById("deployAgentTrigger");
+    if (trigger) trigger.setAttribute("aria-label", "Hosted agent: " + active.agentName);
+
+    host.replaceChildren();
+    for (const agent of options) {
+        const isActive = agent.agentName === active.agentName;
+        const item = document.createElement("button");
+        item.className = "menu-item" + (isActive ? " is-active" : "");
+        item.type = "button";
+        item.setAttribute("role", "menuitemradio");
+        item.setAttribute("aria-checked", String(isActive));
+        if (agent.manifestPath) item.title = agent.manifestPath;
+
+        item.appendChild(fluentIcon("agent"));
+
+        const name = document.createElement("span");
+        name.className = "item-name";
+        name.textContent = agent.agentName;
+        item.appendChild(name);
+
+        if (isActive) item.appendChild(fluentIcon("check", "item-check"));
+
+        item.addEventListener("click", () => {
+            closeHostedAgentMenu();
+            selectHostedAgent(agent.agentName);
+        });
+        host.appendChild(item);
+    }
+}
+
+function closeHostedAgentMenu() {
+    const menu = document.getElementById("deployAgentMenu");
+    const btn = document.getElementById("deployAgentTrigger");
+    if (menu) menu.hidden = true;
+    if (btn) btn.setAttribute("aria-expanded", "false");
+}
+
+function toggleHostedAgentMenu() {
+    const menu = document.getElementById("deployAgentMenu");
+    const btn = document.getElementById("deployAgentTrigger");
+    if (!menu) return;
+    const willOpen = menu.hidden;
+    menu.hidden = !willOpen;
+    if (btn) btn.setAttribute("aria-expanded", String(willOpen));
+    if (willOpen) loadHostedAgents(false);
+}
+
+async function loadHostedAgents(force) {
+    const st = state.hostedAgents;
+    if (!force && (st.status === "loading" || st.status === "ready")) return st;
+    st.status = "loading";
+    try {
+        const data = await getJSON("/api/hosted-agents");
+        st.items = Array.isArray(data.agents) ? data.agents : [];
+        st.selected = data.selected || "";
+        st.status = "ready";
+    } catch {
+        // Keep the last known agents: a failed refresh must not collapse the
+        // picker out from under an open menu.
+        st.status = "error";
+    }
+    renderHostedAgentPicker();
+    return st;
+}
+
+async function selectHostedAgent(agentName) {
+    const previous = state.hostedAgents.selected;
+    if (!agentName || agentName === previous) return;
+    state.hostedAgents.selected = agentName;
+    renderHostedAgentPicker();
+    try {
+        await postJSON("/api/select-hosted-agent", { agentName });
+    } catch {
+        state.hostedAgents.selected = previous;
+        renderHostedAgentPicker();
+        toast("Couldn\u2019t switch agent.");
+        return;
+    }
+    state.agentName = agentName;
+    // Deployment state is per-agent, so the portal link has to be re-resolved.
+    closeInspector();
+    loadHostedAgentDeployment();
+    toast("Agent: " + agentName);
+}
+
 // Fetch hosted-agent region support for the selected project and update the UI.
 async function loadRegionSupport() {
     state.hostedRegion.status = "loading";
@@ -400,6 +544,52 @@ async function loadRegionSupport() {
     renderRegionSupport();
 }
 
+// ------------------------------------------------------ Plugin update notice
+// The canvas is distributed as the microsoft-foundry plugin; when the
+// marketplace publishes a newer version the bar above the project header
+// directs users to the host-managed plugin settings.
+function pluginUpdateMessage() {
+    const update = state.pluginUpdate;
+    return update.latestVersion
+        ? `Microsoft Foundry ${update.latestVersion} is available.`
+        : "A Microsoft Foundry update is available.";
+}
+
+function renderPluginUpdate() {
+    const bar = document.getElementById("updateBar");
+    if (!bar) return;
+    const update = state.pluginUpdate;
+    bar.hidden = update.status === "idle" || !!update.dismissed;
+    if (bar.hidden) return;
+
+    const text = document.getElementById("updateBarText");
+    if (text) text.textContent = pluginUpdateMessage();
+}
+
+// Hides the notice for this canvas session only; reopening the canvas checks
+// the marketplace again and brings it back while the update is still pending.
+function dismissPluginUpdate() {
+    state.pluginUpdate = { ...state.pluginUpdate, dismissed: true };
+    renderPluginUpdate();
+}
+
+async function loadPluginUpdate() {
+    try {
+        const result = await getJSON("/api/plugin-update");
+        if (!result || !result.updateAvailable) return;
+        state.pluginUpdate = {
+            status: "available",
+            installedVersion: result.installedVersion || "",
+            latestVersion: result.latestVersion || "",
+            dismissed: false,
+        };
+    } catch {
+        // A failed check is silent — never block the builder on it.
+        return;
+    }
+    renderPluginUpdate();
+}
+
 // Apply the server-derived initial section state once on load. The server uses
 // an agent manifest or an Azure service hosted by azure.ai.agent anywhere in
 // the workspace, not generic Azure scaffolding.
@@ -417,6 +607,8 @@ function applyWorkspaceTransition(info) {
     state.folds.resources = info.sections.resourcesOpen === true;
     state.folds.deploy = info.sections.deployOpen === true;
     renderFolds();
+    // Agent code just appeared in the workspace — refresh what the picker offers.
+    loadHostedAgents(true);
     return true;
 }
 
@@ -1559,6 +1751,10 @@ function render() {
 // ----------------------------------------------------------- Event handling
 // Delegated clicks within the main area.
 root.addEventListener("click", async (e) => {
+    if (e.target.closest("#updateDismissBtn")) {
+        dismissPluginUpdate();
+        return;
+    }
     if (e.target.closest("#initToggle")) {
         const willOpen = !state.init.open;
         state.init.open = willOpen;
@@ -1649,6 +1845,10 @@ root.addEventListener("click", async (e) => {
         loadSkills(true);
         return;
     }
+    if (e.target.closest("#deployAgentTrigger")) {
+        toggleHostedAgentMenu();
+        return;
+    }
     if (e.target.closest("#projectSwitch")) {
         toggleProjectMenu();
         return;
@@ -1705,6 +1905,10 @@ root.addEventListener("click", async (e) => {
 });
 
 // ----------------------------------------------- Local Agent Inspector embed
+// Retires a previous readiness poll when the inspector is relaunched or closed,
+// so a stale loop can't hide the overlay or report a timeout over a newer one.
+let inspectorPollToken = 0;
+
 async function launchInspector(btn) {
     const view = document.getElementById("inspectorView");
     const frame = document.getElementById("inspectorFrame");
@@ -1733,9 +1937,12 @@ async function launchInspector(btn) {
             // Poll until the agent is reachable, then load the frame.
             const POLL_INTERVAL_MS = 2000;
             const POLL_TIMEOUT_MS = 120_000;
+            inspectorPollToken += 1;
+            const token = inspectorPollToken;
             const deadline = Date.now() + POLL_TIMEOUT_MS;
 
             const poll = async () => {
+                if (token !== inspectorPollToken) return;
                 if (Date.now() > deadline) {
                     if (waitingEl) waitingEl.hidden = true;
                     statusEl.textContent = "Agent did not start within 2 minutes. Check the terminal for errors.";
@@ -1745,6 +1952,7 @@ async function launchInspector(btn) {
                 }
                 try {
                     const r = await getJSON("/api/inspect/ready");
+                    if (token !== inspectorPollToken) return;
                     if (r && r.ready) {
                         if (waitingEl) waitingEl.hidden = true;
                         frame.src = data.url;
@@ -1777,6 +1985,7 @@ function closeInspector() {
     const view = document.getElementById("inspectorView");
     const frame = document.getElementById("inspectorFrame");
     const waitingEl = document.getElementById("inspectorWaiting");
+    inspectorPollToken += 1; // stop any in-flight readiness poll
     if (view) view.hidden = true;
     if (frame) frame.src = "";
     if (waitingEl) waitingEl.hidden = true;
@@ -1792,6 +2001,7 @@ document.addEventListener("click", (e) => {
     if (!e.target.closest(".tool-select")) closeToolMenu();
     if (!e.target.closest(".skill-select")) closeSkillMenu();
     if (!e.target.closest(".guardrail-select")) closeGuardrailMenu();
+    if (!e.target.closest(".agent-select")) closeHostedAgentMenu();
     if (!e.target.closest(".project-switch")) closeProjectMenu();
 });
 
@@ -1823,6 +2033,7 @@ async function init() {
         if (s.selection) state.selection = normalizeSelection(s.selection);
         if (s.model) state.model = s.model;
         if (s.deployPrompt) state.deployPrompt = s.deployPrompt;
+        if (s.pluginVersion) state.pluginVersion = s.pluginVersion;
     }
 
     // Resolve the workspace's hosted-agent signal before first paint so refresh
@@ -1833,6 +2044,10 @@ async function init() {
         if (pi && pi.ok) applyInitDefaults(pi);
     }
     render();
+
+    // Check the marketplace for a newer plugin build. Non-blocking: the bar
+    // appears once the check answers, and stays hidden when it fails.
+    loadPluginUpdate();
 
     // Resolve the signed-in identity and the persisted/default resource selection.
     try {
@@ -1854,6 +2069,7 @@ async function init() {
         /* fail open — leave Deploy enabled */
     }
 
+    await loadHostedAgents();
     await loadHostedAgentDeployment();
 
     // Subscribe to server-sent canvas updates (agent-driven idea / workspace /
@@ -1876,6 +2092,9 @@ async function init() {
                             ? { ...previous, status: "ready", reason: msg.deployment.reason || "refresh_failed" }
                             : refreshed;
                     renderHostedAgentDeployment();
+                    // The chat agent may have added or removed agent code while
+                    // it worked, so keep the picker's options in sync.
+                    loadHostedAgents(true);
                 }
             } catch {
                 /* ignore malformed frames */

@@ -55,7 +55,38 @@ body {
 .project-dot.is-unset { background: #8c959f; }
 .btn-switch { flex: 0 0 auto; font-size: 13px; padding: 5px 12px; }
 
+/* ---------------- Plugin update bar ---------------- */
+.update-bar {
+    flex: 0 0 auto;
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px;
+    border-bottom: 1px solid rgba(0,0,0,.09);
+    background: var(--bg-subtle);
+    color: var(--text);
+    font-size: 12.5px; line-height: 17px;
+}
+.update-bar[hidden] { display: none; }
+/* Purely informational: the glyph must not read as a control. */
+.update-bar-ico {
+    --fi-url: url("/fluent-icons/arrow_circle_up_16_regular.svg");
+    --fi-size: 16px;
+    color: var(--accent);
+    pointer-events: none;
+}
+.update-bar-text {
+    flex: 1; min-width: 0;
+    display: flex; flex-wrap: wrap; column-gap: 8px;
+}
+.update-bar-dismiss {
+    flex: 0 0 auto; width: 22px; height: 22px; padding: 0;
+    display: inline-grid; place-items: center;
+    border: 0; border-radius: 5px; background: transparent;
+    color: var(--muted); cursor: pointer;
+}
+.update-bar-dismiss:hover { background: rgba(0,0,0,.06); color: var(--text); }
+
 /* ---------------- Project picker panel ---------------- */
+.project-actions { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
 .project-switch { position: relative; flex: 0 0 auto; }
 .project-menu {
     position: absolute; top: calc(100% + 6px); right: 0; width: 360px; max-width: 86vw;
@@ -373,6 +404,22 @@ body {
 .btn-playground[hidden] { display: none; }
 .deploy-hint { margin: 0; color: var(--muted); text-align: center; font-size: 12px; }
 
+/* Hosted agent picker — reuses the section 2 resource-select pattern. Only
+   shown for workspaces with more than one hosted agent. The trigger shows the
+   selected agent's name rather than a category label, so the name lands in the
+   left scan path where the user is already looking. */
+.agent-select { margin-bottom: 6px; }
+.agent-select[hidden] { display: none; }
+.agent-select .resource-label { min-width: 0; }
+.agent-current {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.agent-menu .item-check { color: var(--accent); }
+#deployAgentList { max-height: 220px; overflow-y: auto; }
+
 /* Hosted-agent region warning + gated deploy button */
 .region-warn {
     display: flex; gap: 8px; align-items: flex-start;
@@ -508,6 +555,7 @@ body {
 .fi-refresh { --fi-url: url("/fluent-icons/arrow_clockwise_16_regular.svg"); --fi-size: 18px; }
 .fi-switch { --fi-url: url("/fluent-icons/arrow_swap_16_regular.svg"); --fi-size: 18px; }
 .fi-more { --fi-url: url("/fluent-icons/more_horizontal_20_regular.svg"); --fi-size: 22px; }
+.fi-question { --fi-url: url("/fluent-icons/question_circle_20_regular.svg"); --fi-size: 20px; }
 .fi-sparkle { --fi-url: url("/fluent-icons/sparkle_20_regular.svg"); --fi-size: 22px; }
 .fi-chat { --fi-url: url("/fluent-icons/chat_multiple_20_regular.svg"); --fi-size: 22px; }
 .fi-code { --fi-url: url("/fluent-icons/code_20_regular.svg"); --fi-size: 22px; }
@@ -525,6 +573,8 @@ body {
 .fi-calendar { --fi-url: url("/fluent-icons/calendar_20_regular.svg"); --fi-size: 22px; }
 .fi-person { --fi-url: url("/fluent-icons/person_16_regular.svg"); --fi-size: 18px; }
 .fi-check { --fi-url: url("/fluent-icons/checkmark_16_regular.svg"); --fi-size: 18px; }
+.fi-agent { --fi-url: url("/fluent-icons/agents_16_regular.svg"); --fi-size: 18px; }
+.fi-dismiss { --fi-url: url("/fluent-icons/dismiss_16_regular.svg"); --fi-size: 14px; }
 
 @font-face {
     font-family: "codicon";
@@ -601,6 +651,7 @@ body {
     background: transparent;
     color: var(--fluent-fg-1);
     cursor: pointer;
+    text-decoration: none;
 }
 .icon-btn:hover,
 .icon-btn[aria-expanded="true"] {
@@ -1257,6 +1308,15 @@ body {
 }
 .region-warn {
     border-radius: var(--fluent-radius);
+}
+.agent-menu .item-check {
+    color: var(--fluent-brand);
+}
+.agent-menu .menu-label {
+    padding: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 400;
 }
 
 @media (max-width: 430px) {
