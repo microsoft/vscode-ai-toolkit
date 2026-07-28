@@ -2041,9 +2041,21 @@ async function init() {
     // conservative create-first defaults.
     if (projectInitResult.status === "fulfilled") {
         const pi = projectInitResult.value;
-        if (pi && pi.ok) applyInitDefaults(pi);
+        if (pi && pi.ok) {
+            applyInitDefaults(pi);
+            if (Array.isArray(pi.agents)) {
+                state.hostedAgents.items = pi.agents;
+                state.hostedAgents.selected = pi.selected || "";
+                state.hostedAgents.status = "ready";
+            }
+        }
     }
     render();
+
+    // Project init normally supplies the agent list from the workspace scan it
+    // already performed. If it did not, start the fallback fetch immediately
+    // instead of waiting for identity and region initialization.
+    const hostedAgentsPromise = loadHostedAgents();
 
     // Check the marketplace for a newer plugin build. Non-blocking: the bar
     // appears once the check answers, and stays hidden when it fails.
@@ -2069,7 +2081,7 @@ async function init() {
         /* fail open — leave Deploy enabled */
     }
 
-    await loadHostedAgents();
+    await hostedAgentsPromise;
     await loadHostedAgentDeployment();
 
     // Subscribe to server-sent canvas updates (agent-driven idea / workspace /
