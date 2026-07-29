@@ -759,22 +759,32 @@ Examples:
   "Agent that discovers and invokes tools from a remote MCP server."`;
 
 /**
- * Generate a one-sentence description from README content (used when only
- * BLANK descriptions are being filled — the default, non-refine path).
- * displayName is intentionally NOT requested here; when not refining it is
- * derived deterministically from the folder name.
+ * Generate a displayName AND a one-sentence description from README content
+ * (used when only BLANK fields are being filled — the default, non-refine
+ * path). Both fields are produced by the LLM so newly added samples get an
+ * AI-authored displayName instead of a raw folder-name derivation. The caller
+ * only writes back whichever field was blank, so existing values are never
+ * touched, and falls back to `displayNameFromPath` when the LLM yields no
+ * usable displayName.
  *
  * @param {string} readmeContent
  * @param {string} samplePath
- * @returns {Promise<{ description: string } | null>}
+ * @returns {Promise<{ displayName: string, description: string } | null>}
  */
 async function generateWithLLM(readmeContent, samplePath) {
-    const systemPrompt = `You generate one-sentence descriptions for a VS Code template picker.
-The user has already selected language, framework, and protocol before seeing these items, so the description must NOT repeat those choices.
+    const systemPrompt = `You generate the displayName and description of a hosted-agent sample shown in a VS Code template picker.
+The user has already selected language, framework, and protocol before seeing these items, so neither field should repeat those choices.
 
+displayName rules:
+- A short, human-friendly Title Case name for the scenario (2-4 words)
+- Name what the sample demonstrates, not the folder (e.g. "Basic Agent", "Foundry Toolbox", "Azure Search RAG", "Human-in-the-Loop")
+- No leading numbers, no raw folder tokens, no words like "Sample" / "Demo"
+- Keep known acronyms uppercased (MCP, RAG, SDK, API, UI)
+
+description rules:
 ${DESCRIPTION_GUIDANCE}
 
-Respond ONLY with a JSON object: {"description": "..."}`;
+Respond ONLY with a JSON object: {"displayName": "...", "description": "..."}`;
 
     const userPrompt = `Path: ${samplePath}
 
@@ -785,12 +795,13 @@ ${readmeContent.substring(0, 2000)}`;
     if (!parsed) {
         return null;
     }
+    const displayName = typeof parsed.displayName === 'string' ? parsed.displayName.trim() : '';
     const description = typeof parsed.description === 'string' ? parsed.description.trim() : '';
-    if (!description) {
-        warn(`LLM response for ${samplePath} had no usable "description" field; description left empty.`);
+    if (!displayName && !description) {
+        warn(`LLM response for ${samplePath} had no usable "displayName"/"description" fields; values left empty.`);
         return null;
     }
-    return { description };
+    return { displayName, description };
 }
 
 /**
@@ -1099,10 +1110,11 @@ function applyOverrides(templates, overrides) {
 /**
  * Fill and (optionally) refine displayName and description fields.
  *
- * Default path (AI_REFINE off): empty displayName is derived deterministically
- * from the folder name; empty description is filled by the LLM when configured.
- * Values that already exist (PM-curated or preserved from the prior catalog)
- * are left untouched.
+ * Default path (AI_REFINE off): only BLANK displayName/description fields are
+ * filled — the LLM generates both from the sample's README when configured
+ * (empty displayName falls back to folder-name derivation otherwise). Values
+ * that already exist (PM-curated or preserved from the prior catalog) are left
+ * untouched, so a normal run is strictly incremental.
  *
  * Refine path (AI_REFINE on, opt-in via the `refine_with_ai` workflow input):
  * the LLM reviews BOTH fields of every template against its README and rewrites
@@ -1133,40 +1145,52 @@ async function autoFillDisplayFields(templates, commitSha) {
 }
 
 /**
- * Default path: derive empty displayName from the folder name and fill empty
- * descriptions via the LLM. Never touches values that already exist.
+ * Default path: fill only BLANK displayName/description via the LLM, using each
+ * sample's README as context. Values that already exist (PM-curated or carried
+ * over from the previous catalog) are never touched, so a normal run is purely
+ * incremental — only newly added samples get generated. Empty displayName falls
+ * back to folder-name derivation when the LLM is unavailable or yields nothing.
  *
  * @param {Array<{displayName: string, description: string, path: string}>} templates
  * @param {string} commitSha
  * @param {boolean} hasLLM
  */
 async function fillBlankDisplayFields(templates, commitSha, hasLLM) {
-    // Fill displayName first — deterministic, no API calls.
+    const needsFill = templates.filter((t) => !t.displayName || !t.description);
+    if (needsFill.length === 0) {
+        console.log('All templates already have a displayName and description.');
+        return;
+    }
+
+    if (hasLLM) {
+        console.log(`Generating displayName/description for ${needsFill.length} templates using LLM...`);
+        for (const template of needsFill) {
+            const readme = await fetchReadme(template.path, commitSha);
+            if (!readme) {
+                continue;
+            }
+            const result = await generateWithLLM(readme, template.path);
+            if (!result) {
+                continue;
+            }
+            // Only write back the field that was blank — never overwrite an
+            // existing value, keeping the default run strictly incremental.
+            if (!template.displayName && result.displayName) {
+                template.displayName = result.displayName;
+            }
+            if (!template.description && result.description) {
+                template.description = result.description;
+            }
+        }
+    } else {
+        console.log(`${needsFill.length} templates need a displayName/description but no LLM is configured; deriving displayName from the folder name and leaving description empty.`);
+    }
+
+    // Fallback for any displayName still blank (no LLM, missing README, or the
+    // LLM returned nothing) so the picker never shows an empty label.
     for (const template of templates) {
         if (!template.displayName) {
             template.displayName = displayNameFromPath(template.path);
-        }
-    }
-
-    const needsDescription = templates.filter((t) => !t.description);
-    if (needsDescription.length === 0) {
-        console.log('All templates already have a description.');
-        return;
-    }
-    if (!hasLLM) {
-        console.log(`${needsDescription.length} templates need a description but no LLM is configured; leaving empty (will be flagged as anomalies).`);
-        return;
-    }
-
-    console.log(`Generating descriptions for ${needsDescription.length} templates using LLM...`);
-    for (const template of needsDescription) {
-        const readme = await fetchReadme(template.path, commitSha);
-        if (!readme) {
-            continue;
-        }
-        const result = await generateWithLLM(readme, template.path);
-        if (result?.description) {
-            template.description = result.description;
         }
     }
 }
