@@ -1,7 +1,7 @@
 {
-    "commitSha": "b9d24354b4daec1c09987976846da598ba0a35cd",
+    "commitSha": "f3d0055b9bd580634b0790d583008bc7be139e75",
     "repo": "https://github.com/microsoft-foundry/foundry-samples/",
-    "generatedAt": "2026-07-29T06:55:34Z",
+    "generatedAt": "2026-07-29T08:29:58Z",
     "dimensions": {
         "language": {
             "title": "Select a Language",
@@ -597,6 +597,15 @@
             "description": "Agent that echoes incoming messages back to the sender.",
             "path": "samples/python/hosted-agents/bring-your-own/activity/echo",
             "requiresModel": false
+        },
+        {
+            "language": "python",
+            "framework": "bring-your-own",
+            "protocol": "activity",
+            "displayName": "GitHub Copilot",
+            "description": "Assistant that delegates responses to Copilot and provides to-do and file-reading tools.",
+            "path": "samples/python/hosted-agents/bring-your-own/activity/github-copilot",
+            "requiresModel": true
         },
         {
             "language": "python",
