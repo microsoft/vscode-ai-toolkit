@@ -53,7 +53,7 @@ const state = {
     },
     // Hosted agents found in the workspace. The picker only appears when there
     // is more than one, so single-agent workspaces keep the implicit behavior.
-    hostedAgents: { status: "idle", items: [], selected: "" },
+    hostedAgents: { status: "idle", items: [], selected: "", creatingNew: false },
     // Marketplace update for this extension's plugin, checked when the canvas
     // opens. The canvas only reports availability; the host performs updates
     // after it has released this provider's files.
@@ -249,6 +249,12 @@ function renderBuild() {
     renderPluginUpdate();
 }
 
+function syncDeployDescriptionVisibility(open = state.folds.deploy) {
+    const description = document.getElementById("deployDescription");
+    if (!description) return;
+    description.hidden = !open || !description.textContent.trim();
+}
+
 // Apply a collapsible card's open/closed state to the DOM. Mirrors the
 // "Initialize Agent Code" fold but generic for the resources/deploy cards.
 function applyFold(blockId, open) {
@@ -259,6 +265,7 @@ function applyFold(blockId, open) {
     if (toggle) toggle.setAttribute("aria-expanded", String(open));
     const panel = block.querySelector(".fold-panel");
     if (panel) panel.hidden = !open;
+    if (blockId === "deployBlock") syncDeployDescriptionVisibility(open);
 }
 
 function renderFolds() {
@@ -370,7 +377,7 @@ function renderHostedAgentDeployment() {
     const descriptionText = hostedAgentDeploymentDescription(deployment);
     if (description) {
         description.textContent = descriptionText;
-        description.hidden = !descriptionText;
+        syncDeployDescriptionVisibility();
     }
     if (!link) return;
     const visible = hasAvailableHostedAgentDeployment(deployment);
@@ -403,9 +410,13 @@ async function loadHostedAgentDeployment() {
 // The agents the picker offers. An explicit selection that no longer matches a
 // workspace agent (e.g. one supplied through the canvas input) is kept as the
 // first entry so the user can still see what the actions target.
+function workspaceHostedAgentOptions() {
+    return state.hostedAgents.items.filter((agent) => agent.agentName);
+}
+
 function hostedAgentOptions() {
-    const { items, selected } = state.hostedAgents;
-    const options = items.filter((agent) => agent.agentName);
+    const { selected } = state.hostedAgents;
+    const options = workspaceHostedAgentOptions();
     if (selected && !options.some((a) => a.agentName.toLowerCase() === selected.toLowerCase())) {
         return [{ agentName: selected, manifestPath: "" }, ...options];
     }
@@ -418,37 +429,58 @@ function selectedHostedAgentOption(options) {
 }
 
 function renderHostedAgentPicker() {
-    const row = document.getElementById("deployAgentRow");
-    const current = document.getElementById("deployAgentCurrent");
-    const host = document.getElementById("deployAgentList");
-    if (!row || !current || !host) return;
+    const bar = document.getElementById("hostedAgentBar");
+    const current = document.getElementById("hostedAgentCurrent");
+    const list = document.getElementById("hostedAgentList");
+    const newButton = document.getElementById("newHostedAgentBtn");
+    if (!bar || !current || !list || !newButton) return;
+    const workspaceOptions = workspaceHostedAgentOptions();
     const options = hostedAgentOptions();
-    // One agent (or none) keeps the existing implicit behavior — no picker.
-    row.hidden = options.length < 2;
-    if (row.hidden) {
+    // Only actual workspace agents count toward visibility. An explicit canvas
+    // selection that is not in the scan must not make a single-agent workspace
+    // look like a multi-agent workspace.
+    bar.hidden = workspaceOptions.length < 2;
+    if (bar.hidden) {
         closeHostedAgentMenu();
         current.textContent = "";
-        host.replaceChildren();
+        list.replaceChildren();
         return;
     }
 
+    const creatingNew = state.hostedAgents.creatingNew === true;
     const active = selectedHostedAgentOption(options);
-    current.textContent = active.agentName;
-    // The trigger shows only the name, so spell the role out for screen readers.
-    const trigger = document.getElementById("deployAgentTrigger");
-    if (trigger) trigger.setAttribute("aria-label", "Hosted agent: " + active.agentName);
+    const renderedName = creatingNew ? "New Agent" : active.agentName;
+    current.textContent = renderedName;
+    newButton.hidden = creatingNew;
+    const trigger = document.getElementById("hostedAgentTrigger");
+    if (trigger) trigger.setAttribute("aria-label", "Working on: " + renderedName);
 
-    host.replaceChildren();
+    list.replaceChildren();
+    if (creatingNew) {
+        const item = document.createElement("button");
+        item.className = "menu-item is-active";
+        item.type = "button";
+        item.setAttribute("role", "menuitemradio");
+        item.setAttribute("aria-checked", "true");
+
+        const name = document.createElement("span");
+        name.className = "item-name";
+        name.textContent = "New Agent";
+        item.appendChild(name);
+        item.appendChild(fluentIcon("check", "item-check"));
+        item.addEventListener("click", closeHostedAgentMenu);
+        list.appendChild(item);
+    }
+
     for (const agent of options) {
-        const isActive = agent.agentName === active.agentName;
+        const isActive = !creatingNew &&
+            agent.agentName.toLowerCase() === active.agentName.toLowerCase();
         const item = document.createElement("button");
         item.className = "menu-item" + (isActive ? " is-active" : "");
         item.type = "button";
         item.setAttribute("role", "menuitemradio");
         item.setAttribute("aria-checked", String(isActive));
         if (agent.manifestPath) item.title = agent.manifestPath;
-
-        item.appendChild(fluentIcon("agent"));
 
         const name = document.createElement("span");
         name.className = "item-name";
@@ -461,20 +493,20 @@ function renderHostedAgentPicker() {
             closeHostedAgentMenu();
             selectHostedAgent(agent.agentName);
         });
-        host.appendChild(item);
+        list.appendChild(item);
     }
 }
 
 function closeHostedAgentMenu() {
-    const menu = document.getElementById("deployAgentMenu");
-    const btn = document.getElementById("deployAgentTrigger");
+    const menu = document.getElementById("hostedAgentMenu");
+    const btn = document.getElementById("hostedAgentTrigger");
     if (menu) menu.hidden = true;
     if (btn) btn.setAttribute("aria-expanded", "false");
 }
 
 function toggleHostedAgentMenu() {
-    const menu = document.getElementById("deployAgentMenu");
-    const btn = document.getElementById("deployAgentTrigger");
+    const menu = document.getElementById("hostedAgentMenu");
+    const btn = document.getElementById("hostedAgentTrigger");
     if (!menu) return;
     const willOpen = menu.hidden;
     menu.hidden = !willOpen;
@@ -500,16 +532,51 @@ async function loadHostedAgents(force) {
     return st;
 }
 
+function beginNewHostedAgent() {
+    closeHostedAgentMenu();
+    state.hostedAgents.creatingNew = true;
+    state.init.open = true;
+    state.folds.resources = false;
+    state.folds.deploy = false;
+    renderHostedAgentPicker();
+    renderInit();
+    renderFolds();
+}
+
 async function selectHostedAgent(agentName) {
     const previous = state.hostedAgents.selected;
-    if (!agentName || agentName === previous) return;
+    const wasCreatingNew = state.hostedAgents.creatingNew === true;
+    if (!agentName || (agentName === previous && !wasCreatingNew)) return;
+    const previousSections = {
+        initOpen: state.init.open,
+        resourcesOpen: state.folds.resources,
+        deployOpen: state.folds.deploy,
+    };
     state.hostedAgents.selected = agentName;
+    state.hostedAgents.creatingNew = false;
+    if (wasCreatingNew) {
+        state.init.open = false;
+        state.folds.resources = true;
+        state.folds.deploy = true;
+        renderInit();
+        renderFolds();
+    }
     renderHostedAgentPicker();
+    if (agentName === previous) {
+        toast("Agent: " + agentName);
+        return;
+    }
     try {
         await postJSON("/api/select-hosted-agent", { agentName });
     } catch {
         state.hostedAgents.selected = previous;
+        state.hostedAgents.creatingNew = wasCreatingNew;
+        state.init.open = previousSections.initOpen;
+        state.folds.resources = previousSections.resourcesOpen;
+        state.folds.deploy = previousSections.deployOpen;
         renderHostedAgentPicker();
+        renderInit();
+        renderFolds();
         toast("Couldn\u2019t switch agent.");
         return;
     }
@@ -1845,7 +1912,11 @@ root.addEventListener("click", async (e) => {
         loadSkills(true);
         return;
     }
-    if (e.target.closest("#deployAgentTrigger")) {
+    if (e.target.closest("#newHostedAgentBtn")) {
+        beginNewHostedAgent();
+        return;
+    }
+    if (e.target.closest("#hostedAgentTrigger")) {
         toggleHostedAgentMenu();
         return;
     }
@@ -2001,7 +2072,7 @@ document.addEventListener("click", (e) => {
     if (!e.target.closest(".tool-select")) closeToolMenu();
     if (!e.target.closest(".skill-select")) closeSkillMenu();
     if (!e.target.closest(".guardrail-select")) closeGuardrailMenu();
-    if (!e.target.closest(".agent-select")) closeHostedAgentMenu();
+    if (!e.target.closest(".agent-context-bar")) closeHostedAgentMenu();
     if (!e.target.closest(".project-switch")) closeProjectMenu();
 });
 

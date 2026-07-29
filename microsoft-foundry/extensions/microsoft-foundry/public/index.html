@@ -118,6 +118,25 @@
                         </div>
                     </header>
 
+                    <div class="agent-context-bar" id="hostedAgentBar" hidden>
+                        <div class="agent-context-control">
+                            <span class="agent-context-label">Working on:</span>
+                            <button class="agent-context-trigger" id="hostedAgentTrigger" type="button" aria-haspopup="menu" aria-expanded="false" title="Switch hosted agent">
+                                <span class="agent-current" id="hostedAgentCurrent"></span>
+                                <span class="fi fi-chev agent-context-chev" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                        <button class="agent-new-button" id="newHostedAgentBtn" type="button" title="Create new hosted agent">
+                            <span class="fi fi-add" aria-hidden="true"></span>
+                            <span>New</span>
+                        </button>
+                        <div class="model-menu resource-menu agent-menu" id="hostedAgentMenu" role="menu" aria-label="Hosted agents in this workspace" hidden>
+                            <div class="menu-section">
+                                <div id="hostedAgentList"></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <section class="accordion-section init" id="initBlock" data-open="true" aria-label="Create new hosted agents">
                         <button class="accordion-toggle init-toggle" id="initToggle" type="button" aria-expanded="true" aria-controls="initPanel">
                             <span class="accordion-title">
@@ -288,20 +307,6 @@
                                 <div class="region-warn-text">
                                     <strong id="regionWarnHead">Hosted agents aren't available in this project's region.</strong>
                                     <span>Deploying to Foundry will fail. Switch to a project in a <a id="regionWarnLink" href="#" target="_blank" rel="noopener noreferrer">supported region</a>.</span>
-                                </div>
-                            </div>
-                            <div class="agent-select resource-select" id="deployAgentRow" hidden>
-                                <div class="resource-row">
-                                    <button class="resource-trigger" id="deployAgentTrigger" type="button" aria-haspopup="menu" aria-expanded="false" title="Hosted agent used by Test in Foundry Portal and Inspect Locally">
-                                        <span class="resource-label"><span class="fi fi-agent" aria-hidden="true"></span><span class="agent-current" id="deployAgentCurrent"></span></span>
-                                        <span class="fi fi-chev resource-chev" aria-hidden="true"></span>
-                                    </button>
-                                </div>
-                                <div class="model-menu resource-menu agent-menu" id="deployAgentMenu" role="menu" aria-label="Hosted agents in this workspace" hidden>
-                                    <div class="menu-section">
-                                        <div class="menu-label">Test in Foundry Portal and Inspect Locally use this agent</div>
-                                        <div id="deployAgentList"></div>
-                                    </div>
                                 </div>
                             </div>
                             <div class="row-deploy">

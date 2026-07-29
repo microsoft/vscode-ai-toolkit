@@ -404,21 +404,102 @@ body {
 .btn-playground[hidden] { display: none; }
 .deploy-hint { margin: 0; color: var(--muted); text-align: center; font-size: 12px; }
 
-/* Hosted agent picker — reuses the section 2 resource-select pattern. Only
-   shown for workspaces with more than one hosted agent. The trigger shows the
-   selected agent's name rather than a category label, so the name lands in the
-   left scan path where the user is already looking. */
-.agent-select { margin-bottom: 6px; }
-.agent-select[hidden] { display: none; }
-.agent-select .resource-label { min-width: 0; }
+/* Hosted agent context bar — shown only when the workspace scan finds more than
+   one hosted agent. New Agent is an explicit render state, not a persisted
+   workspace selection. */
+.agent-context-bar {
+    position: relative;
+    z-index: 20;
+    flex: 0 0 32px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 12px;
+    border-bottom: 1px solid rgba(0,0,0,.09);
+    background: var(--colorNeutralBackground2, #fafafa);
+}
+.agent-context-bar[hidden] { display: none; }
+.agent-context-control {
+    min-width: 0;
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.agent-context-label {
+    flex: 0 0 auto;
+    color: #717186;
+    font-size: 11px;
+    line-height: 15px;
+    white-space: nowrap;
+}
+.agent-context-trigger {
+    min-width: 0;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 4px;
+    border: 0;
+    border-radius: var(--fluent-radius);
+    background: transparent;
+    color: var(--fluent-fg-3);
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 600;
+}
+.agent-context-trigger:hover,
+.agent-context-trigger[aria-expanded="true"] {
+    background: var(--fluent-subtle);
+}
+.agent-context-chev {
+    color: var(--fluent-fg-3);
+    transition: transform .15s ease;
+}
+.agent-context-trigger[aria-expanded="true"] .agent-context-chev {
+    transform: rotate(180deg);
+}
 .agent-current {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.agent-menu .item-check { color: var(--accent); }
-#deployAgentList { max-height: 220px; overflow-y: auto; }
+.agent-new-button {
+    flex: 0 0 auto;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 8px 0 6px;
+    border: 1px solid #d1d1d1;
+    border-radius: var(--fluent-radius);
+    background: var(--bg);
+    color: var(--fluent-fg-1);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    line-height: 16px;
+}
+.agent-new-button:hover {
+    border-color: #bdbdbd;
+    background: var(--bg-subtle);
+}
+.agent-new-button[hidden] { display: none; }
+.agent-menu {
+    top: calc(100% + 4px);
+    right: auto;
+    left: 12px;
+    width: min(280px, calc(100% - 24px));
+    min-width: 220px;
+    padding: 4px;
+    border-radius: var(--fluent-radius);
+    box-shadow: var(--fluent-menu-shadow);
+}
+#hostedAgentList { max-height: 220px; overflow-y: auto; }
 
 /* Hosted-agent region warning + gated deploy button */
 .region-warn {
@@ -573,7 +654,7 @@ body {
 .fi-calendar { --fi-url: url("/fluent-icons/calendar_20_regular.svg"); --fi-size: 22px; }
 .fi-person { --fi-url: url("/fluent-icons/person_16_regular.svg"); --fi-size: 18px; }
 .fi-check { --fi-url: url("/fluent-icons/checkmark_16_regular.svg"); --fi-size: 18px; }
-.fi-agent { --fi-url: url("/fluent-icons/agents_16_regular.svg"); --fi-size: 18px; }
+.fi-add { --fi-url: url("/fluent-icons/add_16_regular.svg"); --fi-size: 16px; }
 .fi-dismiss { --fi-url: url("/fluent-icons/dismiss_16_regular.svg"); --fi-size: 14px; }
 
 @font-face {
@@ -1312,13 +1393,6 @@ body {
 .agent-menu .item-check {
     color: var(--fluent-brand);
 }
-.agent-menu .menu-label {
-    padding: 6px;
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 400;
-}
-
 @media (max-width: 430px) {
     .layout {
         max-width: none;
