@@ -761,6 +761,22 @@ Examples:
   "Agent with local function tools for hotel search."
   "Agent that discovers and invokes tools from a remote MCP server."`;
 
+// Shared guidance describing what a good picker displayName looks like, reused
+// by both the generate and refine prompts so the two paths stay consistent.
+// Style is taught by example (few-shot) rather than a long rule list: the
+// leaf-folder -> displayName pairs — including one negative example for the
+// observed failure mode where the model settles for a generic framework name —
+// steer the model far more reliably than abstract instructions. The leaf folder
+// name is also passed in the user prompt so the model can anchor on it.
+const DISPLAY_NAME_GUIDANCE = `A good displayName is a 2-4 word Title Case name for the sample's distinctive scenario. Never restate the already-chosen language, framework, or protocol; keep known acronyms uppercased (MCP, RAG, SDK, API, UI); no leading numbers and no "Sample"/"Demo".
+
+Examples (leaf folder -> displayName):
+  "uv-pyproject"         -> "uv Project Setup"   (NOT "Bring Your Own Agent" — that only repeats the framework)
+  "azure-search-rag"     -> "Azure Search RAG"
+  "11-human-in-the-loop" -> "Human-in-the-Loop"
+  "04-foundry-toolbox"   -> "Foundry Toolbox"
+  "echo"                 -> "Echo Agent"`;
+
 /**
  * Generate a displayName AND a one-sentence description from README content
  * (used when only BLANK fields are being filled — the default, non-refine
@@ -779,10 +795,7 @@ async function generateWithLLM(readmeContent, samplePath) {
 The user has already selected language, framework, and protocol before seeing these items, so neither field should repeat those choices.
 
 displayName rules:
-- A short, human-friendly Title Case name for the scenario (2-4 words)
-- Name what the sample demonstrates, not the folder (e.g. "Basic Agent", "Foundry Toolbox", "Azure Search RAG", "Human-in-the-Loop")
-- No leading numbers, no raw folder tokens, no words like "Sample" / "Demo"
-- Keep known acronyms uppercased (MCP, RAG, SDK, API, UI)
+${DISPLAY_NAME_GUIDANCE}
 
 description rules:
 ${DESCRIPTION_GUIDANCE}
@@ -790,6 +803,7 @@ ${DESCRIPTION_GUIDANCE}
 Respond ONLY with a JSON object: {"displayName": "...", "description": "..."}`;
 
     const userPrompt = `Path: ${samplePath}
+Leaf folder name (strongest displayName hint): ${samplePath.split('/').pop()}
 
 README.md:
 ${readmeContent.substring(0, 2000)}`;
@@ -831,10 +845,7 @@ The user has already selected language, framework, and protocol before seeing th
 You are given the CURRENT displayName and description. If they already fit the sample's README scenario, KEEP them exactly as-is. Only rewrite a field when it is empty, inaccurate, or unclear.
 
 displayName rules:
-- A short, human-friendly Title Case name for the scenario (2-4 words)
-- Name what the sample demonstrates, not the folder (e.g. "Basic Agent", "Foundry Toolbox", "Azure Search RAG", "Human-in-the-Loop")
-- No leading numbers, no raw folder tokens, no words like "Sample" / "Demo"
-- Keep known acronyms uppercased (MCP, RAG, SDK, API, UI)
+${DISPLAY_NAME_GUIDANCE}
 
 description rules:
 ${DESCRIPTION_GUIDANCE}
@@ -842,6 +853,7 @@ ${DESCRIPTION_GUIDANCE}
 Respond ONLY with a JSON object: {"displayName": "...", "description": "..."}`;
 
     const userPrompt = `Path: ${samplePath}
+Leaf folder name (strongest displayName hint): ${samplePath.split('/').pop()}
 Current displayName: ${currentDisplayName || '(empty)'}
 Current description: ${currentDescription || '(empty)'}
 
