@@ -9,12 +9,12 @@ on:
         type: string
         default: ""
       refine_with_ai:
-        description: "Let AI review and refine existing displayName/description (not just fill empty ones). Leave off to only fill blanks."
+        description: "Full refresh: regenerate the catalog while keeping existing displayName/description as much as possible."
         required: false
         type: boolean
         default: false
       ignore_existing_catalog:
-        description: "Ignore the previous catalog's displayName/description (regenerate from scratch). Use for the first AI refine so existing values don't anchor the result."
+        description: "Full refresh: overwrite ALL current displayName/description from scratch. Use only when necessary."
         required: false
         type: boolean
         default: false
