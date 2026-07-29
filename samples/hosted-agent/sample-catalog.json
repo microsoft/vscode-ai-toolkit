@@ -1,7 +1,7 @@
 {
-    "commitSha": "3b98218db7e9a92367dc3e4b6638fd97ac7c9502",
+    "commitSha": "b9d24354b4daec1c09987976846da598ba0a35cd",
     "repo": "https://github.com/microsoft-foundry/foundry-samples/",
-    "generatedAt": "2026-07-23T07:59:46Z",
+    "generatedAt": "2026-07-29T06:37:01Z",
     "dimensions": {
         "language": {
             "title": "Select a Language",
@@ -54,6 +54,10 @@
                 {
                     "id": "invocations_ws",
                     "displayName": "Invocations (WebSocket)"
+                },
+                {
+                    "id": "activity",
+                    "displayName": "Activity"
                 }
             ]
         }
@@ -551,6 +555,51 @@
         },
         {
             "language": "python",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Egress Policy Tester",
+            "description": "Agent that exercises managed egress proxy policies and returns full HTTP responses.",
+            "path": "samples/python/hosted-agents/agent-framework/responses/18-egress-control",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Research Harness",
+            "description": "Agent that plans research, searches the web, saves notes, and returns sourced summaries.",
+            "path": "samples/python/hosted-agents/agent-framework/responses/19-harness-research",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Data Processing Harness",
+            "description": "Agent that analyzes a bundled CSV and requests approval before any write or delete.",
+            "path": "samples/python/hosted-agents/agent-framework/responses/20-harness-data-processing",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Agent Scaling Capabilities",
+            "description": "Personal-finance harness agent with modular skills, confined shell, and CodeAct tooling.",
+            "path": "samples/python/hosted-agents/agent-framework/responses/21-harness-scaling-capabilities",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "bring-your-own",
+            "protocol": "activity",
+            "displayName": "Echo Agent",
+            "description": "Agent that echoes user messages back in the conversation.",
+            "path": "samples/python/hosted-agents/bring-your-own/activity/echo",
+            "requiresModel": false
+        },
+        {
+            "language": "python",
             "framework": "bring-your-own",
             "protocol": "invocations",
             "displayName": "Automatic UI Events",
@@ -772,6 +821,15 @@
             "displayName": "Session Multiplexing",
             "description": "Agent showing multiple users sharing an agent session while isolating response chains.",
             "path": "samples/python/hosted-agents/bring-your-own/responses/session-multiplexing",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "bring-your-own",
+            "protocol": "responses",
+            "displayName": "Bring Your Own Agent",
+            "description": "Minimal hosted agent that deploys an existing project and returns model responses.",
+            "path": "samples/python/hosted-agents/bring-your-own/responses/uv-pyproject",
             "requiresModel": true
         },
         {
