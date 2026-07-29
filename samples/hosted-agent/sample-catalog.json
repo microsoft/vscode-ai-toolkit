@@ -1,7 +1,7 @@
 {
-    "commitSha": "3b98218db7e9a92367dc3e4b6638fd97ac7c9502",
+    "commitSha": "f3d0055b9bd580634b0790d583008bc7be139e75",
     "repo": "https://github.com/microsoft-foundry/foundry-samples/",
-    "generatedAt": "2026-07-23T07:59:46Z",
+    "generatedAt": "2026-07-29T07:26:07Z",
     "dimensions": {
         "language": {
             "title": "Select a Language",
@@ -54,6 +54,10 @@
                 {
                     "id": "invocations_ws",
                     "displayName": "Invocations (WebSocket)"
+                },
+                {
+                    "id": "activity",
+                    "displayName": "Activity"
                 }
             ]
         }
@@ -551,6 +555,60 @@
         },
         {
             "language": "python",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Egress Control Tester",
+            "description": "Validates egress proxy policies by issuing outbound HTTP requests and returning status and headers.",
+            "path": "samples/python/hosted-agents/agent-framework/responses/18-egress-control",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Research Harness Agent",
+            "description": "Agent that plans research, performs web search, tracks todos, and compacts long context.",
+            "path": "samples/python/hosted-agents/agent-framework/responses/19-harness-research",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Data Processing Harness",
+            "description": "Analyzes CSV files and requests human approval before creating or modifying outputs.",
+            "path": "samples/python/hosted-agents/agent-framework/responses/20-harness-data-processing",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Scaling Capabilities Harness",
+            "description": "Personal-finance harness agent with file skills, confined shell, CodeAct, and background research.",
+            "path": "samples/python/hosted-agents/agent-framework/responses/21-harness-scaling-capabilities",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "bring-your-own",
+            "protocol": "activity",
+            "displayName": "Bring Your Own Echo",
+            "description": "Minimal agent that echoes incoming user messages.",
+            "path": "samples/python/hosted-agents/bring-your-own/activity/echo",
+            "requiresModel": false
+        },
+        {
+            "language": "python",
+            "framework": "bring-your-own",
+            "protocol": "activity",
+            "displayName": "GitHub Copilot Assistant",
+            "description": "Conversational assistant that proxies a Copilot-powered agent and exposes to-do and file tools.",
+            "path": "samples/python/hosted-agents/bring-your-own/activity/github-copilot",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
             "framework": "bring-your-own",
             "protocol": "invocations",
             "displayName": "Automatic UI Events",
@@ -772,6 +830,15 @@
             "displayName": "Session Multiplexing",
             "description": "Agent showing multiple users sharing an agent session while isolating response chains.",
             "path": "samples/python/hosted-agents/bring-your-own/responses/session-multiplexing",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "bring-your-own",
+            "protocol": "responses",
+            "displayName": "uv Project Setup",
+            "description": "Agent that runs an existing project with reproducible uv dependency management.",
+            "path": "samples/python/hosted-agents/bring-your-own/responses/uv-pyproject",
             "requiresModel": true
         },
         {
