@@ -75,6 +75,7 @@ const DIMENSION_DEFAULTS = {
             responses: 'Responses',
             invocations: 'Invocations',
             invocations_ws: 'Invocations (WebSocket)',
+            activity: 'Activity',
         },
     },
 };
