@@ -4,17 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: "Commit SHA from microsoft-foundry/foundry-samples to pin to (leave blank to use the latest main commit)"
+        description: "foundry-samples commit to pin to. Blank = latest main."
         required: false
         type: string
         default: ""
+      # Default (both off): incremental — only fill blank displayName/description
+      # with AI; existing values are kept untouched.
       refine_with_ai:
-        description: "Full refresh: regenerate the catalog while keeping existing displayName/description as much as possible."
+        description: "Full refresh, keep existing values. AI reviews all entries but only rewrites ones that no longer fit."
         required: false
         type: boolean
         default: false
       ignore_existing_catalog:
-        description: "Full refresh: overwrite ALL current displayName/description from scratch. Use only when necessary."
+        description: "Full refresh, overwrite everything. AI regenerates ALL displayName/description from scratch. Use only when necessary."
         required: false
         type: boolean
         default: false
