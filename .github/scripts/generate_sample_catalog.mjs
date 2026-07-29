@@ -126,6 +126,28 @@ const BLOCKED_CATEGORY_SEGMENTS = new Set();
 /** @type {Set<string>} */
 const skippedCategoriesLogged = new Set();
 
+// Dependency manifests are the authoritative signal for what a sample ACTUALLY
+// implements — the folder name and README can be misleading (e.g. a "voicelive"
+// folder whose agent has no azure-ai-voicelive dependency). We feed these to the
+// LLM alongside the README so the generated displayName reflects the real
+// capability (MCP, RAG, Voice Live, ...), matching how a human reviewer verifies
+// a name against source + deps. Lockfiles (uv.lock / packages.lock.json) are
+// intentionally excluded — huge and add no capability signal beyond the manifest.
+const DEPENDENCY_MANIFEST_BASENAMES = new Set(['requirements.txt', 'pyproject.toml', 'azure.yaml', 'package.json']);
+// Per-file and total caps so an unusually large manifest cannot blow the token
+// budget or the endpoint's per-minute rate limit; the capability-signalling
+// package list sits near the top of these files anyway. The caps are generous
+// (a normal manifest is well under them) and exist mainly to bound pathological
+// inputs from the upstream repo, keeping per-request cost predictable.
+const DEPENDENCY_FILE_CHAR_LIMIT = 3000;
+const DEPENDENCY_TOTAL_CHAR_LIMIT = 10000;
+
+// Maps a template's repo path to the repo paths of its dependency manifests,
+// discovered from the git tree during scanTemplates. Kept as module state
+// (like `warnings`) so it never leaks into the generated catalog JSON.
+/** @type {Map<string, string[]>} */
+const dependencyFilesByPath = new Map();
+
 /**
  * Collected anomaly messages surfaced in CI step summary so reviewers do not
  * silently merge a catalog with missing/derived data. Always populated, even
@@ -479,6 +501,34 @@ function findTemplateDirsUnder(tree, prefix) {
 }
 
 /**
+ * Collect the repo paths of a template's dependency manifests from the git
+ * tree: files directly inside the template dir (or its `src/` child) whose
+ * basename is a known manifest, or which end in `.csproj`. These are the files
+ * a human reviewer reads to confirm a sample's real capability before naming
+ * it, so we surface them to the LLM. Lockfiles are excluded by
+ * DEPENDENCY_MANIFEST_BASENAMES.
+ *
+ * @param {Array<{path: string, type: string}>} tree
+ * @param {string} templateDir Repo-relative template directory (no trailing slash).
+ * @returns {string[]}
+ */
+function collectDependencyFilePaths(tree, templateDir) {
+    const prefix = `${templateDir}/`;
+    return tree
+        .filter((entry) => {
+            if (entry.type !== 'blob' || !entry.path.startsWith(prefix)) {
+                return false;
+            }
+            const basename = entry.path.slice(entry.path.lastIndexOf('/') + 1);
+            return DEPENDENCY_MANIFEST_BASENAMES.has(basename) || basename.endsWith('.csproj');
+        })
+        .map((entry) => entry.path)
+        // Shallow files first (the sample's own manifest before any nested one),
+        // so the per-file cap keeps the most relevant signal.
+        .sort((a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b));
+}
+
+/**
  * Infer protocol when `azure.yaml` does not declare one explicitly. Looks for
  * a `responses` or `invocations` segment in the path, then for the substring
  * in the leaf directory name (common for samples like
@@ -576,7 +626,7 @@ async function fetchAzureYaml(samplePath, ref) {
 // Azure OpenAI configuration (from GitHub Secrets via env vars)
 const AZURE_OPENAI_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT || '';
 const AZURE_OPENAI_API_KEY = process.env.AZURE_OPENAI_API_KEY || '';
-const AZURE_OPENAI_DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini';
+const AZURE_OPENAI_DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.4-mini';
 // Must be >= 2024-09-01-preview so `max_completion_tokens` is accepted. Newer
 // models (gpt-5.x / reasoning) reject the legacy `max_tokens` param and any
 // non-default `temperature`; override via env if your deployment needs a
@@ -634,6 +684,48 @@ async function fetchReadme(samplePath, ref) {
     } catch {
         return null;
     }
+}
+
+/**
+ * Fetch a compact "dependency signals" block for a sample: the contents of its
+ * manifest files (discovered in scanTemplates, e.g. requirements.txt /
+ * pyproject.toml / *.csproj / azure.yaml), each truncated and the whole block
+ * capped, so the LLM can name the sample by its REAL capability (a declared
+ * `azure-ai-voicelive` / `ModelContextProtocol` / `langchain-mcp-adapters`
+ * dependency) instead of a misleading folder or README phrasing. Returns an
+ * empty string when the sample has no known manifests or none can be fetched —
+ * the caller then falls back to README-only context.
+ *
+ * @param {string} samplePath
+ * @param {string} ref
+ * @returns {Promise<string>}
+ */
+async function fetchDependencySignals(samplePath, ref) {
+    const filePaths = dependencyFilesByPath.get(samplePath) ?? [];
+    if (filePaths.length === 0) {
+        return '';
+    }
+
+    const blocks = [];
+    let total = 0;
+    for (const filePath of filePaths) {
+        if (total >= DEPENDENCY_TOTAL_CHAR_LIMIT) {
+            break;
+        }
+        const rawUrl = `https://raw.githubusercontent.com/microsoft-foundry/foundry-samples/${ref}/${filePath}`;
+        let content;
+        try {
+            content = await fetchText(rawUrl);
+        } catch {
+            continue;
+        }
+        const relPath = filePath.slice(samplePath.length + 1);
+        const snippet = content.slice(0, DEPENDENCY_FILE_CHAR_LIMIT);
+        const block = `--- ${relPath} ---\n${snippet}`;
+        blocks.push(block.slice(0, DEPENDENCY_TOTAL_CHAR_LIMIT - total));
+        total += block.length;
+    }
+    return blocks.join('\n\n');
 }
 
 /**
@@ -763,19 +855,38 @@ Examples:
 
 // Shared guidance describing what a good picker displayName looks like, reused
 // by both the generate and refine prompts so the two paths stay consistent.
-// Style is taught by example (few-shot) rather than a long rule list: the
-// leaf-folder -> displayName pairs — including one negative example for the
-// observed failure mode where the model settles for a generic framework name —
-// steer the model far more reliably than abstract instructions. The leaf folder
-// name is also passed in the user prompt so the model can anchor on it.
-const DISPLAY_NAME_GUIDANCE = `A good displayName is a 2-4 word Title Case name for the sample's distinctive scenario. Never restate the already-chosen language, framework, or protocol; keep known acronyms uppercased (MCP, RAG, SDK, API, UI); no leading numbers and no "Sample"/"Demo".
+// Style is taught by example (few-shot) rather than a long rule list. Two
+// signals drive a good name: (1) the leaf folder name (a strong hint, passed in
+// the user prompt), and (2) the dependency manifests (authoritative for the
+// REAL capability — a name like "Voice Live" must be backed by an actual
+// azure-ai-voicelive dependency, not just a folder called voicelive). The
+// examples include a capability-surfacing rename and a negative example for the
+// observed failure mode where the model settles for a generic framework name.
+const DISPLAY_NAME_GUIDANCE = `A good displayName is a 2-4 word Title Case name for the sample's distinctive scenario or key capability. Surface the real capability (e.g. MCP, RAG, Voice Live) ONLY when the dependency manifests actually implement it — never infer a capability from the folder name or README wording alone. Never restate the already-chosen language, framework, or protocol; keep known acronyms uppercased (MCP, RAG, SDK, API, UI); no leading numbers and no "Sample"/"Demo".
 
 Examples (leaf folder -> displayName):
-  "uv-pyproject"         -> "uv Project Setup"   (NOT "Bring Your Own Agent" — that only repeats the framework)
+  "uv-pyproject"         -> "uv Project Setup"          (NOT "Bring Your Own Agent" — that only repeats the framework)
+  "04-foundry-toolbox"   -> "MCP Toolbox Integration"   (deps use an MCP toolbox — surface the real capability)
+  "pipecat-webrtc"       -> "Real-Time Voice Agent"     (NOT "Voice Live" — no azure-ai-voicelive dependency present)
   "azure-search-rag"     -> "Azure Search RAG"
-  "11-human-in-the-loop" -> "Human-in-the-Loop"
-  "04-foundry-toolbox"   -> "Foundry Toolbox"
-  "echo"                 -> "Echo Agent"`;
+  "11-human-in-the-loop" -> "Human-in-the-Loop"`;
+
+/**
+ * Format the dependency-signals block for a user prompt. Returns an empty
+ * string when there are no signals (so the prompt cleanly falls back to
+ * README-only context), otherwise a labelled block the model is told is
+ * authoritative for the sample's real capability.
+ *
+ * @param {string} dependencySignals
+ * @returns {string}
+ */
+function dependencyPromptSection(dependencySignals) {
+    if (!dependencySignals) {
+        return '';
+    }
+    return `\nDependency manifests (authoritative for the sample's real capability — prefer these over README wording):\n${dependencySignals}\n`;
+}
+
 
 /**
  * Generate a displayName AND a one-sentence description from README content
@@ -788,9 +899,10 @@ Examples (leaf folder -> displayName):
  *
  * @param {string} readmeContent
  * @param {string} samplePath
+ * @param {string} dependencySignals Manifest excerpts (may be empty).
  * @returns {Promise<{ displayName: string, description: string } | null>}
  */
-async function generateWithLLM(readmeContent, samplePath) {
+async function generateWithLLM(readmeContent, samplePath, dependencySignals) {
     const systemPrompt = `You generate the displayName and description of a hosted-agent sample shown in a VS Code template picker.
 The user has already selected language, framework, and protocol before seeing these items, so neither field should repeat those choices.
 
@@ -804,7 +916,7 @@ Respond ONLY with a JSON object: {"displayName": "...", "description": "..."}`;
 
     const userPrompt = `Path: ${samplePath}
 Leaf folder name (strongest displayName hint): ${samplePath.split('/').pop()}
-
+${dependencyPromptSection(dependencySignals)}
 README.md:
 ${readmeContent.substring(0, 2000)}`;
 
@@ -836,9 +948,10 @@ ${readmeContent.substring(0, 2000)}`;
  * @param {string} samplePath
  * @param {string} currentDisplayName
  * @param {string} currentDescription
+ * @param {string} dependencySignals Manifest excerpts (may be empty).
  * @returns {Promise<{ displayName: string, description: string } | null>}
  */
-async function refineDisplayFieldsWithLLM(readmeContent, samplePath, currentDisplayName, currentDescription) {
+async function refineDisplayFieldsWithLLM(readmeContent, samplePath, currentDisplayName, currentDescription, dependencySignals) {
     const systemPrompt = `You curate the displayName and description of a hosted-agent sample shown in a VS Code template picker.
 The user has already selected language, framework, and protocol before seeing these items, so neither field should repeat those choices.
 
@@ -856,7 +969,7 @@ Respond ONLY with a JSON object: {"displayName": "...", "description": "..."}`;
 Leaf folder name (strongest displayName hint): ${samplePath.split('/').pop()}
 Current displayName: ${currentDisplayName || '(empty)'}
 Current description: ${currentDescription || '(empty)'}
-
+${dependencyPromptSection(dependencySignals)}
 README.md:
 ${readmeContent.substring(0, 2000)}`;
 
@@ -977,6 +1090,8 @@ async function scanTemplates(commitSha) {
                     : inferProtocolFromPath(templatePath);
 
                 const requiresModel = azureInfo.requiresModel;
+
+                dependencyFilesByPath.set(templatePath, collectDependencyFilePaths(tree, templatePath));
 
                 templates.push({
                     language,
@@ -1196,7 +1311,8 @@ async function fillBlankDisplayFields(templates, commitSha, hasLLM) {
             if (!readme) {
                 continue;
             }
-            const result = await generateWithLLM(readme, template.path);
+            const dependencySignals = await fetchDependencySignals(template.path, commitSha);
+            const result = await generateWithLLM(readme, template.path, dependencySignals);
             if (!result) {
                 continue;
             }
@@ -1241,11 +1357,13 @@ async function refineAllWithLLM(templates, commitSha) {
             }
             continue;
         }
+        const dependencySignals = await fetchDependencySignals(template.path, commitSha);
         const result = await refineDisplayFieldsWithLLM(
             readme,
             template.path,
             template.displayName,
-            template.description
+            template.description,
+            dependencySignals
         );
         if (result?.displayName) {
             template.displayName = result.displayName;
