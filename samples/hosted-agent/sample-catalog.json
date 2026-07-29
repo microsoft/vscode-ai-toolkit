@@ -1,7 +1,7 @@
 {
-    "commitSha": "b9d24354b4daec1c09987976846da598ba0a35cd",
+    "commitSha": "b29a509fe33317ff03d23e85311c0da36aa8e5eb",
     "repo": "https://github.com/microsoft-foundry/foundry-samples/",
-    "generatedAt": "2026-07-29T06:55:34Z",
+    "generatedAt": "2026-07-29T12:19:09Z",
     "dimensions": {
         "language": {
             "title": "Select a Language",
@@ -236,6 +236,33 @@
             "displayName": "Foundry MCP Toolbox (Platform-Managed)",
             "description": "Agent that uses a Foundry Toolbox's server-side tools through the MCP proxy.",
             "path": "samples/csharp/hosted-agents/agent-framework/foundry-toolbox-server-side",
+            "requiresModel": true
+        },
+        {
+            "language": "csharp",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Harness Data Processing",
+            "description": "Hosts a data-processing harness that analyzes a bundled CSV and requires approval for file changes.",
+            "path": "samples/csharp/hosted-agents/agent-framework/harness-data-processing",
+            "requiresModel": true
+        },
+        {
+            "language": "csharp",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Research Harness",
+            "description": "Agent plans and runs a research workflow, browsing the web, tracking todos, and saving findings.",
+            "path": "samples/csharp/hosted-agents/agent-framework/harness-research",
+            "requiresModel": true
+        },
+        {
+            "language": "csharp",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Scaling Capabilities",
+            "description": "Personal-finance agent with skills, a confined shell, CodeAct, and background research.",
+            "path": "samples/csharp/hosted-agents/agent-framework/harness-scaling-capabilities",
             "requiresModel": true
         },
         {
@@ -597,6 +624,15 @@
             "description": "Agent that echoes incoming messages back to the sender.",
             "path": "samples/python/hosted-agents/bring-your-own/activity/echo",
             "requiresModel": false
+        },
+        {
+            "language": "python",
+            "framework": "bring-your-own",
+            "protocol": "activity",
+            "displayName": "GitHub Copilot",
+            "description": "Conversational assistant using GitHub Copilot with to-do and shared-file reading tools.",
+            "path": "samples/python/hosted-agents/bring-your-own/activity/github-copilot",
+            "requiresModel": true
         },
         {
             "language": "python",
