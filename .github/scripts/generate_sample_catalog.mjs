@@ -71,11 +71,13 @@ const DIMENSION_DEFAULTS = {
     protocol: {
         title: 'Select a Protocol',
         placeholder: 'Choose the protocol for your agent',
+        // Only special-cased ids need an entry here (ordering + custom label);
+        // any other id is auto-formatted by titleCaseId (e.g. `activity` ->
+        // `Activity`), so a newly declared protocol needs no code change.
         options: {
             responses: 'Responses',
             invocations: 'Invocations',
             invocations_ws: 'Invocations (WebSocket)',
-            activity: 'Activity',
         },
     },
 };
@@ -884,10 +886,27 @@ const DISPLAY_NAME_TOKEN_CASING = {
 };
 
 /**
+ * Title-case a dash/underscore-delimited id into a user-facing label: split on
+ * `-`/`_`, capitalize each word, and apply `DISPLAY_NAME_TOKEN_CASING` for
+ * known acronyms/brands. `azure-search-rag` -> `Azure Search RAG`,
+ * `activity` -> `Activity`. Used both as the dimension-option label fallback
+ * (buildDimensions) and by displayNameFromPath.
+ *
+ * @param {string} id
+ * @returns {string}
+ */
+function titleCaseId(id) {
+    return id
+        .split(/[-_]/)
+        .filter((w) => w.length > 0)
+        .map((w) => DISPLAY_NAME_TOKEN_CASING[w.toLowerCase()] ?? (w.charAt(0).toUpperCase() + w.slice(1)))
+        .join(' ');
+}
+
+/**
  * Derive a displayName from the template's directory name. Strips a leading
  * numeric ordering prefix (`09-`, `12_`) so upstream reorderings don't bleed
- * into the picker, then converts dash/underscore tokens into Title Case
- * words and applies `DISPLAY_NAME_TOKEN_CASING` for known acronyms/brands:
+ * into the picker, then title-cases the remaining tokens (see titleCaseId):
  * `09-declarative-customer-support` -> `Declarative Customer Support`,
  * `azure-search-rag` -> `Azure Search RAG`.
  *
@@ -896,12 +915,7 @@ const DISPLAY_NAME_TOKEN_CASING = {
  */
 function displayNameFromPath(samplePath) {
     const dirName = samplePath.split('/').pop() || '';
-    return dirName
-        .replace(/^\d+[-_]/, '')
-        .split(/[-_]/)
-        .filter((w) => w.length > 0)
-        .map((w) => DISPLAY_NAME_TOKEN_CASING[w.toLowerCase()] ?? (w.charAt(0).toUpperCase() + w.slice(1)))
-        .join(' ');
+    return titleCaseId(dirName.replace(/^\d+[-_]/, ''));
 }
 
 /**
@@ -992,7 +1006,7 @@ function buildDimensions(templates) {
         ];
         const options = orderedIds.map((id) => ({
             id,
-            displayName: defaults.options[id] || id,
+            displayName: defaults.options[id] || titleCaseId(id),
         }));
         dimensions[dimKey] = {
             title: defaults.title,
