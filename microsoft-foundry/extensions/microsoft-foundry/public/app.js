@@ -373,7 +373,9 @@ function renderHostedAgentDeployment() {
     const link = document.getElementById("testPlaygroundLink");
     const description = document.getElementById("deployDescription");
     if (!link && !description) return;
-    const deployment = state.hostedAgentDeployment;
+    const deployment = state.hostedAgents.creatingNew
+        ? emptyHostedAgentDeployment()
+        : state.hostedAgentDeployment;
     const descriptionText = hostedAgentDeploymentDescription(deployment);
     if (description) {
         description.textContent = descriptionText;
@@ -532,15 +534,17 @@ async function loadHostedAgents(force) {
     return st;
 }
 
-function beginNewHostedAgent() {
-    closeHostedAgentMenu();
+function showNewAgent(prompt = "") {
+    const nextPrompt = String(prompt || "").trim();
+    if (nextPrompt) {
+        state.init.idea = "";
+        setInitPreviewPrompt(nextPrompt);
+    }
     state.hostedAgents.creatingNew = true;
     state.init.open = true;
     state.folds.resources = false;
     state.folds.deploy = false;
-    renderHostedAgentPicker();
-    renderInit();
-    renderFolds();
+    render();
 }
 
 async function selectHostedAgent(agentName) {
@@ -563,6 +567,7 @@ async function selectHostedAgent(agentName) {
     }
     renderHostedAgentPicker();
     if (agentName === previous) {
+        renderHostedAgentDeployment();
         toast("Agent: " + agentName);
         return;
     }
@@ -744,10 +749,7 @@ function setInitPreviewPrompt(text) {
 
 function setInitUserPrompt(prompt) {
     if (!prompt || !prompt.trim()) return;
-    state.init.idea = "";
-    state.init.open = true;
-    setInitPreviewPrompt(prompt.trim());
-    renderInit();
+    showNewAgent(prompt);
     toast("Task added \u2713");
 }
 
@@ -1913,7 +1915,7 @@ root.addEventListener("click", async (e) => {
         return;
     }
     if (e.target.closest("#newHostedAgentBtn")) {
-        beginNewHostedAgent();
+        showNewAgent();
         return;
     }
     if (e.target.closest("#hostedAgentTrigger")) {
@@ -1971,7 +1973,12 @@ root.addEventListener("click", async (e) => {
         return;
     }
     if (e.target.closest("#inspectBtn")) {
-        launchInspector(e.target.closest("#inspectBtn"));
+        if (state.hostedAgents.creatingNew) {
+            toast("Select an existing agent to inspect locally.");
+        } else {
+            launchInspector(e.target.closest("#inspectBtn"));
+        }
+        return;
     }
 });
 
@@ -2089,6 +2096,7 @@ root.addEventListener("input", (e) => {
 
 // ------------------------------------------------------- Init + live updates
 async function init() {
+    let initialCreatePrompt = "";
     const [stateResult, projectInitResult] = await Promise.allSettled([
         getJSON("/api/state"),
         getJSON("/api/project-init"),
@@ -2098,8 +2106,7 @@ async function init() {
         const s = stateResult.value;
         if (s.agentName) state.agentName = s.agentName;
         if (s.initPrompt) {
-            state.init.promptText = s.initPrompt;
-            state.init.promptDirty = true;
+            initialCreatePrompt = s.initPrompt;
         }
         if (s.selection) state.selection = normalizeSelection(s.selection);
         if (s.model) state.model = s.model;
@@ -2121,7 +2128,8 @@ async function init() {
             }
         }
     }
-    render();
+    if (initialCreatePrompt) showNewAgent(initialCreatePrompt);
+    else render();
 
     // Project init normally supplies the agent list from the workspace scan it
     // already performed. If it did not, start the fallback fetch immediately
