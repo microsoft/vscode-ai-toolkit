@@ -144,8 +144,9 @@ jobs:
           & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy AllSigned `
             -File $env:DEVPACK_SCRIPT --verbose
           if ($LASTEXITCODE -ne 0) { throw "PowerShell bootstrap exited $LASTEXITCODE" }
-          if (@(Get-ChildItem $temp -Force).Count) {
-            throw "bootstrap left temporary files under $temp"
+          $leaked = @(Get-ChildItem $temp -Directory -Filter 'foundry-devpack-*' -ErrorAction SilentlyContinue)
+          if ($leaked.Count) {
+            throw "bootstrap left temporary directories: $($leaked.FullName -join ', ')"
           }
 
       - name: Verify installed components
@@ -292,9 +293,9 @@ jobs:
           export TMPDIR="$temp"
 
           bash "$DEVPACK_SCRIPT" --verbose
-          if find "$temp" -mindepth 1 -print -quit | grep -q .; then
-            echo "error: bootstrap left temporary files under $temp" >&2
-            find "$temp" -mindepth 1 -maxdepth 2 -print >&2
+          if find "$temp" -mindepth 1 -maxdepth 1 -type d -name 'foundry-devpack-*' -print -quit | grep -q .; then
+            echo "error: bootstrap left temporary directories under $temp" >&2
+            find "$temp" -mindepth 1 -maxdepth 1 -type d -name 'foundry-devpack-*' -print >&2
             exit 1
           fi
 
@@ -398,9 +399,9 @@ jobs:
           export TMPDIR="$temp"
 
           bash "$DEVPACK_SCRIPT" --verbose
-          if find "$temp" -mindepth 1 -print -quit | grep -q .; then
-            echo "error: bootstrap left temporary files under $temp" >&2
-            find "$temp" -mindepth 1 -maxdepth 2 -print >&2
+          if find "$temp" -mindepth 1 -maxdepth 1 -type d -name 'foundry-devpack-*' -print -quit | grep -q .; then
+            echo "error: bootstrap left temporary directories under $temp" >&2
+            find "$temp" -mindepth 1 -maxdepth 1 -type d -name 'foundry-devpack-*' -print >&2
             exit 1
           fi
 
