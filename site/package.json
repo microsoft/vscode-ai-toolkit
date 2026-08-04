@@ -1,0 +1,13 @@
+{
+  "name": "foundry-toolkit-changelog-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static changelog site generated from WHATS_NEW.md and published to GitHub Pages.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "marked": "^15.0.7"
+  }
+}

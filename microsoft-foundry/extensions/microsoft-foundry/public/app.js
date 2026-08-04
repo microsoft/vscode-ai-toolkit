@@ -1,25 +1,31 @@
-// Foundry Agent Canvas — client SPA.
-// Three client-side views (build / tools / models). Add & Deploy affordances
-// POST a prompt to /api/send, which the extension forwards to the chat via
-// session.send(). Catalog data comes from /api/tools and /api/models.
+// Microsoft Foundry canvas — client SPA.
+// A single build view. Add & Deploy affordances POST a prompt to /api/send,
+// which the extension forwards to the chat via session.send(). Live project
+// data (deployments, toolboxes, skills, guardrails) is read from /api/* routes.
+
+import {
+    emptySelection,
+    normalizeSelection,
+    selectProject as transitionProject,
+    selectSubscription as transitionSubscription,
+} from "./selection-state.js";
+import { buildIssueReportUrl, detectOperatingSystem } from "./issue-report.js";
 
 const state = {
-    page: "build",
     agentName: "",
-    project: { name: "", rg: "", account: "" },
+    selection: emptySelection(),
     model: { name: "", color: "#10a37f" },
     deployPrompt: "deploy it as a Foundry hosted agent",
+    pluginVersion: "",
     // Live project data, lazily loaded when a dropdown first opens.
     // status: idle | loading | ready | error
     deploymentsState: { status: "idle", items: [], source: null, reason: null },
-    connectionsState: { status: "idle", items: [], source: null, reason: null },
     toolboxesState: { status: "idle", items: [], reason: null },
     guardrailsState: { status: "idle", items: [], reason: null },
     skillsState: { status: "idle", items: [], reason: null },
     canvasDisconnected: false,
     // Project picker state.
-    identity: { signedIn: false, account: "", tenantId: "", subscriptionId: "", subscriptionName: "" },
-    selectedSubscription: { id: "", name: "" },
+    identity: { signedIn: false, account: "", tenantId: "" },
     subsState: { status: "idle", items: [], reason: null },
     projState: { status: "idle", items: [], reason: null, sub: null },
     signin: { sessionId: null, timer: null, starting: false },
@@ -44,6 +50,18 @@ const state = {
         agentName: "",
         version: "",
         reason: "",
+    },
+    // Hosted agents found in the workspace. The picker only appears when there
+    // is more than one, so single-agent workspaces keep the implicit behavior.
+    hostedAgents: { status: "idle", items: [], selected: "", creatingNew: false },
+    // Marketplace update for this extension's plugin, checked when the canvas
+    // opens. The canvas only reports availability; the host performs updates
+    // after it has released this provider's files.
+    pluginUpdate: {
+        status: "idle",
+        installedVersion: "",
+        latestVersion: "",
+        dismissed: false,
     },
 };
 
@@ -91,13 +109,13 @@ function markReconnected() {
         // Lists that errored out while the server was gone are showing a stale
         // "Canvas disconnected" panel. Reset them to idle so they refetch when
         // their dropdown next opens, then repaint.
-        for (const key of ["deploymentsState", "connectionsState", "toolboxesState", "guardrailsState", "skillsState"]) {
+        for (const key of ["deploymentsState", "toolboxesState", "guardrailsState", "skillsState"]) {
             if (state[key] && state[key].status === "error") {
                 state[key].status = "idle";
                 state[key].reason = null;
             }
         }
-        render(state.page);
+        render();
     }
 }
 
@@ -106,7 +124,7 @@ function scheduleDisconnect() {
     disconnectTimer = setTimeout(() => {
         disconnectTimer = null;
         state.canvasDisconnected = true;
-        render(state.page);
+        render();
     }, DISCONNECT_GRACE_MS);
 }
 
@@ -138,7 +156,7 @@ async function sendToChat(prompt, refresh) {
         const isNetwork = err instanceof TypeError || /failed to fetch/i.test(err.message || "");
         toast(
             isNetwork
-                ? "Lost connection to the builder. Reopen the Foundry Agent Canvas, then try again."
+                ? "Lost connection to the builder. Reopen the Microsoft Foundry canvas, then try again."
                 : "Could not send: " + err.message,
         );
     }
@@ -148,46 +166,25 @@ async function sendToChat(prompt, refresh) {
 // agent knows which project to target (name, subscription, and data-plane
 // endpoint). Returns the prompt unchanged when no project is selected.
 function withProjectContext(prompt) {
-    const name = state.project?.name;
-    if (!name) return prompt;
-    const parts = [`project "${name}"`];
-    const sub = state.identity?.subscriptionName;
-    if (sub) parts.push(`in subscription "${sub}"`);
-    const ep = state.project?.endpoint;
-    if (ep) parts.push(`(endpoint: ${ep})`);
+    const { subscription, project } = state.selection;
+    if (!project?.name) return prompt;
+    const parts = [`project "${project.name}"`];
+    if (subscription.name) parts.push(`in subscription "${subscription.name}"`);
+    if (project.endpoint) parts.push(`(endpoint: ${project.endpoint})`);
     return `${prompt}\n\nUse my selected Foundry ${parts.join(" ")}.`;
 }
 
 // Build a Foundry Portal URL for the selected project. Returns "" when the
 // subscription or project info is unavailable.
 function portalUrl(path) {
-    const subId = state.identity?.subscriptionId;
-    let rg = state.project?.rg;
-    let account = state.project?.account;
-    const project = state.project?.name;
-    if (!subId || !project) return "";
-    // Backfill rg/account from the loaded project list if not yet in state.
-    if ((!rg || !account) && state.projState?.items?.length) {
-        const match = state.projState.items.find((p) => p.name === project);
-        if (match) {
-            rg = rg || match.rg || "";
-            account = account || match.account || "";
-        }
-    }
-    // Derive account from the endpoint hostname as a last resort.
-    if (!account && state.project?.endpoint) {
-        try { account = new URL(state.project.endpoint).hostname.split(".")[0] || ""; } catch {}
-    }
-    if (!rg || !account) return "";
+    const { subscription, project } = state.selection;
+    if (!subscription.id || !project?.name || !project.resourceGroup || !project.accountName) return "";
+    const hex = subscription.id.replace(/-/g, "");
+    if (!/^[0-9a-f]{32}$/i.test(hex)) return "";
     // The portal encodes the subscription GUID as url-safe base64 (no padding).
-    const bytes = new Uint8Array(subId.replace(/-/g, "").match(/.{2}/g).map((b) => parseInt(b, 16)));
+    const bytes = new Uint8Array(hex.match(/.{2}/g).map((byte) => parseInt(byte, 16)));
     const b64 = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-    return `https://ai.azure.com/nextgen/r/${b64},${rg},,${account},${project}/${path}`;
-}
-
-function refreshPortalLinks() {
-    // No-op — portal links now use window.open at click time, always reading
-    // the latest state. Kept as a call site placeholder.
+    return `https://ai.azure.com/nextgen/r/${b64},${project.resourceGroup},,${project.accountName},${project.name}/${path}`;
 }
 
 function openPortalPage(path) {
@@ -218,24 +215,13 @@ function fluentIcon(name, className = "") {
 function renderBuild() {
     const node = clone("tpl-build");
 
-    const projectName = state.project?.name || "Select a project";
-    const projEl = node.querySelector("#projectName");
-    if (projEl) projEl.textContent = projectName;
-    const projDot = node.querySelector(".project-dot");
-    if (projDot) projDot.classList.toggle("is-unset", !state.project?.name);
-    const menuProj = node.querySelector("#menuProject");
-    if (menuProj) menuProj.textContent = projectName;
-    const toolMenuProj = node.querySelector("#toolMenuProject");
-    if (toolMenuProj) toolMenuProj.textContent = projectName;
-    const toolboxMenuProj = node.querySelector("#toolboxMenuProject");
-    if (toolboxMenuProj) toolboxMenuProj.textContent = projectName;
-    // Reseed the picker's selected sub/project so a re-clone keeps the selection.
-    const pmProjValue = node.querySelector("#pmProjValue");
-    if (pmProjValue && state.project?.name) pmProjValue.textContent = state.project.name;
-    const pmSubValue = node.querySelector("#pmSubValue");
-    if (pmSubValue) {
-        const subName = selectedSubscriptionName();
-        if (subName) pmSubValue.textContent = subName;
+    renderSelectionLabels(node);
+    const issueLink = node.querySelector("#githubIssueLink");
+    if (issueLink) {
+        issueLink.href = buildIssueReportUrl({
+            operatingSystem: detectOperatingSystem(),
+            pluginVersion: state.pluginVersion,
+        });
     }
 
     // Set portal links for "Deploy new model" / "Add or update toolbox" / "Create new skill" / "Create new guardrail".
@@ -244,8 +230,8 @@ function renderBuild() {
     const skillLink = node.querySelector("#createSkillLink");
     const guardrailLink = node.querySelector("#createGuardrailLink");
     if (modelLink) modelLink.addEventListener("click", () => { closeModelMenu(); openPortalPage("build/models/deployments"); });
-    if (toolLink) toolLink.addEventListener("click", () => { closeToolMenu(); openPortalPage("build/toolboxes"); });
-    if (skillLink) skillLink.addEventListener("click", () => { closeSkillMenu(); openPortalPage("build/tools"); });
+    if (toolLink) toolLink.addEventListener("click", () => { closeToolMenu(); openPortalPage("build/tools?tab=toolboxes"); });
+    if (skillLink) skillLink.addEventListener("click", () => { closeSkillMenu(); openPortalPage("build/tools?tab=skills"); });
     if (guardrailLink) guardrailLink.addEventListener("click", () => { closeGuardrailMenu(); openPortalPage("build/guardrails/list"); });
 
     root.replaceChildren(node);
@@ -259,6 +245,14 @@ function renderBuild() {
     renderFolds();
     renderRegionSupport();
     renderHostedAgentDeployment();
+    renderHostedAgentPicker();
+    renderPluginUpdate();
+}
+
+function syncDeployDescriptionVisibility(open = state.folds.deploy) {
+    const description = document.getElementById("deployDescription");
+    if (!description) return;
+    description.hidden = !open || !description.textContent.trim();
 }
 
 // Apply a collapsible card's open/closed state to the DOM. Mirrors the
@@ -271,6 +265,7 @@ function applyFold(blockId, open) {
     if (toggle) toggle.setAttribute("aria-expanded", String(open));
     const panel = block.querySelector(".fold-panel");
     if (panel) panel.hidden = !open;
+    if (blockId === "deployBlock") syncDeployDescriptionVisibility(open);
 }
 
 function renderFolds() {
@@ -295,7 +290,7 @@ function prettyRegion(code) {
 }
 
 // Reflect the current hosted-region check onto the Deploy button + warning
-// banner. Safe to call even when the deploy DOM isn't mounted (other pages).
+// banner. Safe to call even when the deploy DOM isn't mounted yet.
 function renderRegionSupport() {
     const warn = document.getElementById("regionWarn");
     const btn = document.getElementById("deployBtn");
@@ -348,7 +343,7 @@ function hasAvailableHostedAgentDeployment(deployment) {
 
 function isDefinitiveHostedAgentResult(result) {
     if (result?.ok === true) return true;
-    return ["ambiguous_agent", "no_agent", "no_project"].includes(result?.reason);
+    return ["no_agent", "no_project"].includes(result?.reason);
 }
 
 function hostedAgentDeploymentFromResult(result) {
@@ -364,17 +359,36 @@ function hostedAgentDeploymentFromResult(result) {
     };
 }
 
+function hostedAgentDeploymentDescription(deployment) {
+    if (!deployment?.deployed) return "";
+    const agentName = String(deployment.agentName || "").trim();
+    const version = String(deployment.version || "").trim();
+    if (agentName && version) return `Deployed as ${agentName}, version ${version}.`;
+    if (agentName) return `Deployed as ${agentName}.`;
+    if (version) return `Deployed version ${version}.`;
+    return "Deployed to Microsoft Foundry.";
+}
+
 function renderHostedAgentDeployment() {
     const link = document.getElementById("testPlaygroundLink");
+    const description = document.getElementById("deployDescription");
+    if (!link && !description) return;
+    const deployment = state.hostedAgents.creatingNew
+        ? emptyHostedAgentDeployment()
+        : state.hostedAgentDeployment;
+    const descriptionText = hostedAgentDeploymentDescription(deployment);
+    if (description) {
+        description.textContent = descriptionText;
+        syncDeployDescriptionVisibility();
+    }
     if (!link) return;
-    const deployment = state.hostedAgentDeployment;
     const visible = hasAvailableHostedAgentDeployment(deployment);
     link.hidden = !visible;
     link.closest(".row-deploy")?.classList.toggle("has-playground", visible);
     if (visible) link.href = deployment.portalUrl;
     else link.removeAttribute("href");
     link.title = visible && deployment.version
-        ? `Test ${deployment.agentName} version ${deployment.version} in Microsoft Foundry Playground`
+        ? `Test ${deployment.agentName} version ${deployment.version} in Microsoft Foundry Portal`
         : "";
 }
 
@@ -392,6 +406,190 @@ async function loadHostedAgentDeployment() {
     }
     renderHostedAgentDeployment();
     return state.hostedAgentDeployment;
+}
+
+// ------------------------------------------------- Hosted agent picker
+// The agents the picker offers. An explicit selection that no longer matches a
+// workspace agent (e.g. one supplied through the canvas input) is kept as the
+// first entry so the user can still see what the actions target.
+function workspaceHostedAgentOptions() {
+    return state.hostedAgents.items.filter((agent) => agent.agentName);
+}
+
+function hostedAgentOptions() {
+    const { selected } = state.hostedAgents;
+    const options = workspaceHostedAgentOptions();
+    if (selected && !options.some((a) => a.agentName.toLowerCase() === selected.toLowerCase())) {
+        return [{ agentName: selected, manifestPath: "" }, ...options];
+    }
+    return options;
+}
+
+function selectedHostedAgentOption(options) {
+    const selected = String(state.hostedAgents.selected || "").toLowerCase();
+    return options.find((a) => a.agentName.toLowerCase() === selected) || options[0];
+}
+
+function renderHostedAgentPicker() {
+    const bar = document.getElementById("hostedAgentBar");
+    const current = document.getElementById("hostedAgentCurrent");
+    const list = document.getElementById("hostedAgentList");
+    const newButton = document.getElementById("newHostedAgentBtn");
+    if (!bar || !current || !list || !newButton) return;
+    const workspaceOptions = workspaceHostedAgentOptions();
+    const options = hostedAgentOptions();
+    // Only actual workspace agents count toward visibility. An explicit canvas
+    // selection that is not in the scan must not make a single-agent workspace
+    // look like a multi-agent workspace.
+    bar.hidden = workspaceOptions.length < 2;
+    if (bar.hidden) {
+        closeHostedAgentMenu();
+        current.textContent = "";
+        list.replaceChildren();
+        return;
+    }
+
+    const creatingNew = state.hostedAgents.creatingNew === true;
+    const active = selectedHostedAgentOption(options);
+    const renderedName = creatingNew ? "New Agent" : active.agentName;
+    current.textContent = renderedName;
+    newButton.hidden = creatingNew;
+    const trigger = document.getElementById("hostedAgentTrigger");
+    if (trigger) trigger.setAttribute("aria-label", "Working on: " + renderedName);
+
+    list.replaceChildren();
+    if (creatingNew) {
+        const item = document.createElement("button");
+        item.className = "menu-item is-active";
+        item.type = "button";
+        item.setAttribute("role", "menuitemradio");
+        item.setAttribute("aria-checked", "true");
+
+        const name = document.createElement("span");
+        name.className = "item-name";
+        name.textContent = "New Agent";
+        item.appendChild(name);
+        item.appendChild(fluentIcon("check", "item-check"));
+        item.addEventListener("click", closeHostedAgentMenu);
+        list.appendChild(item);
+    }
+
+    for (const agent of options) {
+        const isActive = !creatingNew &&
+            agent.agentName.toLowerCase() === active.agentName.toLowerCase();
+        const item = document.createElement("button");
+        item.className = "menu-item" + (isActive ? " is-active" : "");
+        item.type = "button";
+        item.setAttribute("role", "menuitemradio");
+        item.setAttribute("aria-checked", String(isActive));
+        if (agent.manifestPath) item.title = agent.manifestPath;
+
+        const name = document.createElement("span");
+        name.className = "item-name";
+        name.textContent = agent.agentName;
+        item.appendChild(name);
+
+        if (isActive) item.appendChild(fluentIcon("check", "item-check"));
+
+        item.addEventListener("click", () => {
+            closeHostedAgentMenu();
+            selectHostedAgent(agent.agentName);
+        });
+        list.appendChild(item);
+    }
+}
+
+function closeHostedAgentMenu() {
+    const menu = document.getElementById("hostedAgentMenu");
+    const btn = document.getElementById("hostedAgentTrigger");
+    if (menu) menu.hidden = true;
+    if (btn) btn.setAttribute("aria-expanded", "false");
+}
+
+function toggleHostedAgentMenu() {
+    const menu = document.getElementById("hostedAgentMenu");
+    const btn = document.getElementById("hostedAgentTrigger");
+    if (!menu) return;
+    const willOpen = menu.hidden;
+    menu.hidden = !willOpen;
+    if (btn) btn.setAttribute("aria-expanded", String(willOpen));
+    if (willOpen) loadHostedAgents(false);
+}
+
+async function loadHostedAgents(force) {
+    const st = state.hostedAgents;
+    if (!force && (st.status === "loading" || st.status === "ready")) return st;
+    st.status = "loading";
+    try {
+        const data = await getJSON("/api/hosted-agents");
+        st.items = Array.isArray(data.agents) ? data.agents : [];
+        st.selected = data.selected || "";
+        st.status = "ready";
+    } catch {
+        // Keep the last known agents: a failed refresh must not collapse the
+        // picker out from under an open menu.
+        st.status = "error";
+    }
+    renderHostedAgentPicker();
+    return st;
+}
+
+function showNewAgent(prompt = "") {
+    const nextPrompt = String(prompt || "").trim();
+    if (nextPrompt) {
+        state.init.idea = "";
+        setInitPreviewPrompt(nextPrompt);
+    }
+    state.hostedAgents.creatingNew = true;
+    state.init.open = true;
+    state.folds.resources = false;
+    state.folds.deploy = false;
+    render();
+}
+
+async function selectHostedAgent(agentName) {
+    const previous = state.hostedAgents.selected;
+    const wasCreatingNew = state.hostedAgents.creatingNew === true;
+    if (!agentName || (agentName === previous && !wasCreatingNew)) return;
+    const previousSections = {
+        initOpen: state.init.open,
+        resourcesOpen: state.folds.resources,
+        deployOpen: state.folds.deploy,
+    };
+    state.hostedAgents.selected = agentName;
+    state.hostedAgents.creatingNew = false;
+    if (wasCreatingNew) {
+        state.init.open = false;
+        state.folds.resources = true;
+        state.folds.deploy = true;
+        renderInit();
+        renderFolds();
+    }
+    renderHostedAgentPicker();
+    if (agentName === previous) {
+        renderHostedAgentDeployment();
+        toast("Agent: " + agentName);
+        return;
+    }
+    try {
+        await postJSON("/api/select-hosted-agent", { agentName });
+    } catch {
+        state.hostedAgents.selected = previous;
+        state.hostedAgents.creatingNew = wasCreatingNew;
+        state.init.open = previousSections.initOpen;
+        state.folds.resources = previousSections.resourcesOpen;
+        state.folds.deploy = previousSections.deployOpen;
+        renderHostedAgentPicker();
+        renderInit();
+        renderFolds();
+        toast("Couldn\u2019t switch agent.");
+        return;
+    }
+    state.agentName = agentName;
+    // Deployment state is per-agent, so the portal link has to be re-resolved.
+    closeInspector();
+    loadHostedAgentDeployment();
+    toast("Agent: " + agentName);
 }
 
 // Fetch hosted-agent region support for the selected project and update the UI.
@@ -418,6 +616,52 @@ async function loadRegionSupport() {
     renderRegionSupport();
 }
 
+// ------------------------------------------------------ Plugin update notice
+// The canvas is distributed as the microsoft-foundry plugin; when the
+// marketplace publishes a newer version the bar above the project header
+// directs users to the host-managed plugin settings.
+function pluginUpdateMessage() {
+    const update = state.pluginUpdate;
+    return update.latestVersion
+        ? `Microsoft Foundry ${update.latestVersion} is available.`
+        : "A Microsoft Foundry update is available.";
+}
+
+function renderPluginUpdate() {
+    const bar = document.getElementById("updateBar");
+    if (!bar) return;
+    const update = state.pluginUpdate;
+    bar.hidden = update.status === "idle" || !!update.dismissed;
+    if (bar.hidden) return;
+
+    const text = document.getElementById("updateBarText");
+    if (text) text.textContent = pluginUpdateMessage();
+}
+
+// Hides the notice for this canvas session only; reopening the canvas checks
+// the marketplace again and brings it back while the update is still pending.
+function dismissPluginUpdate() {
+    state.pluginUpdate = { ...state.pluginUpdate, dismissed: true };
+    renderPluginUpdate();
+}
+
+async function loadPluginUpdate() {
+    try {
+        const result = await getJSON("/api/plugin-update");
+        if (!result || !result.updateAvailable) return;
+        state.pluginUpdate = {
+            status: "available",
+            installedVersion: result.installedVersion || "",
+            latestVersion: result.latestVersion || "",
+            dismissed: false,
+        };
+    } catch {
+        // A failed check is silent — never block the builder on it.
+        return;
+    }
+    renderPluginUpdate();
+}
+
 // Apply the server-derived initial section state once on load. The server uses
 // an agent manifest or an Azure service hosted by azure.ai.agent anywhere in
 // the workspace, not generic Azure scaffolding.
@@ -432,9 +676,11 @@ function applyInitDefaults(info) {
 
 function applyWorkspaceTransition(info) {
     if (!info?.hasAgent || !info.sections) return false;
-    applyInitDefaults(info);
-    renderInit();
+    state.folds.resources = info.sections.resourcesOpen === true;
+    state.folds.deploy = info.sections.deployOpen === true;
     renderFolds();
+    // Agent code just appeared in the workspace — refresh what the picker offers.
+    loadHostedAgents(true);
     return true;
 }
 
@@ -501,6 +747,12 @@ function setInitPreviewPrompt(text) {
     }
 }
 
+function setInitUserPrompt(prompt) {
+    if (!prompt || !prompt.trim()) return;
+    showNewAgent(prompt);
+    toast("Task added \u2713");
+}
+
 // Seed the textarea from durable state. When promptDirty is true, the value is
 // owned by state.init.promptText; do not read from a newly cloned empty textarea.
 function syncInitPrompt() {
@@ -515,15 +767,6 @@ function syncInitPrompt() {
     state.init.promptText = text;
     ta.value = text;
     resizeInitPrompt(ta);
-}
-
-// Re-seed the prompt from structured state (used by the bubble buttons and the
-// agent-driven canvas actions) and make sure the section is expanded.
-function rebuildInitPrompt(message) {
-    state.init.promptDirty = false;
-    state.init.open = true;
-    renderInit();
-    if (message) toast(message);
 }
 
 // "Inspire me" / agent-driven setAgentIdea: swap the opening idea while
@@ -543,7 +786,8 @@ function setInitIdea(idea) {
         ? current.replace(
               re,
               sentenceCase(purpose) +
-                  ". Create a foundry hosted agent for this task using Python, Microsoft Agent Framework, and the Responses protocol.",
+                  ". " +
+                  "Create a foundry hosted agent for this task using Python, Microsoft Agent Framework, and the Responses protocol.",
           )
         : initPromptText();
 
@@ -576,6 +820,15 @@ function renderInit() {
     syncInitPrompt();
     selectStartOption(state.init.startOption || "inspireIdea");
 }
+
+function showBuildSections() {
+    state.init.open = false;
+    state.folds.resources = true;
+    state.folds.deploy = true;
+    renderInit();
+    renderFolds();
+}
+
 function menuMsg(text, variant) {
     const el = document.createElement("div");
     el.className = "menu-msg" + (variant ? " is-" + variant : "");
@@ -684,52 +937,6 @@ function renderDeployList() {
         item.addEventListener("click", () => {
             closeModelMenu();
             sendToChat(withProjectContext(m.prompt));
-        });
-        host.appendChild(item);
-    }
-    if (st.source === "mock") host.appendChild(sampleNote(st.reason));
-}
-
-// Section 1 of the tools dropdown: tool connections already in the project.
-function renderToolList() {
-    const host = document.getElementById("toolList");
-    if (!host) return;
-    const st = state.connectionsState;
-    host.replaceChildren();
-
-    if (st.status === "loading") return host.appendChild(menuMsg("Loading connections\u2026", "loading"));
-    if (st.status === "error") {
-        return host.appendChild(dataLoadErrorRow("connections", st.reason, () => loadConnections(true)));
-    }
-    if (st.status === "ready" && st.items.length === 0) return host.appendChild(menuMsg("No tool connections in this project", "empty"));
-
-    for (const t of st.items) {
-        const item = document.createElement("button");
-        item.className = "menu-item";
-        item.type = "button";
-        item.setAttribute("role", "menuitem");
-
-        if (t.iconSrc) {
-            const img = document.createElement("img");
-            img.className = "menu-ticon";
-            img.src = t.iconSrc;
-            img.alt = "";
-            item.appendChild(img);
-        } else {
-            const dot = document.createElement("span");
-            dot.className = "model-dot";
-            dot.style.background = t.color || "#57606a";
-            item.appendChild(dot);
-        }
-
-        const name = document.createElement("span");
-        name.className = "item-name";
-        name.textContent = t.name;
-        item.appendChild(name);
-
-        item.addEventListener("click", () => {
-            closeToolMenu();
-            sendToChat(withProjectContext(t.prompt));
         });
         host.appendChild(item);
     }
@@ -951,29 +1158,6 @@ async function loadDeployments(force) {
     renderDeployList();
 }
 
-async function loadConnections(force) {
-    const st = state.connectionsState;
-    if (!force && (st.status === "loading" || st.status === "ready")) return;
-    st.status = "loading";
-    renderToolList();
-    try {
-        const data = await getJSON("/api/connections");
-        st.source = data.source || null;
-        st.reason = data.reason || null;
-        if (data.ok === false) {
-            st.items = [];
-            st.status = "error";
-        } else {
-            st.items = Array.isArray(data.items) ? data.items : [];
-            st.status = "ready";
-        }
-    } catch (err) {
-        st.status = "error";
-        st.reason = state.canvasDisconnected ? "canvas_disconnected" : err.message;
-    }
-    renderToolList();
-}
-
 async function loadToolboxes(force) {
     const st = state.toolboxesState;
     if (!force && (st.status === "loading" || st.status === "ready")) return;
@@ -1113,39 +1297,34 @@ function toggleSkillMenu() {
 // ------------------------------------------------------- Project picker panel
 const NO_PROJECT_LABEL = "Select a project";
 
-function selectedSubscriptionId() {
-    return state.selectedSubscription.id || state.identity.subscriptionId || "";
+function setIdentity(value) {
+    state.identity = {
+        signedIn: !!value?.signedIn,
+        account: value?.account || "",
+        tenantId: value?.tenantId || "",
+    };
 }
 
-function selectedSubscriptionName() {
-    return state.selectedSubscription.name || state.identity.subscriptionName || "";
+function setSelection(value) {
+    state.selection = normalizeSelection(value);
+    renderSelectionLabels();
 }
 
-function setSelectedSubscription(id, name) {
-    const nextId = id || "";
-    const nextName = name || "";
-    state.selectedSubscription = { id: nextId, name: nextName };
-    state.identity.subscriptionId = nextId;
-    state.identity.subscriptionName = nextName;
-    const subValue = document.getElementById("pmSubValue");
-    if (subValue) subValue.textContent = nextName || "\u2014";
-}
-
-function setProjectLabels(name) {
-    const display = name || NO_PROJECT_LABEL;
-    state.project = { ...state.project, name: name || "" };
-    for (const id of ["projectName", "menuProject", "toolMenuProject", "toolboxMenuProject", "skillMenuProject", "guardrailMenuProject", "pmProjValue"]) {
-        const el = document.getElementById(id);
+function renderSelectionLabels(scope = document) {
+    const projectName = state.selection.project?.name || "";
+    const display = projectName || NO_PROJECT_LABEL;
+    for (const id of ["projectName", "pmProjValue"]) {
+        const el = scope.querySelector(`#${id}`);
         if (el) el.textContent = display;
     }
-    // Grey the status dot when no project is selected so the header doesn't
-    // imply a connected project that doesn't belong to the chosen subscription.
-    const dot = document.querySelector(".project-dot");
-    if (dot) dot.classList.toggle("is-unset", !name);
+    const subValue = scope.querySelector("#pmSubValue");
+    if (subValue) subValue.textContent = state.selection.subscription.name || "\u2014";
+    const dot = scope.querySelector(".project-dot");
+    if (dot) dot.classList.toggle("is-unset", !projectName);
 }
 
 function hasSelectedProject() {
-    return !!String(state.project?.name || "").trim();
+    return !!state.selection.project?.name;
 }
 
 function remindProjectSelection(e) {
@@ -1223,33 +1402,11 @@ function renderIdentity() {
         authBtn.disabled = false;
     }
     if (subValue) {
-        subValue.textContent = selectedSubscriptionName() || "\u2014";
+        subValue.textContent = state.selection.subscription.name || "\u2014";
     }
 }
 
-async function loadIdentity() {
-    try {
-        const r = await getJSON("/api/identity");
-        if (r && r.ok) {
-            state.identity = {
-                signedIn: !!r.signedIn,
-                account: r.account || "",
-                tenantId: r.tenantId || "",
-                subscriptionId: r.subscriptionId || "",
-                subscriptionName: r.subscriptionName || "",
-            };
-            state.selectedSubscription = {
-                id: state.selectedSubscription.id || state.identity.subscriptionId,
-                name: state.selectedSubscription.name || state.identity.subscriptionName,
-            };
-        }
-    } catch {
-        /* keep prior identity */
-    }
-    renderIdentity();
-}
-
-// ---- Device-code sign-in ----
+// ---- Interactive browser sign-in ----
 function renderDevice(info) {
     const wrap = document.getElementById("pmDevice");
     const body = document.getElementById("pmDeviceBody");
@@ -1305,56 +1462,7 @@ function renderDevice(info) {
         t.className = "pm-dc-label";
         t.textContent = info.message || "Sign-in failed";
         body.append(t);
-        return;
     }
-
-    // kind === "code"
-    body.className = "pm-device-row";
-    const label = document.createElement("span");
-    label.className = "pm-dc-label";
-    label.textContent = "To sign in, open the link and enter this code:";
-
-    const codeRow = document.createElement("div");
-    codeRow.className = "pm-dc-code";
-    const code = document.createElement("span");
-    code.textContent = info.code;
-    const copy = document.createElement("button");
-    copy.type = "button";
-    copy.className = "pm-dc-copy";
-    copy.textContent = "Copy";
-    copy.addEventListener("click", (e) => {
-        e.stopPropagation();
-        navigator.clipboard?.writeText(info.code).then(() => toast("Code copied \u2713")).catch(() => {});
-    });
-    codeRow.append(code, copy);
-
-    const link = document.createElement("a");
-    link.className = "pm-dc-link";
-    link.href = info.url;
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.textContent = info.url;
-
-    const foot = document.createElement("div");
-    foot.className = "pm-dc-foot";
-    const wait = document.createElement("span");
-    wait.className = "pm-dc-wait";
-    const sp = document.createElement("span");
-    sp.className = "menu-spinner";
-    const wt = document.createElement("span");
-    wt.textContent = "Waiting for sign-in\u2026";
-    wait.append(sp, wt);
-    const cancel = document.createElement("button");
-    cancel.type = "button";
-    cancel.className = "pm-dc-cancel";
-    cancel.textContent = "Cancel";
-    cancel.addEventListener("click", (e) => {
-        e.stopPropagation();
-        cancelSignIn();
-    });
-    foot.append(wait, cancel);
-
-    body.append(label, codeRow, link, foot);
 }
 
 async function startSignIn() {
@@ -1376,11 +1484,7 @@ async function startSignIn() {
             return;
         }
         state.signin.sessionId = r.sessionId;
-        if (r.mode === "device" && r.code) {
-            renderDevice({ kind: "code", code: r.code, url: r.url });
-        } else {
-            renderDevice({ kind: "interactive" });
-        }
+        renderDevice({ kind: "interactive" });
         state.signin.timer = setInterval(pollSignIn, 2500);
     } catch (err) {
         renderDevice({ kind: "error", message: "Sign-in error: " + err.message });
@@ -1394,29 +1498,20 @@ async function pollSignIn() {
     if (!sid) return stopSignInPolling();
     try {
         const r = await getJSON("/api/signin/status?sessionId=" + encodeURIComponent(sid));
+        if (state.signin.sessionId !== sid) return;
         if (r.status === "done") {
             stopSignInPolling();
             renderDevice(null);
-            if (r.identity) {
-                state.identity = {
-                    signedIn: !!r.identity.signedIn,
-                    account: r.identity.account || "",
-                    tenantId: r.identity.tenantId || "",
-                    subscriptionId: r.identity.subscriptionId || "",
-                    subscriptionName: r.identity.subscriptionName || "",
-                };
-                setSelectedSubscription(state.identity.subscriptionId, state.identity.subscriptionName);
-            }
+            if (r.identity) setIdentity(r.identity);
             renderIdentity();
             toast("Signed in \u2713");
             await afterAuthChange();
         } else if (r.status === "error" || r.status === "cancelled") {
             stopSignInPolling();
             renderDevice(r.status === "cancelled" ? null : { kind: "error", message: r.error || "Sign-in failed" });
-        } else if (r.status === "pending" && r.mode === "device" && r.code && state.signin.shownCode !== r.code) {
-            // az fell back to a device code mid-flight — surface it once.
-            state.signin.shownCode = r.code;
-            renderDevice({ kind: "code", code: r.code, url: r.url || "https://microsoft.com/devicelogin" });
+        } else if (!r.ok || r.status === "unknown") {
+            stopSignInPolling();
+            renderDevice({ kind: "error", message: "Sign-in session expired. Please try again." });
         }
     } catch {
         /* transient — keep polling */
@@ -1428,7 +1523,6 @@ function stopSignInPolling() {
     state.signin.timer = null;
     state.signin.sessionId = null;
     state.signin.starting = false;
-    state.signin.shownCode = null;
     const authBtn = document.getElementById("pmAuthBtn");
     if (authBtn) authBtn.disabled = false;
 }
@@ -1452,47 +1546,44 @@ async function doSignOut() {
     try {
         await postJSON("/api/signout", {});
     } catch {
-        /* ignore */
+        toast("Couldn\u2019t sign out. Please try again.");
+        if (authBtn) authBtn.disabled = false;
+        return;
     }
-    state.identity = { signedIn: false, account: "", tenantId: "", subscriptionId: "", subscriptionName: "" };
-    state.selectedSubscription = { id: "", name: "" };
+    setIdentity(null);
+    setSelection(emptySelection());
     state.subsState = { status: "idle", items: [], reason: null };
     state.projState = { status: "idle", items: [], reason: null, sub: null };
-    setProjectLabels("");
-    state.project.endpoint = "";
-    state.project.rg = "";
-    state.project.account = "";
-    resetHostedAgentDeployment();
+    resetProjectScopedState();
     renderIdentity();
     renderSubList();
     renderProjList();
-    const subValue = document.getElementById("pmSubValue");
-    if (subValue) subValue.textContent = "\u2014";
-    // Re-point selectors at fallback sample data.
-    resetSelectors();
     toast("Signed out");
     if (authBtn) authBtn.disabled = false;
 }
 
 // After sign-in: refresh subscriptions, auto-select default sub + first project.
 async function afterAuthChange() {
-    resetHostedAgentDeployment();
     state.subsState = { status: "idle", items: [], reason: null };
     state.projState = { status: "idle", items: [], reason: null, sub: null };
     await loadSubscriptions(true);
     try {
         const b = await getJSON("/api/bootstrap");
         if (b && b.ok) {
-            if (b.subscriptionId) state.identity.subscriptionId = b.subscriptionId;
-            const sub = state.subsState.items.find((s) => s.id === b.subscriptionId);
-            setSelectedSubscription(b.subscriptionId || state.identity.subscriptionId, sub?.name || state.identity.subscriptionName);
-            if (b.project && b.project.name) setProjectLabels(b.project.name);
-            resetSelectors();
-            await loadProjects(true);
+            if (b.identity) setIdentity(b.identity);
+            let selection = normalizeSelection(b.selection);
+            const match = state.subsState.items.find((item) => item.id === selection.subscription.id);
+            if (match && !selection.subscription.name) {
+                selection = transitionSubscription(selection, match);
+            }
+            setSelection(selection);
+            resetProjectScopedState();
+            if (selection.subscription.id) await loadProjects(true);
+            await loadRegionSupport();
             await loadHostedAgentDeployment();
         }
     } catch {
-        /* keep current selection */
+        toast("Signed in, but couldn\u2019t load Foundry projects.");
     }
 }
 
@@ -1506,6 +1597,13 @@ function resetSelectors() {
     renderToolboxList();
     renderGuardrailList();
     renderSkillList();
+}
+
+function resetProjectScopedState() {
+    resetHostedAgentDeployment();
+    state.hostedRegion = { status: "idle", location: "", supported: null, regions: [], docsUrl: "" };
+    renderRegionSupport();
+    resetSelectors();
 }
 
 // ---- Subscriptions ----
@@ -1523,12 +1621,10 @@ async function loadSubscriptions(force) {
         st.items = Array.isArray(data.items) ? data.items : [];
         st.reason = data.ok ? null : data.reason;
         st.status = data.ok ? "ready" : "error";
-        if (!selectedSubscriptionId()) {
-            const def = st.items.find((s) => s.isDefault);
-            if (def) setSelectedSubscription(def.id, def.name);
-        } else if (!selectedSubscriptionName()) {
-            const match = st.items.find((s) => s.id === selectedSubscriptionId());
-            if (match) setSelectedSubscription(match.id, match.name);
+        const selected = state.selection.subscription;
+        if (selected.id && !selected.name) {
+            const match = st.items.find((item) => item.id === selected.id);
+            if (match) setSelection(transitionSubscription(state.selection, match));
         }
     } catch (err) {
         st.status = "error";
@@ -1548,28 +1644,35 @@ function renderSubList() {
     if (st.status === "error") return host.appendChild(menuError("Couldn\u2019t load subscriptions", () => loadSubscriptions(true)));
     const items = st.items.filter((s) => !q || s.name.toLowerCase().includes(q) || s.id.includes(q));
     if (!items.length) return host.appendChild(menuMsg(st.items.length ? "No matches" : "No subscriptions", "empty"));
-    const activeSub = selectedSubscriptionId();
+    const activeSub = state.selection.subscription.id;
     for (const s of items) host.appendChild(makePickRow(s.name, s.id, activeSub === s.id, () => selectSubscription(s)));
 }
 
 async function selectSubscription(s) {
-    resetHostedAgentDeployment();
-    setSelectedSubscription(s.id, s.name);
-    renderSubList();
+    const previousProject = state.selection.project?.endpoint || "";
+    const next = transitionSubscription(state.selection, s);
     try {
-        await postJSON("/api/select-subscription", { subscriptionId: s.id, subscriptionName: s.name });
+        const result = await postJSON("/api/select-subscription", {
+            subscriptionId: s.id,
+            subscriptionName: s.name,
+        });
+        setSelection(result.selection || next);
     } catch {
-        /* ignore */
+        toast("Couldn\u2019t switch subscriptions.");
+        return;
     }
-    // Reset + reload projects for the new subscription, then expand it.
+    if (previousProject !== (state.selection.project?.endpoint || "")) {
+        resetProjectScopedState();
+    }
+    renderSubList();
     state.projState = { status: "idle", items: [], reason: null, sub: null };
     setAccordion("proj");
-    loadProjects(true);
+    await loadProjects(true);
 }
 
 // ---- Projects ----
 async function loadProjects(force) {
-    const sub = selectedSubscriptionId();
+    const sub = state.selection.subscription.id;
     const st = state.projState;
     if (!sub) {
         st.status = "error";
@@ -1589,13 +1692,6 @@ async function loadProjects(force) {
         st.items = Array.isArray(data.items) ? data.items : [];
         st.reason = data.ok ? null : data.reason;
         st.status = data.ok ? "ready" : "error";
-        // Keep the header project consistent with the selected subscription:
-        // if the currently displayed project isn't one of this subscription's
-        // projects, clear it so we never show a project/subscription mismatch.
-        if (st.status === "ready") {
-            const cur = state.project?.name;
-            if (cur && !st.items.some((p) => p.name === cur)) setProjectLabels("");
-        }
     } catch (err) {
         st.status = "error";
         st.reason = err.message;
@@ -1619,32 +1715,42 @@ function renderProjList() {
     if (!items.length) return host.appendChild(menuMsg(st.items.length ? "No matches" : "No projects in this subscription", "empty"));
     for (const p of items) {
         const sub = [p.account, p.rg, p.location].filter(Boolean).join(" \u00b7 ");
-        host.appendChild(makePickRow(p.name, sub, state.project?.name === p.name, () => selectProject(p)));
+        host.appendChild(makePickRow(
+            p.name,
+            sub,
+            state.selection.project?.endpoint === String(p.endpoint || "").replace(/\/+$/, ""),
+            () => selectProject(p),
+        ));
     }
 }
 
 async function selectProject(p) {
-    resetHostedAgentDeployment();
+    const subscription = state.selection.subscription;
+    const next = transitionProject(state.selection, {
+        subscriptionId: p.subscriptionId || subscription.id,
+        name: p.name,
+        endpoint: p.endpoint,
+        location: p.location,
+        resourceGroup: p.rg,
+        accountName: p.account,
+    }, subscription);
     try {
-        await postJSON("/api/select-project", {
+        const result = await postJSON("/api/select-project", {
             endpoint: p.endpoint,
             name: p.name,
             location: p.location || "",
-            rg: p.rg || "",
-            account: p.account || "",
-            subscriptionId: selectedSubscriptionId(),
-            subscriptionName: selectedSubscriptionName(),
+            resourceGroup: p.rg || "",
+            accountName: p.account || "",
+            subscriptionId: subscription.id,
+            subscriptionName: subscription.name,
         });
+        setSelection(result.selection || next);
     } catch {
-        /* ignore — still update locally */
+        toast("Couldn\u2019t select that project.");
+        return;
     }
-    setProjectLabels(p.name);
-    state.project.endpoint = p.endpoint || "";
-    state.project.rg = p.rg || "";
-    state.project.account = p.account || "";
     closeProjectMenu();
-    resetSelectors();
-    refreshPortalLinks();
+    resetProjectScopedState();
     toast("Project: " + p.name);
     // Re-evaluate hosted-agent region support for the newly selected project.
     loadRegionSupport();
@@ -1706,400 +1812,16 @@ function toggleAccordion(which) {
     }
 }
 
-// Client-side prompt builders for adding a catalog tool into a toolbox. These
-// mirror the toolbox flow but are built at click time because they depend on
-// the developer's chosen target toolbox.
-function addToolToToolboxPrompt(toolName, toolboxName) {
-    return (
-        `Add the ${toolName} tool to my existing "${toolboxName}" Foundry Toolbox, ` +
-        "then make sure my Foundry agent uses that toolbox"
-    );
-}
-function addToolToNewToolboxPrompt(toolName) {
-    return (
-        `Create a new Foundry Toolbox containing the ${toolName} tool, ` +
-        "then make sure my Foundry agent uses that toolbox"
-    );
-}
-
-// Auto-generate a toolbox name for a catalog tool, e.g. "toolbox-web-search-0627".
-function newToolboxName(toolItem) {
-    const slug =
-        (toolItem.id || toolItem.name || "tool")
-            .toString()
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-+|-+$/g, "")
-            .slice(0, 24) || "tool";
-    const d = new Date();
-    const mmdd = String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
-    return `toolbox-${slug}-${mmdd}`;
-}
-
-// True for fetch failures caused by this panel's backing server being gone.
-function isDeadServer(err) {
-    return err instanceof TypeError || /failed to fetch/i.test(err?.message || "");
-}
-
-// Add a catalog tool into an EXISTING toolbox via the data-plane API. Connection-
-// backed tools we can't wire automatically (reason 'needs_connection') and any
-// hard error fall back to the chat prompt so the developer is never blocked.
-async function apiAddToolToToolbox(toolItem, toolboxName) {
-    toast(`Adding ${toolItem.name} to ${toolboxName}\u2026`);
-    try {
-        const r = await postJSON("/api/toolbox/add-tool", {
-            toolbox: toolboxName,
-            toolId: toolItem.id,
-            toolName: toolItem.name,
-        });
-        if (r.ok) {
-            toast(
-                r.already
-                    ? `${toolItem.name} is already in ${toolboxName}`
-                    : `Added ${toolItem.name} to ${toolboxName}${r.version ? ` \u00b7 v${r.version}` : ""} \u2713`,
-            );
-            await loadToolboxes(true);
-            return;
-        }
-        if (r.reason === "needs_connection") {
-            sendToChat(withProjectContext(addToolToToolboxPrompt(toolItem.name, toolboxName)));
-            return;
-        }
-        throw new Error(r.detail || r.reason || "add failed");
-    } catch (err) {
-        if (isDeadServer(err)) {
-            toast("Lost connection to the builder. Reopen the Foundry Agent Canvas, then try again.");
-            return;
-        }
-        sendToChat(withProjectContext(addToolToToolboxPrompt(toolItem.name, toolboxName)));
-    }
-}
-
-// Create a NEW toolbox (auto-named) containing just the catalog tool, via the
-// API. Same connection/error fallback to the chat prompt.
-async function apiCreateToolboxWithTool(toolItem) {
-    const name = newToolboxName(toolItem);
-    toast(`Creating ${name}\u2026`);
-    try {
-        const r = await postJSON("/api/toolbox/create-with-tool", {
-            name,
-            toolId: toolItem.id,
-            toolName: toolItem.name,
-        });
-        if (r.ok) {
-            toast(`Created ${name} with ${toolItem.name}${r.version ? ` \u00b7 v${r.version}` : ""} \u2713`);
-            await loadToolboxes(true);
-            return;
-        }
-        if (r.reason === "needs_connection") {
-            sendToChat(withProjectContext(addToolToNewToolboxPrompt(toolItem.name)));
-            return;
-        }
-        throw new Error(r.detail || r.reason || "create failed");
-    } catch (err) {
-        if (isDeadServer(err)) {
-            toast("Lost connection to the builder. Reopen the Foundry Agent Canvas, then try again.");
-            return;
-        }
-        sendToChat(withProjectContext(addToolToNewToolboxPrompt(toolItem.name)));
-    }
-}
-
-// Remove any open catalog toolbox picker popover.
-function closeToolboxPicker() {
-    const open = document.querySelector(".toolbox-picker");
-    if (open) open.remove();
-    document.removeEventListener("click", closeToolboxPicker);
-}
-
-// "Add tool" → pick a target Foundry Toolbox. Reads the existing toolbox list
-// (read-only) and performs the add directly via the data-plane API. If the
-// project has no toolbox yet, skip the picker and create a new one for this tool.
-async function openToolboxPicker(anchorBtn, toolItem, handlers) {
-    closeToolboxPicker();
-    const onExisting = handlers?.onExisting || apiAddToolToToolbox;
-    const onNew = handlers?.onNew || apiCreateToolboxWithTool;
-
-    // Load toolboxes if we don't already have them.
-    if (state.toolboxesState.status !== "ready") {
-        anchorBtn.disabled = true;
-        const prev = anchorBtn.textContent;
-        anchorBtn.textContent = "Loading\u2026";
-        await loadToolboxes(true);
-        anchorBtn.disabled = false;
-        anchorBtn.textContent = prev;
-    }
-
-    const toolboxes = state.toolboxesState.items || [];
-
-    // No toolbox available → create a new toolbox for this tool.
-    if (toolboxes.length === 0) {
-        onNew(toolItem);
-        return;
-    }
-
-    const menu = document.createElement("div");
-    menu.className = "model-menu toolbox-picker";
-    menu.setAttribute("role", "menu");
-
-    const head = document.createElement("div");
-    head.className = "menu-section";
-    const label = document.createElement("div");
-    label.className = "menu-label toolbox-picker-label";
-    label.textContent = `Add ${toolItem.name} to a toolbox`;
-    head.appendChild(label);
-
-    // Scrollable container so a long toolbox list doesn't overflow the panel.
-    const list = document.createElement("div");
-    list.className = "toolbox-picker-list";
-    for (const tb of toolboxes) {
-        const row = document.createElement("button");
-        row.className = "menu-item";
-        row.type = "button";
-        row.setAttribute("role", "menuitem");
-        const icon = document.createElement("span");
-        icon.className = "toolbox-icon";
-        icon.setAttribute("aria-hidden", "true");
-        icon.appendChild(fluentIcon("toolbox"));
-        row.appendChild(icon);
-        const nm = document.createElement("span");
-        nm.className = "item-name";
-        nm.textContent = tb.name;
-        row.appendChild(nm);
-        row.addEventListener("click", (e) => {
-            e.stopPropagation();
-            closeToolboxPicker();
-            onExisting(toolItem, tb.name);
-        });
-        list.appendChild(row);
-    }
-    head.appendChild(list);
-    menu.appendChild(head);
-
-    // Always offer a "new toolbox" escape hatch.
-    const sep = document.createElement("div");
-    sep.className = "menu-sep";
-    menu.appendChild(sep);
-    const newRow = document.createElement("button");
-    newRow.className = "menu-item";
-    newRow.type = "button";
-    newRow.setAttribute("role", "menuitem");
-    const plus = document.createElement("span");
-    plus.className = "toolbox-picker-plus";
-    plus.textContent = "+";
-    newRow.appendChild(plus);
-    const newName = document.createElement("span");
-    newName.className = "item-name";
-    newName.textContent = "Add to a new toolbox";
-    newRow.appendChild(newName);
-    newRow.addEventListener("click", (e) => {
-        e.stopPropagation();
-        closeToolboxPicker();
-        onNew(toolItem);
-    });
-    menu.appendChild(newRow);
-
-    // Anchor the popover to the button.
-    const host = anchorBtn.closest(".tcard-actions") || anchorBtn.parentElement;
-    host.style.position = "relative";
-    host.appendChild(menu);
-
-    // Close on the next outside click.
-    setTimeout(() => document.addEventListener("click", closeToolboxPicker), 0);
-}
-
-// ── Work IQ sub-tool picker ─────────────────────────────────────────────────
-// Clicking Work IQ opens this dialog so the developer can pick which Microsoft
-// 365 MCP sub-tools to add. Selected variants are then added to a toolbox (the
-// backend creates the secret-free OBO connection for each automatically).
-function closeWorkIQDialog() {
-    const open = document.querySelector(".wiq-overlay");
-    if (open) open.remove();
-}
-
-async function openWorkIQDialog(anchorBtn, toolItem) {
-    closeWorkIQDialog();
-
-    const overlay = document.createElement("div");
-    overlay.className = "wiq-overlay";
-    const panel = document.createElement("div");
-    panel.className = "wiq-dialog";
-    overlay.appendChild(panel);
-
-    const title = document.createElement("div");
-    title.className = "wiq-title";
-    title.textContent = "Add Work IQ tools";
-    const sub = document.createElement("div");
-    sub.className = "wiq-sub";
-    sub.textContent = "Pick the Microsoft 365 tools to add. A connection is created for each automatically.";
-    panel.append(title, sub);
-
-    const listWrap = document.createElement("div");
-    listWrap.className = "wiq-list";
-    listWrap.innerHTML = '<div class="wiq-loading"><span class="menu-spinner"></span> Loading Work IQ tools\u2026</div>';
-    panel.appendChild(listWrap);
-
-    const footer = document.createElement("div");
-    footer.className = "wiq-footer";
-    const cancel = document.createElement("button");
-    cancel.className = "wiq-btn wiq-btn-ghost";
-    cancel.type = "button";
-    cancel.textContent = "Cancel";
-    cancel.addEventListener("click", closeWorkIQDialog);
-    const addBtn = document.createElement("button");
-    addBtn.className = "wiq-btn wiq-btn-primary";
-    addBtn.type = "button";
-    addBtn.textContent = "Add";
-    addBtn.disabled = true;
-    footer.append(cancel, addBtn);
-    panel.appendChild(footer);
-
-    document.body.appendChild(overlay);
-    overlay.addEventListener("click", (e) => {
-        if (e.target === overlay) closeWorkIQDialog();
-    });
-
-    let variants = [];
-    try {
-        const r = await getJSON("/api/workiq/variants");
-        variants = (r && r.data) || [];
-    } catch {
-        variants = [];
-    }
-    // Dialog may have been dismissed while loading.
-    if (!document.body.contains(overlay)) return;
-
-    if (!variants.length) {
-        listWrap.innerHTML = '<div class="wiq-empty">Couldn\u2019t load Work IQ tools. Close and try again.</div>';
-        return;
-    }
-
-    listWrap.innerHTML = "";
-    const checks = new Map();
-    const refreshAdd = () => {
-        addBtn.disabled = ![...checks.values()].some((c) => c.cb.checked);
-    };
-    for (const v of variants) {
-        const row = document.createElement("label");
-        row.className = "wiq-row";
-        const cb = document.createElement("input");
-        cb.type = "checkbox";
-        cb.value = v.entityId;
-        const nm = document.createElement("span");
-        nm.className = "wiq-row-name";
-        nm.textContent = v.title;
-        row.append(cb, nm);
-        listWrap.appendChild(row);
-        checks.set(v.entityId, { cb, title: v.title });
-        cb.addEventListener("change", refreshAdd);
-    }
-
-    addBtn.addEventListener("click", () => {
-        const selected = [...checks.entries()].filter(([, c]) => c.cb.checked);
-        if (!selected.length) return;
-        const variantIds = selected.map(([id]) => id);
-        const titles = selected.map(([, c]) => c.title);
-        closeWorkIQDialog();
-        // Now choose a target toolbox (existing or new), then add + create
-        // connections via the Work IQ API routes.
-        openToolboxPicker(anchorBtn, toolItem, {
-            onExisting: (ti, name) => apiAddWorkIQToolsToToolbox(ti, name, variantIds, titles),
-            onNew: (ti) => apiCreateToolboxWithWorkIQTools(ti, variantIds, titles),
-        });
-    });
-}
-
-// Prompt fallback when the API can't create the connection (e.g. project ARM id
-// couldn't be resolved) — hand the work to the chat agent instead.
-function workIqPrompt(titles, toolboxName) {
-    const list = titles.join(", ");
-    if (toolboxName) {
-        return (
-            `Add these Work IQ tools to my "${toolboxName}" Foundry Toolbox: ${list}. ` +
-            "Create the required Work IQ connections in Foundry, then make sure my Foundry agent uses that toolbox."
-        );
-    }
-    return (
-        `Create a new Foundry Toolbox with these Work IQ tools: ${list}. ` +
-        "Create the required Work IQ connections in Foundry, then make sure my Foundry agent uses that toolbox."
-    );
-}
-
-function summarizeWorkIQResults(results, toolboxName, version) {
-    const rs = results || [];
-    const added = rs.filter((r) => r.ok && !r.already).length;
-    const already = rs.filter((r) => r.ok && r.already).length;
-    const created = rs.filter((r) => r.created).length;
-    const bits = [];
-    if (added) bits.push(`Added ${added} Work IQ tool${added > 1 ? "s" : ""}`);
-    if (already) bits.push(`${already} already present`);
-    let msg = bits.join(" \u00b7 ") || "No changes";
-    if (toolboxName) msg += ` \u2192 ${toolboxName}`;
-    if (version) msg += ` \u00b7 v${version}`;
-    if (created) msg += ` (${created} connection${created > 1 ? "s" : ""} created)`;
-    return `${msg} \u2713`;
-}
-
-async function apiAddWorkIQToolsToToolbox(toolItem, toolboxName, variantIds, titles) {
-    const n = variantIds.length;
-    toast(`Adding ${n} Work IQ tool${n > 1 ? "s" : ""} to ${toolboxName}\u2026`);
-    try {
-        const r = await postJSON("/api/workiq/add-tools", { toolbox: toolboxName, variantIds });
-        if (r.ok) {
-            toast(summarizeWorkIQResults(r.results, toolboxName, r.version));
-            await loadToolboxes(true);
-            return;
-        }
-        if (r.reason === "needs_connection" || r.reason === "no_project") {
-            sendToChat(withProjectContext(workIqPrompt(titles, toolboxName)));
-            return;
-        }
-        throw new Error(r.detail || r.reason || "add failed");
-    } catch (err) {
-        if (isDeadServer(err)) {
-            toast("Lost connection to the builder. Reopen the Foundry Agent Canvas, then try again.");
-            return;
-        }
-        sendToChat(withProjectContext(workIqPrompt(titles, toolboxName)));
-    }
-}
-
-async function apiCreateToolboxWithWorkIQTools(toolItem, variantIds, titles) {
-    const name = newToolboxName(toolItem);
-    toast(`Creating ${name}\u2026`);
-    try {
-        const r = await postJSON("/api/workiq/create-with-tools", { name, variantIds });
-        if (r.ok) {
-            toast(summarizeWorkIQResults(r.results, name, r.version));
-            await loadToolboxes(true);
-            return;
-        }
-        if (r.reason === "needs_connection" || r.reason === "no_project") {
-            sendToChat(withProjectContext(workIqPrompt(titles, "")));
-            return;
-        }
-        throw new Error(r.detail || r.reason || "create failed");
-    } catch (err) {
-        if (isDeadServer(err)) {
-            toast("Lost connection to the builder. Reopen the Foundry Agent Canvas, then try again.");
-            return;
-        }
-        sendToChat(withProjectContext(workIqPrompt(titles, "")));
-    }
-}
-
 // ------------------------------------------------------------------- Router
-function render(page) {
-    state.page = page;
+function render() {
     renderBuild();
 }
 
 // ----------------------------------------------------------- Event handling
 // Delegated clicks within the main area.
 root.addEventListener("click", async (e) => {
-    const nav = e.target.closest("[data-nav]");
-    if (nav) {
-        render(nav.getAttribute("data-nav"));
+    if (e.target.closest("#updateDismissBtn")) {
+        dismissPluginUpdate();
         return;
     }
     if (e.target.closest("#initToggle")) {
@@ -2133,14 +1855,10 @@ root.addEventListener("click", async (e) => {
         if (!remindProjectSelection(e)) return;
         const ta = document.getElementById("initPrompt");
         const text = (ta ? ta.value : state.init.promptText).trim();
-        if (text) sendToChat(withProjectContext(text), "workspace");
-        return;
-    }
-    if (e.target.closest("#initReset")) {
-        state.init.promptDirty = false;
-        state.init.startOption = "inspireIdea";
-        syncInitPrompt();
-        selectStartOption(state.init.startOption);
+        if (text) {
+            sendToChat(withProjectContext(text));
+            showBuildSections();
+        }
         return;
     }
     if (e.target.closest("#inspireIdea")) {
@@ -2196,6 +1914,14 @@ root.addEventListener("click", async (e) => {
         loadSkills(true);
         return;
     }
+    if (e.target.closest("#newHostedAgentBtn")) {
+        showNewAgent();
+        return;
+    }
+    if (e.target.closest("#hostedAgentTrigger")) {
+        toggleHostedAgentMenu();
+        return;
+    }
     if (e.target.closest("#projectSwitch")) {
         toggleProjectMenu();
         return;
@@ -2247,11 +1973,20 @@ root.addEventListener("click", async (e) => {
         return;
     }
     if (e.target.closest("#inspectBtn")) {
-        launchInspector(e.target.closest("#inspectBtn"));
+        if (state.hostedAgents.creatingNew) {
+            toast("Select an existing agent to inspect locally.");
+        } else {
+            launchInspector(e.target.closest("#inspectBtn"));
+        }
+        return;
     }
 });
 
 // ----------------------------------------------- Local Agent Inspector embed
+// Retires a previous readiness poll when the inspector is relaunched or closed,
+// so a stale loop can't hide the overlay or report a timeout over a newer one.
+let inspectorPollToken = 0;
+
 async function launchInspector(btn) {
     const view = document.getElementById("inspectorView");
     const frame = document.getElementById("inspectorFrame");
@@ -2280,9 +2015,12 @@ async function launchInspector(btn) {
             // Poll until the agent is reachable, then load the frame.
             const POLL_INTERVAL_MS = 2000;
             const POLL_TIMEOUT_MS = 120_000;
+            inspectorPollToken += 1;
+            const token = inspectorPollToken;
             const deadline = Date.now() + POLL_TIMEOUT_MS;
 
             const poll = async () => {
+                if (token !== inspectorPollToken) return;
                 if (Date.now() > deadline) {
                     if (waitingEl) waitingEl.hidden = true;
                     statusEl.textContent = "Agent did not start within 2 minutes. Check the terminal for errors.";
@@ -2292,6 +2030,7 @@ async function launchInspector(btn) {
                 }
                 try {
                     const r = await getJSON("/api/inspect/ready");
+                    if (token !== inspectorPollToken) return;
                     if (r && r.ready) {
                         if (waitingEl) waitingEl.hidden = true;
                         frame.src = data.url;
@@ -2324,6 +2063,7 @@ function closeInspector() {
     const view = document.getElementById("inspectorView");
     const frame = document.getElementById("inspectorFrame");
     const waitingEl = document.getElementById("inspectorWaiting");
+    inspectorPollToken += 1; // stop any in-flight readiness poll
     if (view) view.hidden = true;
     if (frame) frame.src = "";
     if (waitingEl) waitingEl.hidden = true;
@@ -2339,6 +2079,7 @@ document.addEventListener("click", (e) => {
     if (!e.target.closest(".tool-select")) closeToolMenu();
     if (!e.target.closest(".skill-select")) closeSkillMenu();
     if (!e.target.closest(".guardrail-select")) closeGuardrailMenu();
+    if (!e.target.closest(".agent-context-bar")) closeHostedAgentMenu();
     if (!e.target.closest(".project-switch")) closeProjectMenu();
 });
 
@@ -2355,7 +2096,7 @@ root.addEventListener("input", (e) => {
 
 // ------------------------------------------------------- Init + live updates
 async function init() {
-    let initialPage = "build";
+    let initialCreatePrompt = "";
     const [stateResult, projectInitResult] = await Promise.allSettled([
         getJSON("/api/state"),
         getJSON("/api/project-init"),
@@ -2364,10 +2105,13 @@ async function init() {
     if (stateResult.status === "fulfilled") {
         const s = stateResult.value;
         if (s.agentName) state.agentName = s.agentName;
-        if (s.project) state.project = s.project;
+        if (s.initPrompt) {
+            initialCreatePrompt = s.initPrompt;
+        }
+        if (s.selection) state.selection = normalizeSelection(s.selection);
         if (s.model) state.model = s.model;
         if (s.deployPrompt) state.deployPrompt = s.deployPrompt;
-        initialPage = s.page || "build";
+        if (s.pluginVersion) state.pluginVersion = s.pluginVersion;
     }
 
     // Resolve the workspace's hosted-agent signal before first paint so refresh
@@ -2375,48 +2119,37 @@ async function init() {
     // conservative create-first defaults.
     if (projectInitResult.status === "fulfilled") {
         const pi = projectInitResult.value;
-        if (pi && pi.ok) applyInitDefaults(pi);
+        if (pi && pi.ok) {
+            applyInitDefaults(pi);
+            if (Array.isArray(pi.agents)) {
+                state.hostedAgents.items = pi.agents;
+                state.hostedAgents.selected = pi.selected || "";
+                state.hostedAgents.status = "ready";
+            }
+        }
     }
-    render(initialPage);
+    if (initialCreatePrompt) showNewAgent(initialCreatePrompt);
+    else render();
 
-    // Resolve the default selection (az default subscription + first project)
-    // and the signed-in identity. Falls back to the parsed project name.
+    // Project init normally supplies the agent list from the workspace scan it
+    // already performed. If it did not, start the fallback fetch immediately
+    // instead of waiting for identity and region initialization.
+    const hostedAgentsPromise = loadHostedAgents();
+
+    // Check the marketplace for a newer plugin build. Non-blocking: the bar
+    // appears once the check answers, and stays hidden when it fails.
+    loadPluginUpdate();
+
+    // Resolve the signed-in identity and the persisted/default resource selection.
     try {
         const b = await getJSON("/api/bootstrap");
         if (b && b.ok) {
-            if (b.identity) {
-                state.identity = {
-                    signedIn: !!b.identity.signedIn,
-                    account: b.identity.account || "",
-                    tenantId: b.identity.tenantId || "",
-                    subscriptionId: b.identity.subscriptionId || b.subscriptionId || "",
-                    subscriptionName: b.identity.subscriptionName || "",
-                };
-                setSelectedSubscription(b.subscriptionId || state.identity.subscriptionId, state.identity.subscriptionName);
-            }
-            if (b.project && b.project.name) {
-                setProjectLabels(b.project.name);
-                state.project.endpoint = b.project.endpoint || "";
-                state.project.rg = b.project.rg || "";
-                state.project.account = b.project.account || "";
-            } else {
-                // Signed in but no project resolved in the selected
-                // subscription — show a neutral placeholder consistent with
-                // the (empty) project list rather than a stale default.
-                setProjectLabels("");
-            }
+            if (b.identity) setIdentity(b.identity);
+            setSelection(b.selection);
             renderIdentity();
-        } else {
-            const p = await getJSON("/api/project");
-            if (p && p.name) setProjectLabels(p.name);
         }
     } catch {
-        try {
-            const p = await getJSON("/api/project");
-            if (p && p.name) setProjectLabels(p.name);
-        } catch {
-            /* keep default project label */
-        }
+        /* retain the canvas-input selection already returned by /api/state */
     }
 
     // Evaluate hosted-agent region support for the resolved project so the
@@ -2427,19 +2160,19 @@ async function init() {
         /* fail open — leave Deploy enabled */
     }
 
+    await hostedAgentsPromise;
     await loadHostedAgentDeployment();
 
-    // Optional: let an agent-invoked navigate() action reflect in the open
-    // iframe. The stream also doubles as a liveness canary — see the
-    // markReconnected / scheduleDisconnect helpers at module scope.
+    // Subscribe to server-sent canvas updates (agent-driven idea / workspace /
+    // deployment refreshes). The stream also doubles as a liveness canary — see
+    // the markReconnected / scheduleDisconnect helpers at module scope.
     try {
         const es = new EventSource("/events");
         es.addEventListener("open", () => markReconnected());
         es.addEventListener("message", (ev) => {
             try {
                 const msg = JSON.parse(ev.data);
-                if (msg.type === "navigate" && msg.page) render(msg.page);
-                else if (msg.type === "setIdea" && msg.idea) setInitIdea(msg.idea);
+                if (msg.type === "setPrompt" && msg.prompt) setInitUserPrompt(msg.prompt);
                 else if (msg.type === "workspaceState") applyWorkspaceTransition(msg);
                 else if (msg.type === "deploymentState" && msg.deployment) {
                     hostedAgentDeploymentRequest += 1;
@@ -2450,6 +2183,9 @@ async function init() {
                             ? { ...previous, status: "ready", reason: msg.deployment.reason || "refresh_failed" }
                             : refreshed;
                     renderHostedAgentDeployment();
+                    // The chat agent may have added or removed agent code while
+                    // it worked, so keep the picker's options in sync.
+                    loadHostedAgents(true);
                 }
             } catch {
                 /* ignore malformed frames */

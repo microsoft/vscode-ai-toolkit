@@ -1,0 +1,61 @@
+name: Publish Changelog Site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'WHATS_NEW.md'
+      - 'site/**'
+      - '.github/workflows/publish-changelog.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Allow one publish at a time; queued runs wait so the live site always
+# reflects the newest commit rather than a cancelled mid-deploy state.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: site
+        run: npm install --no-audit --no-fund
+
+      - name: Build changelog site
+        working-directory: site
+        run: npm run build
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

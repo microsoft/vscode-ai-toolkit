@@ -1,0 +1,7 @@
+{
+    "name": "microsoft-foundry",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Skills and interactive Copilot canvas for designing, configuring, testing and deploying agents to Microsoft Foundry."
+}
