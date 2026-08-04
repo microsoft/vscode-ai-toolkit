@@ -1,0 +1,432 @@
+name: Verify DevPack scripts
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "DevPack release tag to verify"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-devpack-scripts-${{ github.event.release.tag_name || inputs.release_tag }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+  GITHUB_TOKEN: ${{ github.token }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  windows:
+    if: ${{ startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-') }}
+    name: windows ${{ matrix.platform.arch }} ${{ matrix.scenario }}
+    runs-on: ${{ matrix.platform.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [baseline, no-az, with-code]
+        platform:
+          - { os: windows-latest, arch: x64 }
+          - { os: windows-11-arm, arch: arm64 }
+
+    steps:
+      - name: Verify release tag
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^devpack-installer-[0-9A-Za-z][0-9A-Za-z.-]*$') {
+            throw "invalid release tag: $env:RELEASE_TAG"
+          }
+          Write-Host "Testing $env:RELEASE_TAG on windows ${{ matrix.platform.arch }} (${{ matrix.scenario }})"
+
+      - name: Ensure winget
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $links = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links'
+          if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+            Install-PSResource -Name Microsoft.WinGet.Client -Repository PSGallery -TrustRepository -Reinstall
+            Import-Module Microsoft.WinGet.Client
+            Repair-WinGetPackageManager -Latest -Force
+            $env:Path = "$links;$env:Path"
+            Add-Content -Path $env:GITHUB_PATH -Value $links
+          }
+          winget --version
+
+      - name: Remove Azure CLI
+        if: matrix.scenario == 'no-az'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          winget uninstall --silent --disable-interactivity --accept-source-agreements --id Microsoft.AzureCLI
+          $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          $user = [Environment]::GetEnvironmentVariable('Path', 'User')
+          $env:Path = "$machine;$user"
+          if (Get-Command az -ErrorAction SilentlyContinue) {
+            throw 'Azure CLI is still available after removal'
+          }
+
+      - name: Install VS Code and Copilot CLI
+        if: matrix.scenario == 'with-code'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          winget install --silent --disable-interactivity `
+            --accept-package-agreements --accept-source-agreements `
+            --id Microsoft.VisualStudioCode
+          winget install --silent --disable-interactivity `
+            --accept-package-agreements --accept-source-agreements `
+            --id GitHub.Copilot
+
+          $vscodeBin = Join-Path $env:LOCALAPPDATA 'Programs\Microsoft VS Code\bin'
+          Add-Content -Path $env:GITHUB_PATH -Value $vscodeBin
+          $copilotPackage = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" `
+            -Directory -Filter 'GitHub.Copilot_*' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $copilotPackage) { throw 'GitHub Copilot CLI package directory not found' }
+          Add-Content -Path $env:GITHUB_PATH -Value $copilotPackage.FullName
+
+      - name: Confirm Copilot CLI is absent
+        if: matrix.scenario != 'with-code'
+        shell: pwsh
+        run: |
+          if (Get-Command copilot -ErrorAction SilentlyContinue) {
+            throw 'Copilot CLI unexpectedly present; Canvas skip path cannot be tested'
+          }
+
+      - name: Download and verify signed bootstrap
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $script = Join-Path $env:RUNNER_TEMP 'foundry-devpack.ps1'
+          $url = "https://github.com/${{ github.repository }}/releases/download/$env:RELEASE_TAG/foundry-devpack.ps1"
+          Invoke-WebRequest $url -OutFile $script -UseBasicParsing
+
+          $signature = Get-AuthenticodeSignature $script
+          if ($signature.Status -ne 'Valid') {
+            throw "invalid PowerShell signature: $($signature.Status) $($signature.StatusMessage)"
+          }
+          if ($signature.SignerCertificate.Subject -notlike 'CN=Microsoft Corporation,*') {
+            throw "unexpected PowerShell signer: $($signature.SignerCertificate.Subject)"
+          }
+
+          $store = [Security.Cryptography.X509Certificates.X509Store]::new('TrustedPublisher', 'CurrentUser')
+          $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+          try {
+            $wasTrusted = $store.Certificates.Find(
+              [Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,
+              $signature.SignerCertificate.Thumbprint,
+              $false).Count -gt 0
+            if (-not $wasTrusted) { $store.Add($signature.SignerCertificate) }
+          }
+          finally {
+            $store.Dispose()
+          }
+
+          "DEVPACK_SCRIPT=$script" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "SIGNER_THUMBPRINT=$($signature.SignerCertificate.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "SIGNER_WAS_TRUSTED=$wasTrusted" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install through PowerShell bootstrap
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $temp = Join-Path $env:RUNNER_TEMP 'devpack-bootstrap-temp'
+          New-Item -ItemType Directory -Path $temp -Force | Out-Null
+          $env:TEMP = $temp
+          $env:TMP = $temp
+
+          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy AllSigned `
+            -File $env:DEVPACK_SCRIPT --verbose
+          if ($LASTEXITCODE -ne 0) { throw "PowerShell bootstrap exited $LASTEXITCODE" }
+          if (@(Get-ChildItem $temp -Force).Count) {
+            throw "bootstrap left temporary files under $temp"
+          }
+
+      - name: Verify installed components
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          $user = [Environment]::GetEnvironmentVariable('Path', 'User')
+          $env:Path = "$machine;$user;$env:Path"
+
+          az version | Out-Host
+          azd version | Out-Host
+          $extensions = azd ext list --installed -o json | Out-String
+          $extensions | Write-Host
+          if ($extensions -notmatch 'microsoft\.foundry') { throw 'microsoft.foundry azd extension not installed' }
+          if ($extensions -notmatch 'azure\.ai\.agents') { throw 'azure.ai.agents azd extension not installed' }
+
+          $skill = Join-Path $env:USERPROFILE '.agents\skills\microsoft-foundry\SKILL.md'
+          if (-not (Test-Path $skill -PathType Leaf)) { throw "microsoft-foundry skill not found at $skill" }
+
+      - name: Verify VS Code extension and Copilot plugin
+        if: matrix.scenario == 'with-code'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          $user = [Environment]::GetEnvironmentVariable('Path', 'User')
+          $vscodeBin = Join-Path $env:LOCALAPPDATA 'Programs\Microsoft VS Code\bin'
+          $env:Path = "$vscodeBin;$machine;$user;$env:Path"
+
+          if (-not (code --list-extensions | Select-String -Quiet -Pattern 'ms-windows-ai-studio.windows-ai-studio')) {
+            throw 'Foundry Toolkit VS Code extension not installed'
+          }
+          copilot plugin list --no-color | Out-Host
+          if (-not (copilot plugin list --no-color | Select-String -Quiet -Pattern 'microsoft-foundry')) {
+            throw 'Foundry Copilot plugin not installed'
+          }
+
+      - name: Verify ARP and uninstall
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Microsoft.FoundryDevPack'
+          if (-not (Test-Path $key)) { throw 'Foundry DevPack ARP entry not found' }
+          $entry = Get-ItemProperty $key
+          if (-not (Test-Path $entry.InstallLocation -PathType Container)) { throw 'ARP install location not found' }
+          if (-not (Test-Path $entry.DisplayIcon -PathType Leaf)) { throw 'persisted installer not found' }
+          Write-Host "ARP: $($entry.DisplayName) $($entry.DisplayVersion)"
+
+          & $entry.DisplayIcon uninstall
+          if ($LASTEXITCODE -ne 0) { throw "uninstall exited $LASTEXITCODE" }
+          if (Test-Path $key) { throw 'ARP entry still present after uninstall' }
+
+      - name: Remove trusted publisher and bootstrap
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:SIGNER_THUMBPRINT -and $env:SIGNER_WAS_TRUSTED -eq 'False') {
+            $store = [Security.Cryptography.X509Certificates.X509Store]::new('TrustedPublisher', 'CurrentUser')
+            $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+            try {
+              $certificates = $store.Certificates.Find(
+                [Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,
+                $env:SIGNER_THUMBPRINT,
+                $false)
+              foreach ($certificate in $certificates) { $store.Remove($certificate) }
+            }
+            finally {
+              $store.Dispose()
+            }
+          }
+          Remove-Item $env:DEVPACK_SCRIPT -Force -ErrorAction SilentlyContinue
+
+  linux:
+    if: ${{ startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-') }}
+    name: linux ${{ matrix.platform.arch }} ${{ matrix.scenario }}
+    runs-on: ${{ matrix.platform.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [baseline, no-az, with-code]
+        platform:
+          - { os: ubuntu-latest, arch: x64 }
+          - { os: ubuntu-24.04-arm, arch: arm64 }
+
+    steps:
+      - name: Verify release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^devpack-installer-[0-9A-Za-z][0-9A-Za-z.-]*$ ]]
+          echo "Testing $RELEASE_TAG on linux ${{ matrix.platform.arch }} (${{ matrix.scenario }})"
+
+      - name: Remove Azure CLI
+        if: matrix.scenario == 'no-az'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get remove -y azure-cli || true
+          if command -v az >/dev/null 2>&1; then
+            echo 'Azure CLI is still available after removal' >&2
+            exit 1
+          fi
+
+      - name: Install VS Code and Copilot CLI
+        if: matrix.scenario == 'with-code'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y wget gpg apt-transport-https
+          wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /usr/share/keyrings/packages.microsoft.gpg >/dev/null
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list
+          sudo apt-get update
+          sudo apt-get install -y code
+          curl -fsSL https://gh.io/copilot-install | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Confirm Copilot CLI is absent
+        if: matrix.scenario != 'with-code'
+        shell: bash
+        run: |
+          if command -v copilot >/dev/null 2>&1; then
+            echo 'Copilot CLI unexpectedly present; Canvas skip path cannot be tested' >&2
+            exit 1
+          fi
+
+      - name: Download and verify bootstrap syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          script="$RUNNER_TEMP/foundry-devpack.sh"
+          curl -fsSL "https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/foundry-devpack.sh" -o "$script"
+          bash -n "$script"
+          echo "DEVPACK_SCRIPT=$script" >> "$GITHUB_ENV"
+
+      - name: Install through shell bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          temp="$RUNNER_TEMP/devpack-bootstrap-temp"
+          mkdir -p "$temp"
+          export TMPDIR="$temp"
+
+          bash "$DEVPACK_SCRIPT" --verbose
+          if find "$temp" -mindepth 1 -print -quit | grep -q .; then
+            echo "error: bootstrap left temporary files under $temp" >&2
+            find "$temp" -mindepth 1 -maxdepth 2 -print >&2
+            exit 1
+          fi
+
+      - name: Verify installed components
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export PATH="$HOME/.local/bin:$PATH"
+          az version
+          azd version
+          azd ext list --installed -o json | tee "$RUNNER_TEMP/azd-extensions.json"
+          grep -qi 'microsoft\.foundry' "$RUNNER_TEMP/azd-extensions.json"
+          grep -qi 'azure\.ai\.agents' "$RUNNER_TEMP/azd-extensions.json"
+          test -f "$HOME/.agents/skills/microsoft-foundry/SKILL.md"
+
+      - name: Verify VS Code extension and Copilot plugin
+        if: matrix.scenario == 'with-code'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export PATH="$HOME/.local/bin:$PATH"
+          code --list-extensions | grep -qi 'ms-windows-ai-studio.windows-ai-studio'
+          copilot plugin list --no-color | tee "$RUNNER_TEMP/copilot-plugins.txt"
+          grep -qi 'microsoft-foundry' "$RUNNER_TEMP/copilot-plugins.txt"
+
+      - name: Remove bootstrap
+        if: always()
+        shell: bash
+        run: rm -f "$DEVPACK_SCRIPT"
+
+  macos:
+    if: ${{ startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-') }}
+    name: macos ${{ matrix.platform.arch }} ${{ matrix.scenario }}
+    runs-on: ${{ matrix.platform.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [baseline, no-az, with-code]
+        platform:
+          - { os: macos-15-intel, arch: x64 }
+          - { os: macos-latest, arch: arm64 }
+
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_ANALYTICS: "1"
+
+    steps:
+      - name: Verify release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^devpack-installer-[0-9A-Za-z][0-9A-Za-z.-]*$ ]]
+          echo "Testing $RELEASE_TAG on macos ${{ matrix.platform.arch }} (${{ matrix.scenario }})"
+
+      - name: Remove Azure CLI
+        if: matrix.scenario == 'no-az'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          brew uninstall --ignore-dependencies azure-cli 2>/dev/null || true
+          if command -v az >/dev/null 2>&1; then
+            echo 'Azure CLI is still available after removal' >&2
+            exit 1
+          fi
+
+      - name: Install VS Code and Copilot CLI
+        if: matrix.scenario == 'with-code'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          brew install --cask visual-studio-code
+          brew install --cask copilot-cli
+          sudo mkdir -p /usr/local/bin
+          sudo ln -sf '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code' /usr/local/bin/code
+
+      - name: Confirm Copilot CLI is absent
+        if: matrix.scenario != 'with-code'
+        shell: bash
+        run: |
+          if command -v copilot >/dev/null 2>&1; then
+            echo 'Copilot CLI unexpectedly present; Canvas skip path cannot be tested' >&2
+            exit 1
+          fi
+
+      - name: Download and verify bootstrap syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          script="$RUNNER_TEMP/foundry-devpack.sh"
+          curl -fsSL "https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/foundry-devpack.sh" -o "$script"
+          bash -n "$script"
+          echo "DEVPACK_SCRIPT=$script" >> "$GITHUB_ENV"
+
+      - name: Install through shell bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          temp="$RUNNER_TEMP/devpack-bootstrap-temp"
+          mkdir -p "$temp"
+          export TMPDIR="$temp"
+
+          bash "$DEVPACK_SCRIPT" --verbose
+          if find "$temp" -mindepth 1 -print -quit | grep -q .; then
+            echo "error: bootstrap left temporary files under $temp" >&2
+            find "$temp" -mindepth 1 -maxdepth 2 -print >&2
+            exit 1
+          fi
+
+      - name: Verify installed components
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+          az version
+          azd version
+          azd ext list --installed -o json | tee "$RUNNER_TEMP/azd-extensions.json"
+          grep -qi 'microsoft\.foundry' "$RUNNER_TEMP/azd-extensions.json"
+          grep -qi 'azure\.ai\.agents' "$RUNNER_TEMP/azd-extensions.json"
+          test -f "$HOME/.agents/skills/microsoft-foundry/SKILL.md"
+
+      - name: Verify VS Code extension and Copilot plugin
+        if: matrix.scenario == 'with-code'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+          code --list-extensions | grep -qi 'ms-windows-ai-studio.windows-ai-studio'
+          copilot plugin list --no-color | tee "$RUNNER_TEMP/copilot-plugins.txt"
+          grep -qi 'microsoft-foundry' "$RUNNER_TEMP/copilot-plugins.txt"
+
+      - name: Remove bootstrap
+        if: always()
+        shell: bash
+        run: rm -f "$DEVPACK_SCRIPT"
