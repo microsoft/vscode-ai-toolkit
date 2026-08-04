@@ -11,6 +11,7 @@ import { marked } from 'marked';
 const siteDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(siteDir, '..');
 const sourceFile = join(repoRoot, 'WHATS_NEW.md');
+const landingFile = join(siteDir, 'landing.html');
 const outDir = join(siteDir, 'dist');
 
 const REPO_URL = 'https://github.com/microsoft/foundry-toolkit';
@@ -229,7 +230,7 @@ ${release.sections
         </aside>`;
 }
 
-function renderPage({ intro, releases }) {
+function renderChangelogPage({ intro, releases }) {
   const introHtml = intro ? marked.parse(intro) : '';
   const latest = releases[0];
 
@@ -251,16 +252,17 @@ FORM: A faithful release-document layout, chosen directly from the user's VS Cod
     <meta property="og:description" content="${escapeHtml(SITE_DESCRIPTION)}" />
     <meta property="og:type" content="website" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230078d4'/%3E%3Cpath d='M9 21V11h4.4a3.3 3.3 0 0 1 0 6.6H12V21z' fill='white'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="../styles.css" />
   </head>
   <body>
     <a class="skip-link" href="#content">Skip to content</a>
     <header class="site-header">
       <div class="site-header__inner">
-        <a class="brand" href="#${latest.id}" aria-label="${escapeHtml(SITE_TITLE)} changelog">
+        <a class="brand" href="../" aria-label="Foundry DevPack home">
           <span>Foundry Toolkit</span>
         </a>
         <nav class="primary-nav" aria-label="Primary navigation">
+          <a class="primary-nav__link" href="../">DevPack</a>
           <a class="primary-nav__link primary-nav__link--active" href="#${latest.id}">Changelog</a>
           <a class="primary-nav__link" href="${REPO_URL}">GitHub</a>
         </nav>
@@ -334,7 +336,7 @@ ${renderOnThisPage(latest)}
       </div>
     </footer>
 
-    <script src="./app.js"></script>
+    <script src="../app.js"></script>
   </body>
 </html>
 `;
@@ -354,6 +356,9 @@ async function main() {
   if (!existsSync(sourceFile)) {
     throw new Error(`Changelog source not found: ${sourceFile}`);
   }
+  if (!existsSync(landingFile)) {
+    throw new Error(`Landing page source not found: ${landingFile}`);
+  }
 
   const markdown = await readFile(sourceFile, 'utf8');
   const parsed = parseChangelog(markdown);
@@ -363,13 +368,21 @@ async function main() {
   }
 
   await emptyDir(outDir);
-  await writeFile(join(outDir, 'index.html'), renderPage(parsed), 'utf8');
+  await cp(landingFile, join(outDir, 'index.html'));
+  await mkdir(join(outDir, 'changelog'), { recursive: true });
+  await writeFile(
+    join(outDir, 'changelog', 'index.html'),
+    renderChangelogPage(parsed),
+    'utf8',
+  );
   await cp(join(siteDir, 'assets'), outDir, { recursive: true });
   // Pages would otherwise run the output through Jekyll, which drops files
   // and folders that start with an underscore.
   await writeFile(join(outDir, '.nojekyll'), '', 'utf8');
 
-  console.log(`Built ${parsed.releases.length} releases -> ${join(outDir, 'index.html')}`);
+  console.log(
+    `Built DevPack landing page and ${parsed.releases.length} releases -> ${outDir}`,
+  );
 }
 
 main().catch((error) => {

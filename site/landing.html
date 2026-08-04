@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<!--
+THESIS: Foundry DevPack removes setup friction by turning a complete Foundry toolchain into one copyable command.
+OWN-WORLD: Foundry's light and dark neutral canvases, precise type, restrained purple actions, a subtle grid field, and one plain tool summary.
+STORY: Understand the platform, copy the installer, and review the four included developer surfaces in one place.
+FIRST VIEWPORT: Platform and DevPack copy share the left column with the only installer; a simple linked tool list occupies the right.
+FORM: A single compact Foundry-informed hero and footer, deliberately simpler than the ai.azure.com reference.
+-->
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Foundry DevPack · Build on Microsoft Foundry</title>
+    <meta
+      name="description"
+      content="Install the editor, CLI, canvas, and coding-agent tools for Microsoft Foundry in one command."
+    />
+    <meta property="og:title" content="Foundry DevPack" />
+    <meta
+      property="og:description"
+      content="One installer for the developer tools used to build, test, and deploy on Microsoft Foundry."
+    />
+    <meta property="og:type" content="website" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%236f32c9' d='M4 5h10v10H4zM18 5h10v10H18zM4 19h10v8H4zM18 19h10v8H18z'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./landing.css?v=2" />
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+
+    <header class="site-header">
+      <div class="nav-shell">
+        <a class="brand" href="./" aria-label="Foundry DevPack home">
+          <span>Microsoft Foundry</span>
+          <strong>DevPack</strong>
+        </a>
+        <nav class="site-nav" aria-label="Primary navigation">
+          <a href="./changelog/">Changelog</a>
+          <a href="https://github.com/microsoft/foundry-toolkit">GitHub</a>
+          <button class="theme-switch" type="button" id="theme-toggle" aria-label="Switch to dark theme">
+            <svg class="theme-switch__sun" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M8 3.4A4.6 4.6 0 1 0 8 12.6 4.6 4.6 0 0 0 8 3.4Zm0 1A3.6 3.6 0 1 1 8 11.6 3.6 3.6 0 0 1 8 4.4ZM7.5 0h1v2h-1V0Zm0 14h1v2h-1v-2ZM0 7.5h2v1H0v-1Zm14 0h2v1h-2v-1ZM2 2.7l.7-.7 1.4 1.4-.7.7L2 2.7Zm9.9 9.9.7-.7 1.4 1.4-.7.7-1.4-1.4ZM2 13.3l1.4-1.4.7.7L2.7 14l-.7-.7ZM11.9 3.4 13.3 2l.7.7-1.4 1.4-.7-.7Z" />
+            </svg>
+            <svg class="theme-switch__moon" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M6.2 1.1a6.8 6.8 0 1 0 8.7 8.7A5.7 5.7 0 0 1 6.2 1.1Zm-1 1.6A6.7 6.7 0 0 0 13.3 11 5.8 5.8 0 1 1 5.2 2.7Z" />
+            </svg>
+          </button>
+          <a class="header-action" href="#install">Install DevPack</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="content">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero__shell">
+          <div class="hero__copy">
+            <h1 id="hero-title">Build on Foundry.<br />Set up in one command.</h1>
+            <p class="hero__lede">
+              Microsoft Foundry is the platform for building, testing, and deploying AI apps and
+              agents. Foundry DevPack installs the developer tools that connect that lifecycle
+              across your editor, terminal, and coding agent.
+            </p>
+
+            <div class="installer" id="install">
+              <div class="platform-tabs" role="tablist" aria-label="Choose your operating system">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected="true"
+                  data-platform-tab="windows"
+                >
+                  Windows
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  data-platform-tab="unix"
+                >
+                  macOS / Linux
+                </button>
+              </div>
+              <div class="command">
+                <code data-install-command>powershell -ex AllSigned -c "Invoke-RestMethod 'https://aka.ms/foundry-devpack-install.ps1' | Invoke-Expression"</code>
+                <button class="copy-button" type="button" data-copy-command>
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M5 1h8a2 2 0 0 1 2 2v8h-2V3H5V1ZM1 5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5Zm2 0v8h7V5H3Z" />
+                  </svg>
+                  <span>Copy</span>
+                </button>
+              </div>
+              <p class="copy-status" data-copy-status aria-live="polite"></p>
+            </div>
+          </div>
+
+          <section class="tool-summary" aria-labelledby="tools-title">
+            <h2 id="tools-title">Everything DevPack installs</h2>
+            <div class="tool-summary__list">
+              <a href="https://learn.microsoft.com/en-us/azure/foundry/how-to/develop/get-started-projects-vs-code">
+                <div class="tool-icon tool-icon--blue" aria-hidden="true">
+                  <svg viewBox="0 0 36 36">
+                    <path d="m27.5 3 5.5 2.7v24.6L27.5 33 11.2 22.4 4 27.8 1 25l7.2-7L1 11l3-2.8 7.2 5.4L27.5 3Zm0 7.2-10.7 7.7 10.7 7.8V10.2Z" />
+                  </svg>
+                </div>
+                <div>
+                  <strong>Foundry Toolkit</strong>
+                  <span>Build, test, evaluate, and deploy from Visual Studio Code.</span>
+                </div>
+                <span class="tool-summary__arrow" aria-hidden="true">↗</span>
+              </a>
+
+              <a href="https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/cli-agent-development">
+                <div class="tool-icon tool-icon--teal" aria-hidden="true">
+                  <svg viewBox="0 0 36 36">
+                    <path d="M4 5h28v26H4V5Zm3 3v20h22V8H7Zm4 5 6 5-6 5-2-2.4 3.2-2.6L9 15.4l2-2.4Zm8 8h8v3h-8v-3Z" />
+                  </svg>
+                </div>
+                <div>
+                  <strong>azd + azd ai</strong>
+                  <span>Scaffold, deploy, evaluate, and automate from the terminal.</span>
+                </div>
+                <span class="tool-summary__arrow" aria-hidden="true">↗</span>
+              </a>
+
+              <a href="https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/foundry-canvas">
+                <div class="tool-icon tool-icon--orange" aria-hidden="true">
+                  <svg viewBox="0 0 36 36">
+                    <path d="M4 4h28v28H4V4Zm3 3v22h22V7H7Zm3 4h7v6h-7v-6Zm9 0h7v14h-7V11Zm-9 8h7v6h-7v-6Z" />
+                  </svg>
+                </div>
+                <div>
+                  <strong>Foundry Canvas <small>Preview</small></strong>
+                  <span>Design and deploy hosted agents with a guided Copilot canvas.</span>
+                </div>
+                <span class="tool-summary__arrow" aria-hidden="true">↗</span>
+              </a>
+
+              <a href="https://learn.microsoft.com/en-us/azure/foundry/how-to/develop/use-microsoft-foundry-skill?tabs=vscode">
+                <div class="tool-icon tool-icon--purple" aria-hidden="true">
+                  <svg viewBox="0 0 36 36">
+                    <path d="M18 2 22.4 13 34 18l-11.6 5L18 34l-4.4-11L2 18l11.6-5L18 2Zm0 8.2L16 15l-5 3 5 2.3 2 5.5 2-5.5 5-2.3-5-3-2-4.8Z" />
+                  </svg>
+                </div>
+                <div>
+                  <strong>Foundry Skills</strong>
+                  <span>Give coding agents reusable guidance for Foundry workflows.</span>
+                </div>
+                <span class="tool-summary__arrow" aria-hidden="true">↗</span>
+              </a>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="section-shell">
+        <p>© Microsoft Corporation.</p>
+        <nav aria-label="Footer navigation">
+          <a href="https://learn.microsoft.com/en-us/azure/foundry/">Documentation</a>
+          <a href="./changelog/">Changelog</a>
+          <a href="https://github.com/microsoft/foundry-toolkit">GitHub</a>
+        </nav>
+      </div>
+    </footer>
+
+    <script src="./landing.js?v=2"></script>
+  </body>
+</html>
