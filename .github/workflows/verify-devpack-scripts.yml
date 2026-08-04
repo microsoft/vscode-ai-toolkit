@@ -9,23 +9,32 @@ on:
         description: "DevPack release tag to verify"
         required: true
         type: string
+      install_source:
+        description: "Bootstrap source"
+        required: true
+        default: release
+        type: choice
+        options:
+          - release
+          - aka
 
 permissions:
   contents: read
 
 concurrency:
-  group: verify-devpack-scripts-${{ github.event.release.tag_name || inputs.release_tag }}
+  group: verify-devpack-scripts-${{ github.event.release.tag_name || inputs.release_tag }}-${{ inputs.install_source || 'release' }}
   cancel-in-progress: false
 
 env:
   RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+  INSTALL_SOURCE: ${{ inputs.install_source || 'release' }}
   GITHUB_TOKEN: ${{ github.token }}
   GH_TOKEN: ${{ github.token }}
 
 jobs:
   windows:
     if: ${{ startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-') }}
-    name: windows ${{ matrix.platform.arch }} ${{ matrix.scenario }}
+    name: windows ${{ matrix.platform.arch }} ${{ matrix.scenario }} (${{ inputs.install_source || 'release' }})
     runs-on: ${{ matrix.platform.os }}
     timeout-minutes: 30
     strategy:
@@ -43,7 +52,7 @@ jobs:
           if ($env:RELEASE_TAG -notmatch '^devpack-installer-[0-9A-Za-z][0-9A-Za-z.-]*$') {
             throw "invalid release tag: $env:RELEASE_TAG"
           }
-          Write-Host "Testing $env:RELEASE_TAG on windows ${{ matrix.platform.arch }} (${{ matrix.scenario }})"
+          Write-Host "Testing $env:RELEASE_TAG from $env:INSTALL_SOURCE on windows ${{ matrix.platform.arch }} (${{ matrix.scenario }})"
 
       - name: Ensure winget
         shell: pwsh
@@ -104,8 +113,20 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $script = Join-Path $env:RUNNER_TEMP 'foundry-devpack.ps1'
-          $url = "https://github.com/${{ github.repository }}/releases/download/$env:RELEASE_TAG/foundry-devpack.ps1"
+          $url = if ($env:INSTALL_SOURCE -eq 'aka') {
+            'https://aka.ms/foundry-devpack-install.ps1'
+          } else {
+            "https://github.com/${{ github.repository }}/releases/download/$env:RELEASE_TAG/foundry-devpack.ps1"
+          }
           Invoke-WebRequest $url -OutFile $script -UseBasicParsing
+
+          $content = Get-Content $script -Raw
+          if ($content -notmatch "(?m)^\`$releaseTag\s*=\s*'([^']+)'") {
+            throw 'release tag not found in PowerShell bootstrap'
+          }
+          if ($Matches[1] -ne $env:RELEASE_TAG) {
+            throw "PowerShell bootstrap targets $($Matches[1]), expected $env:RELEASE_TAG"
+          }
 
           $signature = Get-AuthenticodeSignature $script
           if ($signature.Status -ne 'Valid') {
@@ -141,8 +162,13 @@ jobs:
           $env:TEMP = $temp
           $env:TMP = $temp
 
-          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy AllSigned `
-            -File $env:DEVPACK_SCRIPT --verbose
+          if ($env:INSTALL_SOURCE -eq 'aka') {
+            & powershell.exe -ExecutionPolicy AllSigned -Command `
+              "Invoke-RestMethod 'https://aka.ms/foundry-devpack-install.ps1' | Invoke-Expression"
+          } else {
+            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy AllSigned `
+              -File $env:DEVPACK_SCRIPT --verbose
+          }
           if ($LASTEXITCODE -ne 0) { throw "PowerShell bootstrap exited $LASTEXITCODE" }
           $leaked = @(Get-ChildItem $temp -Directory -Filter 'foundry-devpack-*' -ErrorAction SilentlyContinue)
           if ($leaked.Count) {
@@ -222,7 +248,7 @@ jobs:
 
   linux:
     if: ${{ startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-') }}
-    name: linux ${{ matrix.platform.arch }} ${{ matrix.scenario }}
+    name: linux ${{ matrix.platform.arch }} ${{ matrix.scenario }} (${{ inputs.install_source || 'release' }})
     runs-on: ${{ matrix.platform.os }}
     timeout-minutes: 30
     strategy:
@@ -239,7 +265,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$RELEASE_TAG" =~ ^devpack-installer-[0-9A-Za-z][0-9A-Za-z.-]*$ ]]
-          echo "Testing $RELEASE_TAG on linux ${{ matrix.platform.arch }} (${{ matrix.scenario }})"
+          echo "Testing $RELEASE_TAG from $INSTALL_SOURCE on linux ${{ matrix.platform.arch }} (${{ matrix.scenario }})"
 
       - name: Remove Azure CLI
         if: matrix.scenario == 'no-az'
@@ -280,8 +306,14 @@ jobs:
         run: |
           set -euo pipefail
           script="$RUNNER_TEMP/foundry-devpack.sh"
-          curl -fsSL "https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/foundry-devpack.sh" -o "$script"
+          if [ "$INSTALL_SOURCE" = "aka" ]; then
+            url="https://aka.ms/foundry-devpack-install.sh"
+          else
+            url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/foundry-devpack.sh"
+          fi
+          curl -fsSL "$url" -o "$script"
           bash -n "$script"
+          grep -Fx "release_tag=\"$RELEASE_TAG\"" "$script"
           echo "DEVPACK_SCRIPT=$script" >> "$GITHUB_ENV"
 
       - name: Install through shell bootstrap
@@ -292,7 +324,11 @@ jobs:
           mkdir -p "$temp"
           export TMPDIR="$temp"
 
-          bash "$DEVPACK_SCRIPT" --verbose
+          if [ "$INSTALL_SOURCE" = "aka" ]; then
+            curl -fsSL https://aka.ms/foundry-devpack-install.sh | bash
+          else
+            bash "$DEVPACK_SCRIPT" --verbose
+          fi
           if find "$temp" -mindepth 1 -maxdepth 1 -type d -name 'foundry-devpack-*' -print -quit | grep -q .; then
             echo "error: bootstrap left temporary directories under $temp" >&2
             find "$temp" -mindepth 1 -maxdepth 1 -type d -name 'foundry-devpack-*' -print >&2
@@ -328,7 +364,7 @@ jobs:
 
   macos:
     if: ${{ startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-') }}
-    name: macos ${{ matrix.platform.arch }} ${{ matrix.scenario }}
+    name: macos ${{ matrix.platform.arch }} ${{ matrix.scenario }} (${{ inputs.install_source || 'release' }})
     runs-on: ${{ matrix.platform.os }}
     timeout-minutes: 30
     strategy:
@@ -349,7 +385,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$RELEASE_TAG" =~ ^devpack-installer-[0-9A-Za-z][0-9A-Za-z.-]*$ ]]
-          echo "Testing $RELEASE_TAG on macos ${{ matrix.platform.arch }} (${{ matrix.scenario }})"
+          echo "Testing $RELEASE_TAG from $INSTALL_SOURCE on macos ${{ matrix.platform.arch }} (${{ matrix.scenario }})"
 
       - name: Remove Azure CLI
         if: matrix.scenario == 'no-az'
@@ -386,8 +422,14 @@ jobs:
         run: |
           set -euo pipefail
           script="$RUNNER_TEMP/foundry-devpack.sh"
-          curl -fsSL "https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/foundry-devpack.sh" -o "$script"
+          if [ "$INSTALL_SOURCE" = "aka" ]; then
+            url="https://aka.ms/foundry-devpack-install.sh"
+          else
+            url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/foundry-devpack.sh"
+          fi
+          curl -fsSL "$url" -o "$script"
           bash -n "$script"
+          grep -Fx "release_tag=\"$RELEASE_TAG\"" "$script"
           echo "DEVPACK_SCRIPT=$script" >> "$GITHUB_ENV"
 
       - name: Install through shell bootstrap
@@ -398,7 +440,11 @@ jobs:
           mkdir -p "$temp"
           export TMPDIR="$temp"
 
-          bash "$DEVPACK_SCRIPT" --verbose
+          if [ "$INSTALL_SOURCE" = "aka" ]; then
+            curl -fsSL https://aka.ms/foundry-devpack-install.sh | bash
+          else
+            bash "$DEVPACK_SCRIPT" --verbose
+          fi
           if find "$temp" -mindepth 1 -maxdepth 1 -type d -name 'foundry-devpack-*' -print -quit | grep -q .; then
             echo "error: bootstrap left temporary directories under $temp" >&2
             find "$temp" -mindepth 1 -maxdepth 1 -type d -name 'foundry-devpack-*' -print >&2
