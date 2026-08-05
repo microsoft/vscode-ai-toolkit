@@ -1,7 +1,7 @@
 {
-    "commitSha": "b29a509fe33317ff03d23e85311c0da36aa8e5eb",
+    "commitSha": "decb6ee894de10704b08711fb778141df8f05f51",
     "repo": "https://github.com/microsoft-foundry/foundry-samples/",
-    "generatedAt": "2026-07-29T12:19:09Z",
+    "generatedAt": "2026-08-05T07:28:25Z",
     "dimensions": {
         "language": {
             "title": "Select a Language",
@@ -200,6 +200,15 @@
             "displayName": "Browser Automation",
             "description": "Automates browsing, web scraping, and form filling using a remote Chromium session with live view.",
             "path": "samples/csharp/hosted-agents/agent-framework/browser-automation",
+            "requiresModel": true
+        },
+        {
+            "language": "csharp",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Egress Control",
+            "description": "Agent that tests managed egress proxy policies by making outbound requests and returning status and headers.",
+            "path": "samples/csharp/hosted-agents/agent-framework/egress-control",
             "requiresModel": true
         },
         {
@@ -695,6 +704,15 @@
             "displayName": "Note-Taking Agent",
             "description": "Note-taking agent that saves and retrieves per-session notes via session files.",
             "path": "samples/python/hosted-agents/bring-your-own/invocations/notetaking-agent",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "bring-your-own",
+            "protocol": "invocations",
+            "displayName": "Resilient Approval Gate",
+            "description": "Long-running, crash-resilient agent that gates plans and irreversible actions on human approval.",
+            "path": "samples/python/hosted-agents/bring-your-own/invocations/resilient-approval-gate",
             "requiresModel": true
         },
         {
