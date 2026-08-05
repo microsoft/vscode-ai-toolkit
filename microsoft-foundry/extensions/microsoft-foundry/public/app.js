@@ -167,7 +167,9 @@ async function sendToChat(prompt, refresh) {
 // unbound to an existing workspace agent.
 function withActionContext(prompt) {
     const context = [];
-    if (!state.hostedAgents.creatingNew) {
+    const hasWorkspaceAgents = Array.isArray(state.hostedAgents.items)
+        && state.hostedAgents.items.some((agent) => agent?.agentName);
+    if (!state.hostedAgents.creatingNew && hasWorkspaceAgents) {
         const agentName = String(state.hostedAgents.selected || state.agentName || "").trim();
         if (agentName) {
             context.push(`Apply this request to my selected workspace agent ${JSON.stringify(agentName)}.`);
