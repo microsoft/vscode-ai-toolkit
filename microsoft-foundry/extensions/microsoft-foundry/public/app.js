@@ -162,16 +162,27 @@ async function sendToChat(prompt, refresh) {
     }
 }
 
-// Append the selected Foundry project context to a chat prompt so the chat
-// agent knows which project to target (name, subscription, and data-plane
-// endpoint). Returns the prompt unchanged when no project is selected.
-function withProjectContext(prompt) {
+// Append the selected workspace agent and Foundry project so chat actions target
+// the same agent shown in the picker. New-agent prompts intentionally stay
+// unbound to an existing workspace agent.
+function withActionContext(prompt) {
+    const context = [];
+    if (!state.hostedAgents.creatingNew) {
+        const agentName = String(state.hostedAgents.selected || state.agentName || "").trim();
+        if (agentName) {
+            context.push(`Apply this request to my selected workspace agent ${JSON.stringify(agentName)}.`);
+        }
+    }
+
     const { subscription, project } = state.selection;
-    if (!project?.name) return prompt;
-    const parts = [`project "${project.name}"`];
-    if (subscription.name) parts.push(`in subscription "${subscription.name}"`);
-    if (project.endpoint) parts.push(`(endpoint: ${project.endpoint})`);
-    return `${prompt}\n\nUse my selected Foundry ${parts.join(" ")}.`;
+    if (project?.name) {
+        const parts = [`project "${project.name}"`];
+        if (subscription.name) parts.push(`in subscription "${subscription.name}"`);
+        if (project.endpoint) parts.push(`(endpoint: ${project.endpoint})`);
+        context.push(`Use my selected Foundry ${parts.join(" ")}.`);
+    }
+
+    return context.length ? `${prompt}\n\n${context.join("\n")}` : prompt;
 }
 
 // Build a Foundry Portal URL for the selected project. Returns "" when the
@@ -534,6 +545,20 @@ async function loadHostedAgents(force) {
     return st;
 }
 
+async function refreshHostedAgentsAfterSession() {
+    const previousNames = new Set(
+        workspaceHostedAgentOptions().map((agent) => agent.agentName.toLowerCase()),
+    );
+    const wasCreatingNew = state.hostedAgents.creatingNew === true;
+    await loadHostedAgents(true);
+    if (!wasCreatingNew || !state.hostedAgents.creatingNew) return;
+
+    const added = workspaceHostedAgentOptions().filter(
+        (agent) => !previousNames.has(agent.agentName.toLowerCase()),
+    );
+    if (added.length === 1) await selectHostedAgent(added[0].agentName);
+}
+
 function showNewAgent(prompt = "") {
     const nextPrompt = String(prompt || "").trim();
     if (nextPrompt) {
@@ -566,6 +591,7 @@ async function selectHostedAgent(agentName) {
         renderFolds();
     }
     renderHostedAgentPicker();
+    if (agentName !== previous) resetHostedAgentDeployment();
     if (agentName === previous) {
         renderHostedAgentDeployment();
         toast("Agent: " + agentName);
@@ -582,6 +608,7 @@ async function selectHostedAgent(agentName) {
         renderHostedAgentPicker();
         renderInit();
         renderFolds();
+        loadHostedAgentDeployment();
         toast("Couldn\u2019t switch agent.");
         return;
     }
@@ -936,7 +963,7 @@ function renderDeployList() {
 
         item.addEventListener("click", () => {
             closeModelMenu();
-            sendToChat(withProjectContext(m.prompt));
+            sendToChat(withActionContext(m.prompt));
         });
         host.appendChild(item);
     }
@@ -999,7 +1026,7 @@ function renderToolboxList() {
         use.addEventListener("click", (e) => {
             e.stopPropagation();
             closeToolMenu();
-            sendToChat(withProjectContext(t.prompt));
+            sendToChat(withActionContext(t.prompt));
         });
         item.append(toggle, use);
 
@@ -1076,7 +1103,7 @@ function renderGuardrailList() {
 
         item.addEventListener("click", () => {
             closeGuardrailMenu();
-            sendToChat(withProjectContext(g.prompt));
+            sendToChat(withActionContext(g.prompt));
         });
         host.appendChild(item);
     }
@@ -1114,7 +1141,7 @@ function renderSkillList() {
 
         item.addEventListener("click", () => {
             closeSkillMenu();
-            sendToChat(withProjectContext(s.prompt));
+            sendToChat(withActionContext(s.prompt));
         });
         host.appendChild(item);
     }
@@ -1856,7 +1883,10 @@ root.addEventListener("click", async (e) => {
         const ta = document.getElementById("initPrompt");
         const text = (ta ? ta.value : state.init.promptText).trim();
         if (text) {
-            sendToChat(withProjectContext(text));
+            state.hostedAgents.creatingNew = true;
+            renderHostedAgentPicker();
+            renderHostedAgentDeployment();
+            sendToChat(withActionContext(text));
             showBuildSections();
         }
         return;
@@ -1969,7 +1999,7 @@ root.addEventListener("click", async (e) => {
             return;
         }
         resetHostedAgentDeployment();
-        sendToChat(withProjectContext(state.deployPrompt), "deployment");
+        sendToChat(withActionContext(state.deployPrompt), "deployment");
         return;
     }
     if (e.target.closest("#inspectBtn")) {
@@ -2174,6 +2204,7 @@ async function init() {
                 const msg = JSON.parse(ev.data);
                 if (msg.type === "setPrompt" && msg.prompt) setInitUserPrompt(msg.prompt);
                 else if (msg.type === "workspaceState") applyWorkspaceTransition(msg);
+                else if (msg.type === "hostedAgentsChanged") refreshHostedAgentsAfterSession();
                 else if (msg.type === "deploymentState" && msg.deployment) {
                     hostedAgentDeploymentRequest += 1;
                     const previous = state.hostedAgentDeployment;
