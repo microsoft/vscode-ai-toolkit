@@ -138,12 +138,29 @@ async function postJSON(url, body) {
     return res.json();
 }
 
-async function sendToChat(prompt, refresh) {
+function recordAction(action, resourceKind) {
+    const body = resourceKind ? { action, resourceKind } : { action };
+    void fetch("/api/telemetry/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        keepalive: true,
+    }).catch(() => {
+        /* telemetry must not affect the Canvas interaction */
+    });
+}
+
+async function sendToChat(prompt, refresh, resourceKind) {
     try {
+        const body = {
+            prompt,
+            ...(refresh ? { refresh } : {}),
+            ...(resourceKind ? { resourceKind } : {}),
+        };
         const res = await fetch("/api/send", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(refresh ? { prompt, refresh } : { prompt }),
+            body: JSON.stringify(body),
         });
         if (!res.ok) throw new Error("HTTP " + res.status);
         toast("Sent to chat \u2713");
@@ -235,6 +252,7 @@ function renderBuild() {
             operatingSystem: detectOperatingSystem(),
             pluginVersion: state.pluginVersion,
         });
+        issueLink.addEventListener("click", () => recordAction("report_issue"));
     }
 
     // Set portal links for "Deploy new model" / "Add or update toolbox" / "Create new skill" / "Create new guardrail".
@@ -242,10 +260,31 @@ function renderBuild() {
     const toolLink = node.querySelector("#addToolboxLink");
     const skillLink = node.querySelector("#createSkillLink");
     const guardrailLink = node.querySelector("#createGuardrailLink");
-    if (modelLink) modelLink.addEventListener("click", () => { closeModelMenu(); openPortalPage("build/models/deployments"); });
-    if (toolLink) toolLink.addEventListener("click", () => { closeToolMenu(); openPortalPage("build/tools?tab=toolboxes"); });
-    if (skillLink) skillLink.addEventListener("click", () => { closeSkillMenu(); openPortalPage("build/tools?tab=skills"); });
-    if (guardrailLink) guardrailLink.addEventListener("click", () => { closeGuardrailMenu(); openPortalPage("build/guardrails/list"); });
+    if (modelLink) modelLink.addEventListener("click", () => {
+        recordAction("open_foundry_creation_link", "model");
+        closeModelMenu();
+        openPortalPage("build/models/deployments");
+    });
+    if (toolLink) toolLink.addEventListener("click", () => {
+        recordAction("open_foundry_creation_link", "toolbox");
+        closeToolMenu();
+        openPortalPage("build/tools?tab=toolboxes");
+    });
+    if (skillLink) skillLink.addEventListener("click", () => {
+        recordAction("open_foundry_creation_link", "project_skill");
+        closeSkillMenu();
+        openPortalPage("build/tools?tab=skills");
+    });
+    if (guardrailLink) guardrailLink.addEventListener("click", () => {
+        recordAction("open_foundry_creation_link", "guardrail");
+        closeGuardrailMenu();
+        openPortalPage("build/guardrails/list");
+    });
+    const playgroundLink = node.querySelector("#testPlaygroundLink");
+    if (playgroundLink) {
+        playgroundLink.addEventListener("click", () =>
+            recordAction("test_in_foundry_portal", "agent"));
+    }
 
     root.replaceChildren(node);
 
@@ -506,6 +545,7 @@ function renderHostedAgentPicker() {
 
         item.addEventListener("click", () => {
             closeHostedAgentMenu();
+            recordAction("switch_agent", "agent");
             selectHostedAgent(agent.agentName);
         });
         list.appendChild(item);
@@ -558,7 +598,7 @@ async function refreshHostedAgentsAfterSession() {
     const added = workspaceHostedAgentOptions().filter(
         (agent) => !previousNames.has(agent.agentName.toLowerCase()),
     );
-    if (added.length === 1) await selectHostedAgent(added[0].agentName);
+    if (added.length === 1) await selectHostedAgent(added[0].agentName, { created: true });
 }
 
 function showNewAgent(prompt = "") {
@@ -575,6 +615,7 @@ function showNewAgent(prompt = "") {
 }
 
 async function selectHostedAgent(agentName) {
+    const created = arguments[1]?.created === true;
     const previous = state.hostedAgents.selected;
     const wasCreatingNew = state.hostedAgents.creatingNew === true;
     if (!agentName || (agentName === previous && !wasCreatingNew)) return;
@@ -600,7 +641,7 @@ async function selectHostedAgent(agentName) {
         return;
     }
     try {
-        await postJSON("/api/select-hosted-agent", { agentName });
+        await postJSON("/api/select-hosted-agent", { agentName, created });
     } catch {
         state.hostedAgents.selected = previous;
         state.hostedAgents.creatingNew = wasCreatingNew;
@@ -965,7 +1006,8 @@ function renderDeployList() {
 
         item.addEventListener("click", () => {
             closeModelMenu();
-            sendToChat(withActionContext(m.prompt));
+            recordAction("switch_model", "model");
+            sendToChat(withActionContext(m.prompt), "", "model");
         });
         host.appendChild(item);
     }
@@ -1028,7 +1070,8 @@ function renderToolboxList() {
         use.addEventListener("click", (e) => {
             e.stopPropagation();
             closeToolMenu();
-            sendToChat(withActionContext(t.prompt));
+            recordAction("connect_toolbox", "toolbox");
+            sendToChat(withActionContext(t.prompt), "", "toolbox");
         });
         item.append(toggle, use);
 
@@ -1105,7 +1148,8 @@ function renderGuardrailList() {
 
         item.addEventListener("click", () => {
             closeGuardrailMenu();
-            sendToChat(withActionContext(g.prompt));
+            recordAction("apply_guardrail", "guardrail");
+            sendToChat(withActionContext(g.prompt), "", "guardrail");
         });
         host.appendChild(item);
     }
@@ -1143,7 +1187,8 @@ function renderSkillList() {
 
         item.addEventListener("click", () => {
             closeSkillMenu();
-            sendToChat(withActionContext(s.prompt));
+            recordAction("add_project_skill", "project_skill");
+            sendToChat(withActionContext(s.prompt), "", "project_skill");
         });
         host.appendChild(item);
     }
@@ -1678,6 +1723,7 @@ function renderSubList() {
 }
 
 async function selectSubscription(s) {
+    recordAction("select_subscription", "subscription");
     const previousProject = state.selection.project?.endpoint || "";
     const next = transitionSubscription(state.selection, s);
     try {
@@ -1754,6 +1800,7 @@ function renderProjList() {
 }
 
 async function selectProject(p) {
+    recordAction("select_project", "project");
     const subscription = state.selection.subscription;
     const next = transitionProject(state.selection, {
         subscriptionId: p.subscriptionId || subscription.id,
@@ -1888,7 +1935,8 @@ root.addEventListener("click", async (e) => {
             state.hostedAgents.creatingNew = true;
             renderHostedAgentPicker();
             renderHostedAgentDeployment();
-            sendToChat(withActionContext(text));
+            recordAction("start_agent_creation", "agent");
+            sendToChat(withActionContext(text), "", "agent");
             showBuildSections();
         }
         return;
@@ -1916,6 +1964,7 @@ root.addEventListener("click", async (e) => {
         return;
     }
     if (e.target.closest("#deployRefresh")) {
+        recordAction("refresh_resources", "model");
         loadDeployments(true);
         return;
     }
@@ -1925,6 +1974,7 @@ root.addEventListener("click", async (e) => {
         return;
     }
     if (e.target.closest("#toolboxRefresh")) {
+        recordAction("refresh_resources", "toolbox");
         loadToolboxes(true);
         return;
     }
@@ -1934,6 +1984,7 @@ root.addEventListener("click", async (e) => {
         return;
     }
     if (e.target.closest("#guardrailRefresh")) {
+        recordAction("refresh_resources", "guardrail");
         loadGuardrails(true);
         return;
     }
@@ -1943,10 +1994,12 @@ root.addEventListener("click", async (e) => {
         return;
     }
     if (e.target.closest("#skillRefresh")) {
+        recordAction("refresh_resources", "project_skill");
         loadSkills(true);
         return;
     }
     if (e.target.closest("#newHostedAgentBtn")) {
+        recordAction("create_agent", "agent");
         showNewAgent();
         return;
     }
@@ -1959,11 +2012,17 @@ root.addEventListener("click", async (e) => {
         return;
     }
     if (e.target.closest("#pmAuthBtn")) {
-        if (state.identity.signedIn) doSignOut();
-        else startSignIn();
+        if (state.identity.signedIn) {
+            recordAction("sign_out");
+            doSignOut();
+        } else {
+            recordAction("sign_in");
+            startSignIn();
+        }
         return;
     }
     if (e.target.closest("#createProjectLink")) {
+        recordAction("open_foundry_creation_link", "project");
         closeProjectMenu();
         openFoundryHome();
         return;
@@ -2001,13 +2060,15 @@ root.addEventListener("click", async (e) => {
             return;
         }
         resetHostedAgentDeployment();
-        sendToChat(withActionContext(state.deployPrompt), "deployment");
+        recordAction("deploy_to_foundry", "agent");
+        sendToChat(withActionContext(state.deployPrompt), "deployment", "agent");
         return;
     }
     if (e.target.closest("#inspectBtn")) {
         if (state.hostedAgents.creatingNew) {
             toast("Select an existing agent to inspect locally.");
         } else {
+            recordAction("inspect_locally", "agent");
             launchInspector(e.target.closest("#inspectBtn"));
         }
         return;
