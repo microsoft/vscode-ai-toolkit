@@ -66,7 +66,34 @@ jobs:
 
       - name: Build package
         working-directory: source
-        run: npm run package
+        shell: bash
+        env:
+          FOUNDRY_CANVAS_APPINSIGHTS_CONNECTION_STRING: ${{ secrets.FOUNDRY_CANVAS_APPINSIGHTS_CONNECTION_STRING }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$FOUNDRY_CANVAS_APPINSIGHTS_CONNECTION_STRING" ]]; then
+            echo "::error::FOUNDRY_CANVAS_APPINSIGHTS_CONNECTION_STRING is not configured"
+            exit 1
+          fi
+
+          npm run package
+
+          node <<'NODE'
+          const { readFileSync } = require("node:fs");
+
+          const connectionString =
+            process.env.FOUNDRY_CANVAS_APPINSIGHTS_CONNECTION_STRING || "";
+          const encoded = Buffer.from(connectionString, "utf8").toString("base64");
+          const bundle = readFileSync("dist/pkg/extension.mjs", "utf8");
+
+          if (!encoded || !bundle.includes(encoded)) {
+            throw new Error("Packaged extension is missing the bundled telemetry configuration");
+          }
+          if (bundle.includes(connectionString)) {
+            throw new Error("Packaged extension contains the raw telemetry connection string");
+          }
+          NODE
 
       - name: Validate package
         working-directory: source
@@ -226,7 +253,7 @@ jobs:
             ## Validation
             - `npm ci`
             - `npm test`
-            - `npm run package`
+            - Telemetry-enabled `npm run package`
             - `node --check dist/pkg/extension.mjs`
           add-paths: |
             microsoft-foundry/.github/plugin/plugin.json
