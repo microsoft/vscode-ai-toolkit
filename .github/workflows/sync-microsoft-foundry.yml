@@ -3,10 +3,9 @@ name: Sync microsoft-foundry canvas
 on:
   workflow_dispatch:
     inputs:
-      source_ref:
-        description: "Branch, tag, or commit from microsoft/Skylight"
+      skylight_run_id:
+        description: "Successful Microsoft Foundry Canvas CI run ID from microsoft/Skylight main"
         required: true
-        default: "main"
         type: string
       marketplace_version:
         description: "Optional new marketplace version using stable X.Y.Z format"
@@ -17,7 +16,7 @@ permissions:
   contents: read
 
 env:
-  CANVAS_SOURCE_REF: ${{ inputs.source_ref || 'main' }}
+  SKYLIGHT_RUN_ID: ${{ inputs.skylight_run_id }}
   MARKETPLACE_VERSION: ${{ inputs.marketplace_version || '' }}
 
 concurrency:
@@ -25,157 +24,160 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  acquire:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
     outputs:
       source_sha: ${{ steps.source.outputs.sha }}
       source_short_sha: ${{ steps.source.outputs.short_sha }}
 
     steps:
-      - name: Generate Skylight checkout token
+      - name: Generate Skylight artifact token
         id: skylight-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.SYNC_APP_ID }}
           private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
           owner: microsoft
           repositories: Skylight
 
-      - name: Checkout Skylight source
-        uses: actions/checkout@v4
-        with:
-          repository: microsoft/Skylight
-          ref: ${{ env.CANVAS_SOURCE_REF }}
-          path: source
-          token: ${{ steps.skylight-token.outputs.token }}
-          persist-credentials: false
-
-      - name: Resolve source commit
+      - name: Resolve and validate Skylight package run
         id: source
-        working-directory: source
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          echo "short_sha=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20.19"
-          cache: npm
-          cache-dependency-path: |
-            source/microsoft-foundry-canvas/package-lock.json
-            source/vscode/extension/package-lock.json
-            source/vscode/extension/ai-mlstudio/webview-ui/package-lock.json
-
-      - name: Verify Azure OIDC configuration
         shell: bash
         env:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-        run: |
-          set -euo pipefail
-          missing=0
-          for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID; do
-            if [[ -z "${!name}" ]]; then
-              echo "::error::$name is not configured for microsoft/foundry-toolkit"
-              missing=1
-            fi
-          done
-          exit "$missing"
-
-      - name: Login to Azure using OIDC
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Setup npm auth for Azure Artifacts
-        shell: bash
-        run: |
-          ACCESSTOKEN=$(az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 --query accessToken -o tsv)
-          echo "::add-mask::$ACCESSTOKEN"
-          echo "//devdiv.pkgs.visualstudio.com/DevDiv/_packaging/DataWranglerAI/npm/registry/:_authToken=$ACCESSTOKEN" >> ~/.npmrc
-          echo "//devdiv.pkgs.visualstudio.com/DevDiv/_packaging/DataWranglerAI/npm/:_authToken=$ACCESSTOKEN" >> ~/.npmrc
-
-      - name: Install Canvas dependencies
-        working-directory: source/microsoft-foundry-canvas
-        run: npm ci
-
-      - name: Install Inspector shared dependencies
-        working-directory: source/vscode/extension
-        run: npm ci
-
-      - name: Install Inspector UI dependencies
-        working-directory: source/vscode/extension/ai-mlstudio/webview-ui
-        run: npm ci
-
-      - name: Run Canvas tests
-        working-directory: source/microsoft-foundry-canvas
-        run: npm test
-
-      - name: Build package
-        working-directory: source/microsoft-foundry-canvas
-        shell: bash
-        env:
-          FOUNDRY_CANVAS_APPINSIGHTS_CONNECTION_STRING: ${{ secrets.FOUNDRY_CANVAS_APPINSIGHTS_CONNECTION_STRING }}
+          GH_TOKEN: ${{ steps.skylight-token.outputs.token }}
         run: |
           set -euo pipefail
 
-          if [[ -z "$FOUNDRY_CANVAS_APPINSIGHTS_CONNECTION_STRING" ]]; then
-            echo "::error::FOUNDRY_CANVAS_APPINSIGHTS_CONNECTION_STRING is not configured"
+          if [[ ! "$SKYLIGHT_RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo "::error::skylight_run_id must be a numeric GitHub Actions run ID"
             exit 1
           fi
 
-          npm run package
+          if ! run_json="$(gh api "repos/microsoft/Skylight/actions/runs/$SKYLIGHT_RUN_ID" 2>api-error.txt)"; then
+            cat api-error.txt
+            echo "::error::Unable to read Skylight workflow run $SKYLIGHT_RUN_ID. The GitHub App requires Actions: Read access to microsoft/Skylight."
+            exit 1
+          fi
+          source_sha="$(jq -r '.head_sha' <<<"$run_json")"
+          head_branch="$(jq -r '.head_branch' <<<"$run_json")"
+          event="$(jq -r '.event' <<<"$run_json")"
+          status="$(jq -r '.status' <<<"$run_json")"
+          conclusion="$(jq -r '.conclusion' <<<"$run_json")"
+          workflow_path="$(jq -r '.path' <<<"$run_json")"
+          run_attempt="$(jq -r '.run_attempt | tostring' <<<"$run_json")"
+
+          if [[ "$workflow_path" != ".github/workflows/microsoft-foundry-canvas-ci.yml" ]]; then
+            echo "::error::Run $SKYLIGHT_RUN_ID belongs to unexpected workflow: $workflow_path"
+            exit 1
+          fi
+          if [[ "$head_branch" != "main" || "$event" != "push" ]]; then
+            echo "::error::Run $SKYLIGHT_RUN_ID must be a push build from Skylight main"
+            exit 1
+          fi
+          if [[ "$status" != "completed" || "$conclusion" != "success" ]]; then
+            echo "::error::Run $SKYLIGHT_RUN_ID is not a successful completed build"
+            exit 1
+          fi
+
+          {
+            echo "sha=$source_sha"
+            echo "short_sha=${source_sha:0:12}"
+            echo "run_attempt=$run_attempt"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## Skylight package source"
+            echo
+            echo "- Run: [\`$SKYLIGHT_RUN_ID\`](https://github.com/microsoft/Skylight/actions/runs/$SKYLIGHT_RUN_ID)"
+            echo "- Commit: \`$source_sha\`"
+            echo "- Attempt: \`$run_attempt\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Use Node.js 20.19
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19"
+
+      - name: Download Skylight Canvas package
+        uses: actions/download-artifact@v4
+        with:
+          name: microsoft-foundry-canvas-package
+          path: artifact
+          repository: microsoft/Skylight
+          run-id: ${{ env.SKYLIGHT_RUN_ID }}
+          github-token: ${{ steps.skylight-token.outputs.token }}
+
+      - name: Verify and extract Skylight package
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          SOURCE_RUN_ATTEMPT: ${{ steps.source.outputs.run_attempt }}
+        run: |
+          set -euo pipefail
+          cd artifact
+
+          test -f microsoft-foundry.zip
+          test -f microsoft-foundry.zip.sha256
+          test -f provenance.json
+          sha256sum --check microsoft-foundry.zip.sha256
 
           node <<'NODE'
           const { readFileSync } = require("node:fs");
 
-          const connectionString =
-            process.env.FOUNDRY_CANVAS_APPINSIGHTS_CONNECTION_STRING || "";
-          const encoded = Buffer.from(connectionString, "utf8").toString("base64");
-          const bundle = readFileSync("dist/pkg/extension.mjs", "utf8");
+          const provenance = JSON.parse(readFileSync("provenance.json", "utf8"));
+          const expected = {
+            schemaVersion: 1,
+            artifactName: "microsoft-foundry-canvas-package",
+            repository: "microsoft/Skylight",
+            sourceSha: process.env.SOURCE_SHA,
+            workflowFile: ".github/workflows/microsoft-foundry-canvas-ci.yml",
+            workflowRunId: process.env.SKYLIGHT_RUN_ID,
+            workflowRunAttempt: process.env.SOURCE_RUN_ATTEMPT,
+          };
 
-          if (!encoded || !bundle.includes(encoded)) {
-            throw new Error("Packaged extension is missing the bundled telemetry configuration");
-          }
-          if (bundle.includes(connectionString)) {
-            throw new Error("Packaged extension contains the raw telemetry connection string");
+          for (const [key, value] of Object.entries(expected)) {
+            if (String(provenance[key]) !== String(value)) {
+              throw new Error(
+                `Unexpected provenance ${key}: ${provenance[key]} (expected ${value})`,
+              );
+            }
           }
           NODE
 
-      - name: Validate package
-        working-directory: source/microsoft-foundry-canvas
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -f dist/pkg/extension.mjs
-          test -f dist/pkg/package.json
-          test -d dist/pkg/public
-          test -d dist/pkg/inspector-ui
-          node --check dist/pkg/extension.mjs
+          while IFS= read -r entry; do
+            if [[ "$entry" == /* || "$entry" == ../* || "$entry" == *"/../"* ]]; then
+              echo "::error::Unsafe package archive entry: $entry"
+              exit 1
+            fi
+          done < <(unzip -Z1 microsoft-foundry.zip)
 
-      - name: Upload runtime package
+          mkdir -p ../bundle
+          unzip -q microsoft-foundry.zip -d ../bundle
+          cd ../bundle
+          test -f extension.mjs
+          test -f package.json
+          test -d public
+          test -d inspector-ui
+          test -f public/index.html
+          test -f inspector-ui/index.html
+          node --check extension.mjs
+
+      - name: Upload verified runtime package
         uses: actions/upload-artifact@v4
         with:
           name: microsoft-foundry-${{ steps.source.outputs.short_sha }}
           path: |
-            source/microsoft-foundry-canvas/dist/pkg/extension.mjs
-            source/microsoft-foundry-canvas/dist/pkg/package.json
-            source/microsoft-foundry-canvas/dist/pkg/public
-            source/microsoft-foundry-canvas/dist/pkg/inspector-ui
+            bundle/extension.mjs
+            bundle/package.json
+            bundle/public
+            bundle/inspector-ui
           if-no-files-found: error
           retention-days: 3
 
   publish:
-    needs: build
+    needs: acquire
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -188,14 +190,14 @@ jobs:
           path: automation
           persist-credentials: false
 
-      - name: Set up Node.js
+      - name: Use Node.js 20.19
         uses: actions/setup-node@v4
         with:
           node-version: "20.19"
 
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.SYNC_APP_ID }}
           private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
@@ -209,10 +211,10 @@ jobs:
           path: target
           persist-credentials: false
 
-      - name: Download runtime package
+      - name: Download verified runtime package
         uses: actions/download-artifact@v4
         with:
-          name: microsoft-foundry-${{ needs.build.outputs.source_short_sha }}
+          name: microsoft-foundry-${{ needs.acquire.outputs.source_short_sha }}
           path: bundle
 
       - name: Sync runtime package
@@ -227,7 +229,7 @@ jobs:
         id: metadata
         shell: bash
         env:
-          SOURCE_SHORT_SHA: ${{ needs.build.outputs.source_short_sha }}
+          SOURCE_SHORT_SHA: ${{ needs.acquire.outputs.source_short_sha }}
         run: |
           set -euo pipefail
 
@@ -272,7 +274,8 @@ jobs:
           {
             echo "## Sync microsoft-foundry canvas"
             echo
-            echo "- Source: \`microsoft/Skylight@${{ needs.build.outputs.source_sha }}\`"
+            echo "- Source: \`microsoft/Skylight@${{ needs.acquire.outputs.source_sha }}\`"
+            echo "- Package run: [\`${SKYLIGHT_RUN_ID}\`](https://github.com/microsoft/Skylight/actions/runs/${SKYLIGHT_RUN_ID})"
             echo "- Marketplace version: \`${{ steps.metadata.outputs.version_label }}\`"
             echo
             echo "### Changed files"
@@ -301,17 +304,16 @@ jobs:
 
             ## Source
             - Repository: `microsoft/Skylight`
-            - Canvas path: `microsoft-foundry-canvas/`
-            - Requested ref: `${{ env.CANVAS_SOURCE_REF }}`
-            - Resolved commit: `${{ needs.build.outputs.source_sha }}`
+            - Package workflow run: ${{ github.server_url }}/microsoft/Skylight/actions/runs/${{ env.SKYLIGHT_RUN_ID }}
+            - Resolved commit: `${{ needs.acquire.outputs.source_sha }}`
             - Marketplace version: `${{ steps.metadata.outputs.version_label }}`
-            - Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            - Sync workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
             ## Validation
-            - Canvas, Inspector shared, and Inspector UI `npm ci`
-            - `npm test`
-            - Telemetry-enabled `npm run package`
-            - `node --check dist/pkg/extension.mjs`
+            - Verified the Skylight workflow, branch, conclusion, source commit, and provenance
+            - Verified the package SHA-256 checksum
+            - Rejected unsafe ZIP entry paths before extraction
+            - Validated required runtime files and `node --check extension.mjs`
           add-paths: |
             microsoft-foundry/.github/plugin/plugin.json
             microsoft-foundry/extensions/microsoft-foundry/extension.mjs
