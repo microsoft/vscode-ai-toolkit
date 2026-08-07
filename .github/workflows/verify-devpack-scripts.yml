@@ -17,24 +17,31 @@ on:
         options:
           - release
           - aka
+      telemetry:
+        description: "Send installer telemetry during this validation run"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
-  group: verify-devpack-scripts-${{ github.event.release.tag_name || inputs.release_tag }}-${{ inputs.install_source || 'release' }}
+  group: verify-devpack-scripts-${{ github.event.release.tag_name || inputs.release_tag }}-${{ inputs.install_source || 'release' }}-telemetry-${{ inputs.telemetry || false }}
   cancel-in-progress: false
 
 env:
   RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
   INSTALL_SOURCE: ${{ inputs.install_source || 'release' }}
+  TELEMETRY_ENABLED: ${{ inputs.telemetry || false }}
+  FOUNDRY_DEVPACK_COLLECT_TELEMETRY: ${{ inputs.telemetry && '1' || '0' }}
   GITHUB_TOKEN: ${{ github.token }}
   GH_TOKEN: ${{ github.token }}
 
 jobs:
   windows:
     if: ${{ startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-') }}
-    name: windows ${{ matrix.platform.arch }} ${{ matrix.scenario }} (${{ inputs.install_source || 'release' }})
+    name: windows ${{ matrix.platform.arch }} ${{ matrix.scenario }} (${{ inputs.install_source || 'release' }}, telemetry=${{ inputs.telemetry || false }})
     runs-on: ${{ matrix.platform.os }}
     timeout-minutes: 30
     strategy:
@@ -52,7 +59,11 @@ jobs:
           if ($env:RELEASE_TAG -notmatch '^devpack-installer-[0-9A-Za-z][0-9A-Za-z.-]*$') {
             throw "invalid release tag: $env:RELEASE_TAG"
           }
-          Write-Host "Testing $env:RELEASE_TAG from $env:INSTALL_SOURCE on windows ${{ matrix.platform.arch }} (${{ matrix.scenario }})"
+          $expected = if ($env:TELEMETRY_ENABLED -eq 'true') { '1' } else { '0' }
+          if ($env:FOUNDRY_DEVPACK_COLLECT_TELEMETRY -ne $expected) {
+            throw 'telemetry input was not mapped to the installer environment correctly'
+          }
+          Write-Host "Testing $env:RELEASE_TAG from $env:INSTALL_SOURCE on windows ${{ matrix.platform.arch }} (${{ matrix.scenario }}), telemetry=$env:TELEMETRY_ENABLED"
 
       - name: Ensure winget
         shell: pwsh
@@ -248,7 +259,7 @@ jobs:
 
   linux:
     if: ${{ startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-') }}
-    name: linux ${{ matrix.platform.arch }} ${{ matrix.scenario }} (${{ inputs.install_source || 'release' }})
+    name: linux ${{ matrix.platform.arch }} ${{ matrix.scenario }} (${{ inputs.install_source || 'release' }}, telemetry=${{ inputs.telemetry || false }})
     runs-on: ${{ matrix.platform.os }}
     timeout-minutes: 30
     strategy:
@@ -265,7 +276,10 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$RELEASE_TAG" =~ ^devpack-installer-[0-9A-Za-z][0-9A-Za-z.-]*$ ]]
-          echo "Testing $RELEASE_TAG from $INSTALL_SOURCE on linux ${{ matrix.platform.arch }} (${{ matrix.scenario }})"
+          expected=0
+          if [ "$TELEMETRY_ENABLED" = "true" ]; then expected=1; fi
+          [ "$FOUNDRY_DEVPACK_COLLECT_TELEMETRY" = "$expected" ]
+          echo "Testing $RELEASE_TAG from $INSTALL_SOURCE on linux ${{ matrix.platform.arch }} (${{ matrix.scenario }}), telemetry=$TELEMETRY_ENABLED"
 
       - name: Remove Azure CLI
         if: matrix.scenario == 'no-az'
@@ -364,7 +378,7 @@ jobs:
 
   macos:
     if: ${{ startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-') }}
-    name: macos ${{ matrix.platform.arch }} ${{ matrix.scenario }} (${{ inputs.install_source || 'release' }})
+    name: macos ${{ matrix.platform.arch }} ${{ matrix.scenario }} (${{ inputs.install_source || 'release' }}, telemetry=${{ inputs.telemetry || false }})
     runs-on: ${{ matrix.platform.os }}
     timeout-minutes: 30
     strategy:
@@ -385,7 +399,10 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$RELEASE_TAG" =~ ^devpack-installer-[0-9A-Za-z][0-9A-Za-z.-]*$ ]]
-          echo "Testing $RELEASE_TAG from $INSTALL_SOURCE on macos ${{ matrix.platform.arch }} (${{ matrix.scenario }})"
+          expected=0
+          if [ "$TELEMETRY_ENABLED" = "true" ]; then expected=1; fi
+          [ "$FOUNDRY_DEVPACK_COLLECT_TELEMETRY" = "$expected" ]
+          echo "Testing $RELEASE_TAG from $INSTALL_SOURCE on macos ${{ matrix.platform.arch }} (${{ matrix.scenario }}), telemetry=$TELEMETRY_ENABLED"
 
       - name: Remove Azure CLI
         if: matrix.scenario == 'no-az'
