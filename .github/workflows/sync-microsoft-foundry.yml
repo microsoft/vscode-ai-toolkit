@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       source_ref:
-        description: "Branch, tag, or commit from SmallBlackHole/foundry-agent-canvas"
+        description: "Branch, tag, or commit from microsoft/Skylight"
         required: true
         default: "main"
         type: string
@@ -29,17 +29,28 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     outputs:
       source_sha: ${{ steps.source.outputs.sha }}
       source_short_sha: ${{ steps.source.outputs.short_sha }}
 
     steps:
-      - name: Checkout canvas source
+      - name: Generate Skylight checkout token
+        id: skylight-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SYNC_APP_ID }}
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          owner: microsoft
+          repositories: Skylight
+
+      - name: Checkout Skylight source
         uses: actions/checkout@v4
         with:
-          repository: SmallBlackHole/foundry-agent-canvas
+          repository: microsoft/Skylight
           ref: ${{ env.CANVAS_SOURCE_REF }}
           path: source
+          token: ${{ steps.skylight-token.outputs.token }}
           persist-credentials: false
 
       - name: Resolve source commit
@@ -55,17 +66,62 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20.19"
+          cache: npm
+          cache-dependency-path: |
+            source/microsoft-foundry-canvas/package-lock.json
+            source/vscode/extension/package-lock.json
+            source/vscode/extension/ai-mlstudio/webview-ui/package-lock.json
 
-      - name: Install dependencies
-        working-directory: source
+      - name: Verify Azure OIDC configuration
+        shell: bash
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::$name is not configured for microsoft/foundry-toolkit"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Login to Azure using OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup npm auth for Azure Artifacts
+        shell: bash
+        run: |
+          ACCESSTOKEN=$(az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 --query accessToken -o tsv)
+          echo "::add-mask::$ACCESSTOKEN"
+          echo "//devdiv.pkgs.visualstudio.com/DevDiv/_packaging/DataWranglerAI/npm/registry/:_authToken=$ACCESSTOKEN" >> ~/.npmrc
+          echo "//devdiv.pkgs.visualstudio.com/DevDiv/_packaging/DataWranglerAI/npm/:_authToken=$ACCESSTOKEN" >> ~/.npmrc
+
+      - name: Install Canvas dependencies
+        working-directory: source/microsoft-foundry-canvas
         run: npm ci
 
-      - name: Run tests
-        working-directory: source
+      - name: Install Inspector shared dependencies
+        working-directory: source/vscode/extension
+        run: npm ci
+
+      - name: Install Inspector UI dependencies
+        working-directory: source/vscode/extension/ai-mlstudio/webview-ui
+        run: npm ci
+
+      - name: Run Canvas tests
+        working-directory: source/microsoft-foundry-canvas
         run: npm test
 
       - name: Build package
-        working-directory: source
+        working-directory: source/microsoft-foundry-canvas
         shell: bash
         env:
           FOUNDRY_CANVAS_APPINSIGHTS_CONNECTION_STRING: ${{ secrets.FOUNDRY_CANVAS_APPINSIGHTS_CONNECTION_STRING }}
@@ -96,7 +152,7 @@ jobs:
           NODE
 
       - name: Validate package
-        working-directory: source
+        working-directory: source/microsoft-foundry-canvas
         shell: bash
         run: |
           set -euo pipefail
@@ -111,10 +167,10 @@ jobs:
         with:
           name: microsoft-foundry-${{ steps.source.outputs.short_sha }}
           path: |
-            source/dist/pkg/extension.mjs
-            source/dist/pkg/package.json
-            source/dist/pkg/public
-            source/dist/pkg/inspector-ui
+            source/microsoft-foundry-canvas/dist/pkg/extension.mjs
+            source/microsoft-foundry-canvas/dist/pkg/package.json
+            source/microsoft-foundry-canvas/dist/pkg/public
+            source/microsoft-foundry-canvas/dist/pkg/inspector-ui
           if-no-files-found: error
           retention-days: 3
 
@@ -216,7 +272,7 @@ jobs:
           {
             echo "## Sync microsoft-foundry canvas"
             echo
-            echo "- Source: \`SmallBlackHole/foundry-agent-canvas@${{ needs.build.outputs.source_sha }}\`"
+            echo "- Source: \`microsoft/Skylight@${{ needs.build.outputs.source_sha }}\`"
             echo "- Marketplace version: \`${{ steps.metadata.outputs.version_label }}\`"
             echo
             echo "### Changed files"
@@ -244,14 +300,15 @@ jobs:
             This automated draft PR updates the bundled Microsoft Foundry runtime.
 
             ## Source
-            - Repository: `SmallBlackHole/foundry-agent-canvas`
+            - Repository: `microsoft/Skylight`
+            - Canvas path: `microsoft-foundry-canvas/`
             - Requested ref: `${{ env.CANVAS_SOURCE_REF }}`
             - Resolved commit: `${{ needs.build.outputs.source_sha }}`
             - Marketplace version: `${{ steps.metadata.outputs.version_label }}`
             - Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
             ## Validation
-            - `npm ci`
+            - Canvas, Inspector shared, and Inspector UI `npm ci`
             - `npm test`
             - Telemetry-enabled `npm run package`
             - `node --check dist/pkg/extension.mjs`
