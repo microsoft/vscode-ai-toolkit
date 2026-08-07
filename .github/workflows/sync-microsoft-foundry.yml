@@ -147,14 +147,32 @@ jobs:
           NODE
 
           while IFS= read -r entry; do
-            if [[ "$entry" == /* || "$entry" == ../* || "$entry" == *"/../"* ]]; then
+            if [[ "$entry" == /* || "$entry" =~ ^[A-Za-z]:/ ]]; then
               echo "::error::Unsafe package archive entry: $entry"
               exit 1
             fi
+
+            if [[ "$entry" == *'\'* ]]; then
+              echo "::error::Unsafe package archive entry: $entry"
+              exit 1
+            fi
+
+            IFS='/' read -r -a segments <<<"$entry"
+            for segment in "${segments[@]}"; do
+              if [[ "$segment" == ".." ]]; then
+                echo "::error::Unsafe package archive entry: $entry"
+                exit 1
+              fi
+            done
           done < <(unzip -Z1 microsoft-foundry.zip)
 
           mkdir -p ../bundle
           unzip -q microsoft-foundry.zip -d ../bundle
+          symlink="$(find ../bundle -type l -print -quit)"
+          if [[ -n "$symlink" ]]; then
+            echo "::error::Package archive contains a symbolic link: $symlink"
+            exit 1
+          fi
           cd ../bundle
           test -f extension.mjs
           test -f package.json
