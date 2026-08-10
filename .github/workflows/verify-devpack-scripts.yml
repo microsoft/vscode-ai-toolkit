@@ -10,13 +10,14 @@ on:
         required: true
         type: string
       install_source:
-        description: "Bootstrap source"
+        description: "Installation source"
         required: true
         default: release
         type: choice
         options:
           - release
           - aka
+          - brew
       telemetry:
         description: "Send installer telemetry during this validation run"
         required: true
@@ -40,7 +41,7 @@ env:
 
 jobs:
   windows:
-    if: ${{ startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-') }}
+    if: ${{ (startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-')) && (github.event_name == 'release' || inputs.install_source != 'brew') }}
     name: windows ${{ matrix.platform.arch }} ${{ matrix.scenario }} (${{ inputs.install_source || 'release' }}, telemetry=${{ inputs.telemetry || false }})
     runs-on: ${{ matrix.platform.os }}
     timeout-minutes: 30
@@ -258,7 +259,7 @@ jobs:
           Remove-Item $env:DEVPACK_SCRIPT -Force -ErrorAction SilentlyContinue
 
   linux:
-    if: ${{ startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-') }}
+    if: ${{ (startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-')) && (github.event_name == 'release' || inputs.install_source != 'brew') }}
     name: linux ${{ matrix.platform.arch }} ${{ matrix.scenario }} (${{ inputs.install_source || 'release' }}, telemetry=${{ inputs.telemetry || false }})
     runs-on: ${{ matrix.platform.os }}
     timeout-minutes: 30
@@ -435,6 +436,7 @@ jobs:
           fi
 
       - name: Download and verify bootstrap syntax
+        if: env.INSTALL_SOURCE != 'brew'
         shell: bash
         run: |
           set -euo pipefail
@@ -449,7 +451,7 @@ jobs:
           grep -Fx "release_tag=\"$RELEASE_TAG\"" "$script"
           echo "DEVPACK_SCRIPT=$script" >> "$GITHUB_ENV"
 
-      - name: Install through shell bootstrap
+      - name: Install DevPack
         shell: bash
         run: |
           set -euo pipefail
@@ -457,11 +459,24 @@ jobs:
           mkdir -p "$temp"
           export TMPDIR="$temp"
 
-          if [ "$INSTALL_SOURCE" = "aka" ]; then
-            curl -fsSL https://aka.ms/foundry-devpack-install.sh | bash
-          else
-            bash "$DEVPACK_SCRIPT" --verbose
-          fi
+          case "$INSTALL_SOURCE" in
+            aka)
+              curl -fsSL https://aka.ms/foundry-devpack-install.sh | bash
+              ;;
+            brew)
+              brew untap microsoft/foundry 2>/dev/null || true
+              brew install --cask microsoft/foundry/devpack && foundry-devpack install
+              expected_version="${RELEASE_TAG#devpack-installer-}"
+              foundry-devpack --version | grep -F "$expected_version"
+              ;;
+            release)
+              bash "$DEVPACK_SCRIPT" --verbose
+              ;;
+            *)
+              echo "error: unsupported install source: $INSTALL_SOURCE" >&2
+              exit 1
+              ;;
+          esac
           if find "$temp" -mindepth 1 -maxdepth 1 -type d -name 'foundry-devpack-*' -print -quit | grep -q .; then
             echo "error: bootstrap left temporary directories under $temp" >&2
             find "$temp" -mindepth 1 -maxdepth 1 -type d -name 'foundry-devpack-*' -print >&2
@@ -490,7 +505,16 @@ jobs:
           copilot plugin list --no-color | tee "$RUNNER_TEMP/copilot-plugins.txt"
           grep -qi 'microsoft-foundry' "$RUNNER_TEMP/copilot-plugins.txt"
 
+      - name: Uninstall Homebrew cask
+        if: env.INSTALL_SOURCE == 'brew'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          brew uninstall --zap --cask microsoft/foundry/devpack
+          ! command -v foundry-devpack
+          test -f "$HOME/.agents/skills/microsoft-foundry/SKILL.md"
+
       - name: Remove bootstrap
-        if: always()
+        if: always() && env.INSTALL_SOURCE != 'brew'
         shell: bash
         run: rm -f "$DEVPACK_SCRIPT"
