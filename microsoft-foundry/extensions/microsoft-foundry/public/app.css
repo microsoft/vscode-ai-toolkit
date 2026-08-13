@@ -34,6 +34,36 @@ body {
 }
 .btn:hover { background: var(--bg-subtle); }
 
+.is-action-disabled,
+.is-action-disabled:hover {
+    cursor: not-allowed;
+    opacity: .5;
+    filter: grayscale(.35);
+}
+.action-prerequisite[hidden],
+.action-tooltip[hidden] {
+    display: none;
+}
+.action-prerequisite {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 18px;
+    text-align: center;
+}
+.action-tooltip {
+    position: fixed;
+    z-index: 100;
+    max-width: min(280px, calc(100vw - 16px));
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: var(--text);
+    color: var(--bg);
+    box-shadow: 0 4px 12px rgba(0,0,0,.22);
+    font-size: 12px;
+    line-height: 16px;
+    pointer-events: none;
+}
+
 /* ---------------- Layout ---------------- */
 .root { flex: 1; overflow: auto; }
 .layout {
@@ -601,7 +631,7 @@ body {
     animation: spin 0.8s linear infinite;
 }
 .inspector-frame {
-    flex: 1; width: 100%; border: none; background: var(--bg);
+    flex: 1 1 0; min-height: 0; width: 100%; border: none; background: var(--bg);
 }
 
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

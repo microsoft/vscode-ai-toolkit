@@ -168,7 +168,7 @@
                                 <div class="preview-card">
                                     <textarea class="init-prompt" id="initPrompt" rows="4" spellcheck="false"></textarea>
                                     <div class="preview-actions">
-                                        <button class="start-link" id="initStart" type="button">
+                                        <button class="start-link" id="initStart" type="button" data-canvas-action="create-agent">
                                             <span class="fi fi-send" aria-hidden="true"></span>
                                             <span>Start</span>
                                         </button>
@@ -314,14 +314,15 @@
                                     <span class="codicon codicon-debug-alt" aria-hidden="true"></span>
                                     <span>Test in Foundry Portal</span>
                                 </a>
-                                <button class="btn btn-deploy" id="deployBtn" type="button">
+                                <button class="btn btn-deploy" id="deployBtn" type="button" data-canvas-action="deploy">
                                     <span class="fi fi-rocket" aria-hidden="true"></span>
                                     <span>Deploy to Foundry</span>
                                 </button>
-                                <button class="btn btn-inspect" id="inspectBtn" type="button">
+                                <button class="btn btn-inspect" id="inspectBtn" type="button" data-canvas-action="inspect">
                                     <span class="fi fi-code" aria-hidden="true"></span>
                                     <span>Inspect Locally</span>
                                 </button>
+                                <div class="action-prerequisite" id="deployPrerequisite" role="note" hidden></div>
                             </div>
                         </div>
                     </section>
