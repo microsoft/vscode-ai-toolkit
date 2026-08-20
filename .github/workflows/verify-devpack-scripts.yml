@@ -18,6 +18,7 @@ on:
           - release
           - aka
           - brew
+          - winget
       telemetry:
         description: "Send installer telemetry during this validation run"
         required: true
@@ -93,7 +94,7 @@ jobs:
             throw 'Azure CLI is still available after removal'
           }
 
-      - name: Install VS Code and Copilot CLI
+      - name: Install VS Code, Copilot CLI, and Claude shim
         if: matrix.scenario == 'with-code'
         shell: pwsh
         run: |
@@ -112,6 +113,11 @@ jobs:
           if (-not $copilotPackage) { throw 'GitHub Copilot CLI package directory not found' }
           Add-Content -Path $env:GITHUB_PATH -Value $copilotPackage.FullName
 
+          $claudeBin = Join-Path $env:RUNNER_TEMP 'claude-bin'
+          New-Item -ItemType Directory -Force -Path $claudeBin | Out-Null
+          Set-Content -Path (Join-Path $claudeBin 'claude.cmd') -Value "@echo off`r`nexit /b 0`r`n" -NoNewline
+          Add-Content -Path $env:GITHUB_PATH -Value $claudeBin
+
       - name: Confirm Copilot CLI is absent
         if: matrix.scenario != 'with-code'
         shell: pwsh
@@ -121,6 +127,7 @@ jobs:
           }
 
       - name: Download and verify signed bootstrap
+        if: env.INSTALL_SOURCE != 'winget'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -165,7 +172,7 @@ jobs:
           "SIGNER_THUMBPRINT=$($signature.SignerCertificate.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "SIGNER_WAS_TRUSTED=$wasTrusted" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Install through PowerShell bootstrap
+      - name: Install DevPack
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -177,14 +184,46 @@ jobs:
           if ($env:INSTALL_SOURCE -eq 'aka') {
             & powershell.exe -ExecutionPolicy AllSigned -Command `
               "Invoke-RestMethod 'https://aka.ms/foundry-devpack-install.ps1' | Invoke-Expression"
+          } elseif ($env:INSTALL_SOURCE -eq 'winget') {
+            $installerLog = Join-Path $env:RUNNER_TEMP 'foundry-devpack.log'
+            $expectedVersion = $env:RELEASE_TAG -replace '^devpack-installer-', ''
+            winget install --exact --id Microsoft.FoundryDevPack `
+              --version $expectedVersion --source winget --force --silent `
+              --disable-interactivity --accept-package-agreements --accept-source-agreements `
+              --log $installerLog
           } else {
+            $installerLog = Join-Path $env:RUNNER_TEMP 'foundry-devpack.log'
             & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy AllSigned `
-              -File $env:DEVPACK_SCRIPT --verbose
+              -File $env:DEVPACK_SCRIPT --verbose --log $installerLog
           }
-          if ($LASTEXITCODE -ne 0) { throw "PowerShell bootstrap exited $LASTEXITCODE" }
+          if ($LASTEXITCODE -ne 0) { throw "DevPack install exited $LASTEXITCODE" }
+          if ($env:INSTALL_SOURCE -in @('release', 'winget')) {
+            if (-not (Test-Path $installerLog)) { throw 'installer log was not created' }
+            $logText = Get-Content $installerLog -Raw
+            if ($logText -notmatch 'Finished \(failed=0, cancelled=False\)') {
+              throw 'installer log does not contain the successful run result'
+            }
+          }
           $leaked = @(Get-ChildItem $temp -Directory -Filter 'foundry-devpack-*' -ErrorAction SilentlyContinue)
           if ($leaked.Count) {
             throw "bootstrap left temporary directories: $($leaked.FullName -join ', ')"
+          }
+
+      - name: Verify winget repair
+        if: env.INSTALL_SOURCE == 'winget'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repairLog = Join-Path $env:RUNNER_TEMP 'foundry-devpack-repair.log'
+          $expectedVersion = $env:RELEASE_TAG -replace '^devpack-installer-', ''
+          winget repair --exact --id Microsoft.FoundryDevPack `
+            --version $expectedVersion --source winget --force --silent `
+            --disable-interactivity --accept-package-agreements --accept-source-agreements `
+            --log $repairLog
+          if ($LASTEXITCODE -ne 0) { throw "winget repair exited $LASTEXITCODE" }
+          if (-not (Test-Path $repairLog)) { throw 'repair log was not created' }
+          if ((Get-Content $repairLog -Raw) -notmatch 'Finished \(failed=0, cancelled=False\)') {
+            throw 'repair log does not contain the successful run result'
           }
 
       - name: Verify installed components
@@ -223,6 +262,18 @@ jobs:
             throw 'Foundry Copilot plugin not installed'
           }
 
+          $canonicalSkill = Join-Path $env:USERPROFILE '.agents\skills\microsoft-foundry'
+          $claudeSkill = Join-Path $env:USERPROFILE '.claude\skills\microsoft-foundry'
+          $item = Get-Item -LiteralPath $claudeSkill -Force
+          if (-not $item.LinkType) { throw 'Claude Code skill is not a link' }
+          $resolved = $item.ResolveLinkTarget($true)
+          if (-not $resolved -or -not $resolved.FullName.Equals($canonicalSkill, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Claude Code skill link does not target $canonicalSkill"
+          }
+          if (Test-Path (Join-Path $claudeSkill '.foundry-devpack-copy')) {
+            throw 'Claude Code skill unexpectedly used the copy fallback'
+          }
+
       - name: Verify ARP and uninstall
         shell: pwsh
         run: |
@@ -232,14 +283,30 @@ jobs:
           $entry = Get-ItemProperty $key
           if (-not (Test-Path $entry.InstallLocation -PathType Container)) { throw 'ARP install location not found' }
           if (-not (Test-Path $entry.DisplayIcon -PathType Leaf)) { throw 'persisted installer not found' }
+          $binarySignature = Get-AuthenticodeSignature $entry.DisplayIcon
+          if ($binarySignature.Status -ne 'Valid') {
+            throw "invalid installer signature: $($binarySignature.Status) $($binarySignature.StatusMessage)"
+          }
+          if ($binarySignature.SignerCertificate.Subject -notlike 'CN=Microsoft Corporation,*') {
+            throw "unexpected installer signer: $($binarySignature.SignerCertificate.Subject)"
+          }
+          $expectedVersion = $env:RELEASE_TAG -replace '^devpack-installer-', ''
+          if ($entry.DisplayVersion -ne $expectedVersion) {
+            throw "ARP version $($entry.DisplayVersion), expected $expectedVersion"
+          }
           Write-Host "ARP: $($entry.DisplayName) $($entry.DisplayVersion)"
 
-          & $entry.DisplayIcon uninstall
+          if ($env:INSTALL_SOURCE -eq 'winget') {
+            winget uninstall --exact --id Microsoft.FoundryDevPack --source winget `
+              --silent --disable-interactivity --accept-source-agreements
+          } else {
+            & $entry.DisplayIcon uninstall
+          }
           if ($LASTEXITCODE -ne 0) { throw "uninstall exited $LASTEXITCODE" }
           if (Test-Path $key) { throw 'ARP entry still present after uninstall' }
 
       - name: Remove trusted publisher and bootstrap
-        if: always()
+        if: always() && env.INSTALL_SOURCE != 'winget'
         shell: pwsh
         run: |
           if ($env:SIGNER_THUMBPRINT -and $env:SIGNER_WAS_TRUSTED -eq 'False') {
@@ -259,7 +326,7 @@ jobs:
           Remove-Item $env:DEVPACK_SCRIPT -Force -ErrorAction SilentlyContinue
 
   linux:
-    if: ${{ (startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-')) && (github.event_name == 'release' || inputs.install_source != 'brew') }}
+    if: ${{ (startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-')) && (github.event_name == 'release' || (inputs.install_source != 'brew' && inputs.install_source != 'winget')) }}
     name: linux ${{ matrix.platform.arch }} ${{ matrix.scenario }} (${{ inputs.install_source || 'release' }}, telemetry=${{ inputs.telemetry || false }})
     runs-on: ${{ matrix.platform.os }}
     timeout-minutes: 30
@@ -293,7 +360,7 @@ jobs:
             exit 1
           fi
 
-      - name: Install VS Code and Copilot CLI
+      - name: Install VS Code, Copilot CLI, and Claude shim
         if: matrix.scenario == 'with-code'
         shell: bash
         run: |
@@ -306,6 +373,10 @@ jobs:
           sudo apt-get install -y code
           curl -fsSL https://gh.io/copilot-install | bash
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          mkdir -p "$RUNNER_TEMP/claude-bin"
+          printf '#!/bin/sh\nexit 0\n' > "$RUNNER_TEMP/claude-bin/claude"
+          chmod +x "$RUNNER_TEMP/claude-bin/claude"
+          echo "$RUNNER_TEMP/claude-bin" >> "$GITHUB_PATH"
 
       - name: Confirm Copilot CLI is absent
         if: matrix.scenario != 'with-code'
@@ -342,7 +413,11 @@ jobs:
           if [ "$INSTALL_SOURCE" = "aka" ]; then
             curl -fsSL https://aka.ms/foundry-devpack-install.sh | bash
           else
-            bash "$DEVPACK_SCRIPT" --verbose
+            bash "$DEVPACK_SCRIPT" --verbose --log "$RUNNER_TEMP/foundry-devpack.log"
+          fi
+          if [ "$INSTALL_SOURCE" = "release" ]; then
+            test -f "$RUNNER_TEMP/foundry-devpack.log"
+            grep -F 'Finished (failed=0, cancelled=False)' "$RUNNER_TEMP/foundry-devpack.log"
           fi
           if find "$temp" -mindepth 1 -maxdepth 1 -type d -name 'foundry-devpack-*' -print -quit | grep -q .; then
             echo "error: bootstrap left temporary directories under $temp" >&2
@@ -371,6 +446,9 @@ jobs:
           code --list-extensions | grep -qi 'ms-windows-ai-studio.windows-ai-studio'
           copilot plugin list --no-color | tee "$RUNNER_TEMP/copilot-plugins.txt"
           grep -qi 'microsoft-foundry' "$RUNNER_TEMP/copilot-plugins.txt"
+          test -L "$HOME/.claude/skills/microsoft-foundry"
+          test "$(readlink "$HOME/.claude/skills/microsoft-foundry")" = "$HOME/.agents/skills/microsoft-foundry"
+          test ! -e "$HOME/.claude/skills/microsoft-foundry/.foundry-devpack-copy"
 
       - name: Remove bootstrap
         if: always()
@@ -378,7 +456,7 @@ jobs:
         run: rm -f "$DEVPACK_SCRIPT"
 
   macos:
-    if: ${{ startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-') }}
+    if: ${{ (startsWith(github.event.release.tag_name, 'devpack-installer-') || startsWith(inputs.release_tag, 'devpack-installer-')) && (github.event_name == 'release' || inputs.install_source != 'winget') }}
     name: macos ${{ matrix.platform.arch }} ${{ matrix.scenario }} (${{ inputs.install_source || 'release' }}, telemetry=${{ inputs.telemetry || false }})
     runs-on: ${{ matrix.platform.os }}
     timeout-minutes: 30
@@ -416,7 +494,7 @@ jobs:
             exit 1
           fi
 
-      - name: Install VS Code and Copilot CLI
+      - name: Install VS Code, Copilot CLI, and Claude shim
         if: matrix.scenario == 'with-code'
         shell: bash
         run: |
@@ -425,6 +503,10 @@ jobs:
           brew install --cask copilot-cli
           sudo mkdir -p /usr/local/bin
           sudo ln -sf '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code' /usr/local/bin/code
+          mkdir -p "$RUNNER_TEMP/claude-bin"
+          printf '#!/bin/sh\nexit 0\n' > "$RUNNER_TEMP/claude-bin/claude"
+          chmod +x "$RUNNER_TEMP/claude-bin/claude"
+          echo "$RUNNER_TEMP/claude-bin" >> "$GITHUB_PATH"
 
       - name: Confirm Copilot CLI is absent
         if: matrix.scenario != 'with-code'
@@ -470,13 +552,17 @@ jobs:
               foundry-devpack --version | grep -F "$expected_version"
               ;;
             release)
-              bash "$DEVPACK_SCRIPT" --verbose
+              bash "$DEVPACK_SCRIPT" --verbose --log "$RUNNER_TEMP/foundry-devpack.log"
               ;;
             *)
               echo "error: unsupported install source: $INSTALL_SOURCE" >&2
               exit 1
               ;;
           esac
+          if [ "$INSTALL_SOURCE" = "release" ]; then
+            test -f "$RUNNER_TEMP/foundry-devpack.log"
+            grep -F 'Finished (failed=0, cancelled=False)' "$RUNNER_TEMP/foundry-devpack.log"
+          fi
           if find "$temp" -mindepth 1 -maxdepth 1 -type d -name 'foundry-devpack-*' -print -quit | grep -q .; then
             echo "error: bootstrap left temporary directories under $temp" >&2
             find "$temp" -mindepth 1 -maxdepth 1 -type d -name 'foundry-devpack-*' -print >&2
@@ -504,6 +590,9 @@ jobs:
           code --list-extensions | grep -qi 'ms-windows-ai-studio.windows-ai-studio'
           copilot plugin list --no-color | tee "$RUNNER_TEMP/copilot-plugins.txt"
           grep -qi 'microsoft-foundry' "$RUNNER_TEMP/copilot-plugins.txt"
+          test -L "$HOME/.claude/skills/microsoft-foundry"
+          test "$(readlink "$HOME/.claude/skills/microsoft-foundry")" = "$HOME/.agents/skills/microsoft-foundry"
+          test ! -e "$HOME/.claude/skills/microsoft-foundry/.foundry-devpack-copy"
 
       - name: Uninstall Homebrew cask
         if: env.INSTALL_SOURCE == 'brew'
