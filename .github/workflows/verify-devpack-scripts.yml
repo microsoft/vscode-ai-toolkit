@@ -296,10 +296,16 @@ jobs:
           }
           Write-Host "ARP: $($entry.DisplayName) $($entry.DisplayVersion)"
 
-          if ($env:INSTALL_SOURCE -eq 'winget') {
+          $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+          $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+          $isElevated = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+          if ($env:INSTALL_SOURCE -eq 'winget' -and -not $isElevated) {
             winget uninstall --exact --id Microsoft.FoundryDevPack --source winget `
               --silent --disable-interactivity --accept-source-agreements
           } else {
+            if ($env:INSTALL_SOURCE -eq 'winget') {
+              Write-Host 'Runner is elevated; using the persisted uninstaller for this user-scope package.'
+            }
             & $entry.DisplayIcon uninstall
           }
           if ($LASTEXITCODE -ne 0) { throw "uninstall exited $LASTEXITCODE" }
