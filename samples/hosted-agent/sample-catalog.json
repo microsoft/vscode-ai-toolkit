@@ -1,7 +1,7 @@
 {
-    "commitSha": "decb6ee894de10704b08711fb778141df8f05f51",
+    "commitSha": "3d734b93b66f163bea9886d73c6808adc32e68fc",
     "repo": "https://github.com/microsoft-foundry/foundry-samples/",
-    "generatedAt": "2026-08-05T07:28:25Z",
+    "generatedAt": "2026-08-25T02:52:33Z",
     "dimensions": {
         "language": {
             "title": "Select a Language",
@@ -627,6 +627,15 @@
         },
         {
             "language": "python",
+            "framework": "agent-framework",
+            "protocol": "responses",
+            "displayName": "Foundry Toolbox MCP Skills",
+            "description": "Discovers Agent Skills on a Foundry Toolbox via MCP and exposes them to the model.",
+            "path": "samples/python/hosted-agents/agent-framework/responses/22-foundry-toolbox-mcp-skills",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
             "framework": "bring-your-own",
             "protocol": "activity",
             "displayName": "Echo Agent",
@@ -713,6 +722,15 @@
             "displayName": "Resilient Approval Gate",
             "description": "Long-running, crash-resilient agent that gates plans and irreversible actions on human approval.",
             "path": "samples/python/hosted-agents/bring-your-own/invocations/resilient-approval-gate",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "bring-your-own",
+            "protocol": "invocations",
+            "displayName": "Resilient Research",
+            "description": "Long-running, crash-resilient research agent that checkpoints work and streams resumable progress.",
+            "path": "samples/python/hosted-agents/bring-your-own/invocations/resilient-research",
             "requiresModel": true
         },
         {
@@ -866,6 +884,24 @@
             "displayName": "Agent Optimizer Hello World",
             "description": "Minimal agent demonstrating Agent Optimizer for response optimization.",
             "path": "samples/python/hosted-agents/bring-your-own/responses/optimization-hello-world",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "bring-your-own",
+            "protocol": "responses",
+            "displayName": "Resilient Steering",
+            "description": "Crash-resilient, steerable agent for recoverable long-running responses.",
+            "path": "samples/python/hosted-agents/bring-your-own/responses/resilient-steering",
+            "requiresModel": true
+        },
+        {
+            "language": "python",
+            "framework": "bring-your-own",
+            "protocol": "responses",
+            "displayName": "Resilient Streaming",
+            "description": "Streams multi-stage responses with checkpoints so interruptions resume without data loss.",
+            "path": "samples/python/hosted-agents/bring-your-own/responses/resilient-streaming",
             "requiresModel": true
         },
         {
