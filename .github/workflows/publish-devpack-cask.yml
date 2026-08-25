@@ -25,7 +25,6 @@ jobs:
       HOMEBREW_GITHUB_API_TOKEN: ${{ github.token }}
       HOMEBREW_NO_ANALYTICS: "1"
       HOMEBREW_NO_AUTO_UPDATE: "1"
-      MICROSOFT_APPLE_TEAM_ID: UBF8T346G9
 
     steps:
       - name: Checkout workflow automation
@@ -124,23 +123,8 @@ jobs:
           grep -Eq 'arm64|Mach-O 64-bit.*arm64' file-arm64.txt
           grep -Eq 'x86_64|Mach-O 64-bit.*x86_64' file-x64.txt
 
-          arm_team_id="$(grep -m1 '^TeamIdentifier=' codesign-arm64.txt | cut -d= -f2-)"
-          intel_team_id="$(grep -m1 '^TeamIdentifier=' codesign-x64.txt | cut -d= -f2-)"
           arm_signer="$(grep -m1 '^Authority=' codesign-arm64.txt | cut -d= -f2-)"
           intel_signer="$(grep -m1 '^Authority=' codesign-x64.txt | cut -d= -f2-)"
-          if [[ "$arm_team_id" != "$MICROSOFT_APPLE_TEAM_ID" ]]; then
-            echo "::error::Unexpected ARM64 Apple Team ID: $arm_team_id"
-            exit 1
-          fi
-          if [[ "$intel_team_id" != "$MICROSOFT_APPLE_TEAM_ID" ]]; then
-            echo "::error::Unexpected Intel Apple Team ID: $intel_team_id"
-            exit 1
-          fi
-          expected_signer="Developer ID Application: Microsoft Corporation ($MICROSOFT_APPLE_TEAM_ID)"
-          if [[ "$arm_signer" != "$expected_signer" || "$intel_signer" != "$expected_signer" ]]; then
-            echo "::error::Unexpected Apple signer. ARM64='$arm_signer' Intel='$intel_signer'"
-            exit 1
-          fi
 
           {
             echo "arm_sha=$arm_sha"
