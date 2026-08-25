@@ -1,0 +1,289 @@
+name: Publish DevPack Homebrew cask
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Published DevPack release tag (devpack-installer-X.Y.Z)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-devpack-cask
+  cancel-in-progress: false
+
+jobs:
+  create-pull-request:
+    name: Validate release and create cask PR
+    runs-on: macos-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      HOMEBREW_GITHUB_API_TOKEN: ${{ github.token }}
+      HOMEBREW_NO_ANALYTICS: "1"
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+
+    steps:
+      - name: Checkout workflow automation
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: automation
+          persist-credentials: false
+
+      - name: Validate workflow ref and release
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Run this workflow from foundry-toolkit main."
+            exit 1
+          fi
+          if [[ ! "$RELEASE_TAG" =~ ^devpack-installer-([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "::error::release_tag must use devpack-installer-X.Y.Z."
+            exit 1
+          fi
+          version="${BASH_REMATCH[1]}"
+
+          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")"
+          if [[ "$(jq -r '.draft' <<<"$release_json")" != "false" ]]; then
+            echo "::error::Release $RELEASE_TAG is still a draft."
+            exit 1
+          fi
+          if [[ "$(jq -r '.published_at // empty' <<<"$release_json")" == "" ]]; then
+            echo "::error::Release $RELEASE_TAG is not published."
+            exit 1
+          fi
+
+          for asset in foundry-devpack-osx-arm64.zip foundry-devpack-osx-x64.zip; do
+            count="$(jq --arg name "$asset" '[.assets[] | select(.name == $name)] | length' <<<"$release_json")"
+            if [[ "$count" != "1" ]]; then
+              echo "::error::Expected exactly one $asset release asset; found $count."
+              exit 1
+            fi
+          done
+
+          {
+            echo "version=$version"
+            echo "release_url=$(jq -r '.html_url' <<<"$release_json")"
+            echo "prerelease=$(jq -r '.prerelease' <<<"$release_json")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Download release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'foundry-devpack-osx-arm64.zip' \
+            --pattern 'foundry-devpack-osx-x64.zip' \
+            --dir release-assets
+
+      - name: Verify macOS assets
+        id: assets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          arm_zip="release-assets/foundry-devpack-osx-arm64.zip"
+          intel_zip="release-assets/foundry-devpack-osx-x64.zip"
+          arm_sha="$(shasum -a 256 "$arm_zip" | awk '{print $1}')"
+          intel_sha="$(shasum -a 256 "$intel_zip" | awk '{print $1}')"
+
+          for arch in arm64 x64; do
+            zip="release-assets/foundry-devpack-osx-$arch.zip"
+            entries="$(unzip -Z1 "$zip")"
+            if [[ "$entries" != "foundry-devpack" ]]; then
+              echo "::error::$zip must contain exactly one foundry-devpack file."
+              printf '%s\n' "$entries"
+              exit 1
+            fi
+
+            mkdir -p "extracted/$arch"
+            ditto -x -k "$zip" "extracted/$arch"
+            binary="extracted/$arch/foundry-devpack"
+            test -f "$binary"
+            test ! -L "$binary"
+            codesign --verify --strict --verbose=2 "$binary"
+            codesign -d --verbose=4 "$binary" 2>"codesign-$arch.txt"
+          done
+
+          file extracted/arm64/foundry-devpack | tee file-arm64.txt
+          file extracted/x64/foundry-devpack | tee file-x64.txt
+          grep -Eq 'arm64|Mach-O 64-bit.*arm64' file-arm64.txt
+          grep -Eq 'x86_64|Mach-O 64-bit.*x86_64' file-x64.txt
+
+          arm_signer="$(grep -m1 '^Authority=' codesign-arm64.txt | cut -d= -f2-)"
+          intel_signer="$(grep -m1 '^Authority=' codesign-x64.txt | cut -d= -f2-)"
+
+          {
+            echo "arm_sha=$arm_sha"
+            echo "intel_sha=$intel_sha"
+            echo "arm_signer=$arm_signer"
+            echo "intel_signer=$intel_signer"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate Homebrew repository token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.SYNC_APP_ID }}
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          owner: microsoft
+          repositories: homebrew-foundry
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Resolve bot identity
+        id: bot
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          set -euo pipefail
+          bot_id="$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)"
+          echo "name=${APP_SLUG}[bot]" >> "$GITHUB_OUTPUT"
+          echo "email=${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com" >> "$GITHUB_OUTPUT"
+
+      - name: Reject overlapping cask release PRs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          EXPECTED_BRANCH: bot/update-devpack-cask-${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          other_prs="$(gh pr list \
+            --repo microsoft/homebrew-foundry \
+            --state open \
+            --limit 100 \
+            --json number,headRefName,url \
+            --jq '.[] | select(.headRefName | startswith("bot/update-devpack-cask-")) | select(.headRefName != env.EXPECTED_BRANCH) | "#\(.number) \(.headRefName) \(.url)"')"
+          if [[ -n "$other_prs" ]]; then
+            echo "::error::Resolve the existing DevPack cask PR before publishing another version."
+            printf '%s\n' "$other_prs"
+            exit 1
+          fi
+
+      - name: Use Node.js 20.19
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19"
+
+      - name: Checkout Homebrew tap
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/homebrew-foundry
+          token: ${{ steps.app-token.outputs.token }}
+          ref: main
+          fetch-depth: 0
+          path: homebrew-foundry
+          persist-credentials: false
+
+      - name: Update cask
+        id: cask
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          ARM_SHA: ${{ steps.assets.outputs.arm_sha }}
+          INTEL_SHA: ${{ steps.assets.outputs.intel_sha }}
+        run: |
+          set -euo pipefail
+          node automation/.github/scripts/update_devpack_cask.mjs \
+            homebrew-foundry/Casks/devpack.rb \
+            "$VERSION" \
+            "$ARM_SHA" \
+            "$INTEL_SHA"
+
+          if git -C homebrew-foundry diff --quiet -- Casks/devpack.rb; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "Cask already matches DevPack $VERSION."
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            git -C homebrew-foundry diff -- Casks/devpack.rb
+          fi
+
+      - name: Validate cask
+        shell: bash
+        run: |
+          set -euo pipefail
+          tap_dir="$(brew --repository)/Library/Taps/microsoft/homebrew-foundry"
+          mkdir -p "$(dirname "$tap_dir")"
+          rm -rf "$tap_dir"
+          ln -s "$GITHUB_WORKSPACE/homebrew-foundry" "$tap_dir"
+          brew tap | grep -qx 'microsoft/foundry'
+          brew style microsoft/foundry/devpack
+          brew audit --cask --strict microsoft/foundry/devpack
+
+      - name: Create Homebrew cask pull request
+        if: steps.cask.outputs.has_changes == 'true'
+        id: cpr
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          path: homebrew-foundry
+          base: main
+          branch: bot/update-devpack-cask-${{ steps.release.outputs.version }}
+          delete-branch: true
+          draft: false
+          sign-commits: true
+          committer: ${{ steps.bot.outputs.name }} <${{ steps.bot.outputs.email }}>
+          author: ${{ steps.bot.outputs.name }} <${{ steps.bot.outputs.email }}>
+          commit-message: "chore: update DevPack cask to ${{ steps.release.outputs.version }}"
+          title: "chore: update DevPack cask to ${{ steps.release.outputs.version }}"
+          reviewers: ${{ github.actor }}
+          body: |
+            ## Summary
+            Update the Microsoft Foundry DevPack cask to `${{ steps.release.outputs.version }}`.
+
+            ## Source
+            - Release: ${{ steps.release.outputs.release_url }}
+            - Release tag: `${{ inputs.release_tag }}`
+            - Prerelease: `${{ steps.release.outputs.prerelease }}`
+            - Automation: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            ## Assets
+            - ARM64 SHA-256: `${{ steps.assets.outputs.arm_sha }}`
+            - Intel SHA-256: `${{ steps.assets.outputs.intel_sha }}`
+            - ARM64 signer: `${{ steps.assets.outputs.arm_signer }}`
+            - Intel signer: `${{ steps.assets.outputs.intel_signer }}`
+
+            ## Validation
+            - Verified both ZIPs contain exactly one `foundry-devpack` binary
+            - Verified ARM64 and x64 Mach-O architectures
+            - Verified both Apple code signatures with `codesign --strict`
+            - Passed `brew style` and strict cask audit
+          add-paths: Casks/devpack.rb
+
+      - name: Report result
+        if: always() && steps.release.outcome == 'success'
+        shell: bash
+        env:
+          HAS_CHANGES: ${{ steps.cask.outputs.has_changes }}
+          PR_OPERATION: ${{ steps.cpr.outputs.pull-request-operation }}
+          PR_URL: ${{ steps.cpr.outputs.pull-request-url }}
+          PR_NUMBER: ${{ steps.cpr.outputs.pull-request-number }}
+        run: |
+          {
+            echo "## DevPack Homebrew cask"
+            echo
+            echo "- Release: [\`${RELEASE_TAG}\`](${{ steps.release.outputs.release_url }})"
+            echo "- ARM64 SHA-256: \`${{ steps.assets.outputs.arm_sha }}\`"
+            echo "- Intel SHA-256: \`${{ steps.assets.outputs.intel_sha }}\`"
+            if [[ "$HAS_CHANGES" == "true" ]]; then
+              echo "- PR operation: \`${PR_OPERATION:-unknown}\`"
+              echo "- PR: [#${PR_NUMBER:-?}](${PR_URL})"
+            else
+              echo "- Cask already matches this release; no PR created."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
