@@ -1,5 +1,39 @@
 # What's New in Foundry Toolkit for VS Code
 
+## Version 1.6.10 - 26 August, 2026
+
+This release adds Agent-to-Agent connections and toolbox workflows for prompt agents, Hosted Agent deep links, and richer Agent Inspector details, while improving accessibility and the reliability of streamed responses and model deployment guidance.
+
+### Added
+
+- **Agent Builder**
+  - **Prompt Agent toolboxes**: Enable toolbox support with the `windowsaistudio.enableToolboxInPromptAgent` setting, which is disabled by default. Attach a toolbox from Agent Builder's **Add tools** menu or use **Add to Prompt Agent** from the Toolbox resource list. Inspect its tools and skills in a rich, collapsible card; manage versions and approval policies; configure nested tools; or replace, remove, and opt out of the toolbox.
+  - **Agent-to-Agent (A2A) connections (preview)**: Add an [A2A-compatible agent](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/tool-catalog#custom-tools) from a configured connection, the Foundry account catalog, or a custom HTTPS endpoint. Add it directly to a prompt agent or through an attached toolbox.
+- **Hosted Agent deep links**: Open a named Hosted Agent's Details or Optimization page in VS Code directly from a Microsoft Foundry portal link.
+- **Agent Inspector**
+  - **Tool details**: Inspect tool calls grouped by response run, including status, call ID, arguments, and results.
+  - **Event timing**: See when each Responses event reached Agent Inspector.
+
+### Changed
+
+- **Agent Inspector**
+  - Long streaming responses and Details views now update more smoothly.
+  - The Overview waterfall and timeline use equal-height regions with independent scrolling.
+- **Copilot-assisted agent creation**: Updated Foundry guidance now uses current project and model setup, the agent's managed Python environment, workspace-root debugging, and the latest local run and deployment flow.
+
+### Fixed
+
+- **Agent Inspector**
+  - Streamed response and reasoning text now remains complete, including streams that finish without intermediate text updates.
+  - The chat input remains visible during long conversations, preserves drafts while a turn runs, and handles Enter, Shift+Enter, numeric keypad Enter, and input method editors consistently.
+  - Obsolete stream events no longer overwrite a replacement turn, and tool details no longer show unmatched calls or results.
+- **Copilot-assisted agent creation**: When you reuse the selected Foundry project, Copilot no longer asks you to select its Azure location again.
+- **Model deployment**: Quota errors now open the token quota page for the current Foundry project.
+- **Accessibility**
+  - Screen readers now identify Model Catalog actions, collapsible Agent Builder and Model Preference controls, and project and model setting fields with their associated labels and state.
+  - Adding an evaluation variable now moves keyboard focus to the new field.
+  - Prompt placeholders now meet minimum contrast requirements.
+
 ## Version 1.6.9 - 19 August, 2026
 
 This release streamlines agent creation, brings administrator-connected Foundry models to playgrounds and Hosted Agent creation, and adds richer Agent Inspector views and controls.
