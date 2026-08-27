@@ -31,7 +31,7 @@ switch ($architecture.ToUpperInvariant()) {
     }
 }
 
-$url = "https://github.com/microsoft/foundry-toolkit/releases/download/$releaseTag/$asset"
+$url = "https://github.com/microsoft/foundry-dev-tools/releases/download/$releaseTag/$asset"
 $tempDirectory = Join-Path ([IO.Path]::GetTempPath()) "foundry-devpack-$([guid]::NewGuid().ToString('N'))"
 $executable = Join-Path $tempDirectory 'foundry-devpack.exe'
 
