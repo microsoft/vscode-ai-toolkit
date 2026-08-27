@@ -43,7 +43,7 @@ esac
 
 command -v curl >/dev/null 2>&1 || { echo "error: curl is required" >&2; exit 1; }
 
-url="https://github.com/microsoft/foundry-toolkit/releases/download/${release_tag}/${asset}"
+url="https://github.com/microsoft/foundry-dev-tools/releases/download/${release_tag}/${asset}"
 temp_directory="$(mktemp -d)"
 trap 'rm -rf "$temp_directory"' EXIT
 

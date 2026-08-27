@@ -43,7 +43,7 @@ jobs:
           set -euo pipefail
 
           if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
-            echo "::error::Run this workflow from foundry-toolkit main."
+            echo "::error::Run this workflow from $GITHUB_REPOSITORY main."
             exit 1
           fi
           if [[ ! "$RELEASE_TAG" =~ ^devpack-installer-([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
@@ -203,7 +203,8 @@ jobs:
             homebrew-foundry/Casks/devpack.rb \
             "$VERSION" \
             "$ARM_SHA" \
-            "$INTEL_SHA"
+            "$INTEL_SHA" \
+            "$GITHUB_REPOSITORY"
 
           if git -C homebrew-foundry diff --quiet -- Casks/devpack.rb; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"

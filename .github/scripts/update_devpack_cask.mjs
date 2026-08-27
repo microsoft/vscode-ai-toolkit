@@ -1,19 +1,25 @@
 import { readFile, writeFile } from "node:fs/promises";
 
-const [, , caskPath, targetVersion, armSha, intelSha] = process.argv;
+const [, , caskPath, targetVersion, armSha, intelSha, releaseRepository] =
+  process.argv;
 
-if (!caskPath || !targetVersion || !armSha || !intelSha) {
+if (!caskPath || !targetVersion || !armSha || !intelSha || !releaseRepository) {
   throw new Error(
-    "Usage: update_devpack_cask.mjs <cask-path> <version> <arm-sha256> <intel-sha256>",
+    "Usage: update_devpack_cask.mjs <cask-path> <version> <arm-sha256> <intel-sha256> <release-repository>",
   );
 }
 
 const versionPattern = /^  version "([0-9]+\.[0-9]+\.[0-9]+)"$/m;
 const armPattern = /^  sha256 arm:   "[0-9a-fA-F]{64}",$/m;
 const intelPattern = /^         intel: "[0-9a-fA-F]{64}"$/m;
+const urlPattern = /^  url .+$/m;
+const homepagePattern = /^  homepage .+$/m;
 
 if (!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(targetVersion)) {
   throw new Error(`Invalid stable version: ${targetVersion}`);
+}
+if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(releaseRepository)) {
+  throw new Error(`Invalid release repository: ${releaseRepository}`);
 }
 for (const [name, value] of [
   ["ARM64", armSha],
@@ -57,8 +63,24 @@ const replaceExactlyOnce = (text, pattern, replacement) => {
   return text.replace(pattern, replacement);
 };
 
-let updated = original;
-updated = replaceExactlyOnce(updated, versionPattern, `  version "${targetVersion}"`);
+let canonicalized = original;
+canonicalized = replaceExactlyOnce(
+  canonicalized,
+  urlPattern,
+  `  url "https://github.com/${releaseRepository}/releases/download/devpack-installer-#{version}/foundry-devpack-osx-#{arch}.zip"`,
+);
+canonicalized = replaceExactlyOnce(
+  canonicalized,
+  homepagePattern,
+  `  homepage "https://github.com/${releaseRepository}"`,
+);
+
+let updated = canonicalized;
+updated = replaceExactlyOnce(
+  updated,
+  versionPattern,
+  `  version "${targetVersion}"`,
+);
 updated = replaceExactlyOnce(
   updated,
   armPattern,
@@ -70,7 +92,7 @@ updated = replaceExactlyOnce(
   `         intel: "${intelSha.toLowerCase()}"`,
 );
 
-if (comparison === 0 && updated !== original) {
+if (comparison === 0 && updated !== canonicalized) {
   throw new Error(
     `Cask ${targetVersion} already exists with different checksums; investigate release immutability`,
   );
