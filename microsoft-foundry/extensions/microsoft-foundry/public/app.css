@@ -93,6 +93,16 @@ body {
 }
 .update-bar-dismiss:hover { background: rgba(0,0,0,.06); color: var(--text); }
 
+.copilot-status-bar {
+    flex: 0 0 auto;
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-subtle);
+    color: var(--text);
+    font-size: 13px; line-height: 18px;
+}
+
 /* ---------------- Project picker panel ---------------- */
 .project-actions { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
 .project-switch { position: relative; flex: 0 0 auto; }
