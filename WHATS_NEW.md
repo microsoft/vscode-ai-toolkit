@@ -1,5 +1,28 @@
 # What's New in Foundry Toolkit for VS Code
 
+## Version 1.6.11 - 2 September, 2026
+
+This release adds Hosted Agent best-practice validation and powerful Agent Inspector event tools, while refining model and Agent-to-Agent connection workflows and improving interactive response reliability.
+
+### Added
+
+- **Hosted Agent validation**: Run `/validate-microsoft-foundry-hosted-agent` in Copilot Chat to validate the current Hosted Agent project against Microsoft Foundry best practices and open the generated report in VS Code.
+- **Agent Inspector**
+  - Search Responses events by event type or JSON content, filter by category, and see the number of matching events.
+  - Resolve visible failures with Copilot, or copy and download the filtered event snapshot as JSONL.
+
+### Changed
+
+- **Model selection**: The model menu now shows clearer model and source labels, loading feedback, and a direct **Browse models** action. Prompt generation and improvement dialogs also use consistent VS Code controls.
+- **Agent-to-Agent (A2A) connections (preview)**: Configured, catalog, custom endpoint, authentication, and agent-card dialogs now have clearer layouts, descriptions, skills, and actions.
+
+### Fixed
+
+- **Agent Inspector**
+  - Tool results now attach to the correct calls and remain visible when a completed result does not include an explicit status.
+  - Pending MCP approvals and OAuth consent requests return after an incomplete continuation.
+  - **Fix** and **Resolve with Copilot** remain available when tracing is unavailable and provide consistent error details.
+
 ## Version 1.6.10 - 26 August, 2026
 
 This release adds Agent-to-Agent connections and toolbox workflows for prompt agents, Hosted Agent deep links, and richer Agent Inspector details, while improving accessibility and the reliability of streamed responses and model deployment guidance.
