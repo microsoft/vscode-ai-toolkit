@@ -460,7 +460,7 @@ body {
     color: var(--accent); font: inherit; font-weight: 600;
     padding: 4px 8px; border-radius: 6px;
 }
-.inspector-back:hover { background: var(--bg); }
+.inspector-back:hover { background: light-dark(rgba(0,0,0,.06), rgba(255,255,255,.08)); }
 .inspector-title { font-size: 13px; font-weight: 600; color: var(--text); }
 .inspector-status {
     padding: 10px 14px; font-size: 13px; color: var(--muted);
