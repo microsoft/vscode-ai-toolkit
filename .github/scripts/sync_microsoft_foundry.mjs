@@ -19,6 +19,10 @@ if (!sourceArg || !targetArg || !pluginManifestArg) {
   );
 }
 
+const AGENT_PLUGINS_SCHEMA =
+  "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json";
+const COPILOT_NAMESPACE = "com.github.copilot";
+
 const sourceRoot = resolve(sourceArg);
 const targetRoot = resolve(targetArg);
 const pluginManifestPath = resolve(pluginManifestArg);
@@ -67,6 +71,17 @@ for (const entry of payload) {
 const pluginManifest = JSON.parse(readFileSync(pluginManifestPath, "utf8"));
 if (pluginManifest.name !== "microsoft-foundry") {
   throw new Error(`Unexpected plugin name: ${pluginManifest.name}`);
+}
+if (pluginManifest.$schema !== AGENT_PLUGINS_SCHEMA) {
+  throw new Error(`Unexpected plugin schema: ${pluginManifest.$schema}`);
+}
+if (
+  pluginManifest.extensions?.[COPILOT_NAMESPACE]?.logo !==
+  "assets/preview.png"
+) {
+  throw new Error(
+    `Expected extensions["${COPILOT_NAMESPACE}"].logo to be assets/preview.png`,
+  );
 }
 
 const extensionManifest = JSON.parse(

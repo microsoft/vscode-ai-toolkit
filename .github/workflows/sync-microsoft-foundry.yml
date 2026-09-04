@@ -239,8 +239,8 @@ jobs:
         run: |
           node automation/.github/scripts/sync_microsoft_foundry.mjs \
             bundle \
-            target/microsoft-foundry/extensions/microsoft-foundry \
-            target/microsoft-foundry/.github/plugin/plugin.json \
+            target/microsoft-foundry/com.github.copilot/extensions/microsoft-foundry \
+            target/microsoft-foundry/plugin.json \
             "$MARKETPLACE_VERSION"
 
       - name: Resolve pull request metadata
@@ -274,11 +274,11 @@ jobs:
           set -euo pipefail
 
           git -C target add -- \
-            microsoft-foundry/.github/plugin/plugin.json \
-            microsoft-foundry/extensions/microsoft-foundry/extension.mjs \
-            microsoft-foundry/extensions/microsoft-foundry/package.json \
-            microsoft-foundry/extensions/microsoft-foundry/public \
-            microsoft-foundry/extensions/microsoft-foundry/inspector-ui
+            microsoft-foundry/plugin.json \
+            microsoft-foundry/com.github.copilot/extensions/microsoft-foundry/extension.mjs \
+            microsoft-foundry/com.github.copilot/extensions/microsoft-foundry/package.json \
+            microsoft-foundry/com.github.copilot/extensions/microsoft-foundry/public \
+            microsoft-foundry/com.github.copilot/extensions/microsoft-foundry/inspector-ui
 
           if git -C target diff --cached --quiet -- microsoft-foundry; then
             echo "No package changes detected."
@@ -333,11 +333,11 @@ jobs:
             - Rejected unsafe ZIP entry paths before extraction
             - Validated required runtime files and `node --check extension.mjs`
           add-paths: |
-            microsoft-foundry/.github/plugin/plugin.json
-            microsoft-foundry/extensions/microsoft-foundry/extension.mjs
-            microsoft-foundry/extensions/microsoft-foundry/package.json
-            microsoft-foundry/extensions/microsoft-foundry/public
-            microsoft-foundry/extensions/microsoft-foundry/inspector-ui
+            microsoft-foundry/plugin.json
+            microsoft-foundry/com.github.copilot/extensions/microsoft-foundry/extension.mjs
+            microsoft-foundry/com.github.copilot/extensions/microsoft-foundry/package.json
+            microsoft-foundry/com.github.copilot/extensions/microsoft-foundry/public
+            microsoft-foundry/com.github.copilot/extensions/microsoft-foundry/inspector-ui
 
       - name: Report pull request
         if: steps.diff.outputs.has_changes == 'true'
