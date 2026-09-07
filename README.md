@@ -1,78 +1,87 @@
-# Microsoft Foundry Toolkit for Visual Studio Code
+# Microsoft Foundry DevTools
 
-![Feature Highlight](https://aka.ms/ai-toolkit/feature-highlights-image)
+[![Get started with Foundry](https://img.shields.io/badge/Foundry-Get_started-0078D4?style=flat-square)](https://learn.microsoft.com/en-us/azure/foundry/how-to/develop/install-cli-sdk?tabs=windows%2Cpython%2Cazd-ai)
+[![Install Foundry Toolkit for VS Code](https://img.shields.io/badge/VS_Code-Install_Toolkit-0098FF?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)
+[![Join the Foundry community on Discord](https://img.shields.io/badge/Discord-Join_the_community-5865F2?style=flat-square&logo=discord&logoColor=white)](https://aka.ms/azureaifoundry/discord)
 
-## 🤖 What is Microsoft Foundry Toolkit
+**Your idea. Your workflow. Build with Foundry.**
 
-Microsoft Foundry Toolkit is the new name for AI Toolkit. It is a Visual Studio Code extension that helps you build AI agents quickly, with built-in access to [Microsoft Foundry](https://azure.microsoft.com/products/ai-foundry/) resources for model deployment, agent management, and more without leaving VS Code.
+Build AI applications and agents with [Microsoft Foundry](https://azure.microsoft.com/products/ai-foundry/), from your first local experiment to a deployed agent. Choose tools for your terminal, coding agent, VS Code, or a guided visual workflow.
 
-> 💡 **Note**: We have renamed this product to reflect its full integration with Microsoft Foundry. The previously separate Microsoft Foundry extension is now merged into this single extension. All existing features remain unchanged.
+This repository is your starting point for Foundry developer tools, documentation, and community feedback. It also hosts the source code for **Foundry Canvas**.
 
-With Microsoft Foundry Toolkit you can:
+<a id="choose-your-tools"></a>
 
-- 🔍 **Discover and evaluate models** from providers including Microsoft Foundry, Foundry Local, Anthropic, OpenAI, GitHub, Google, and NVIDIA NIM, or run models locally with ONNX and Ollama.
-- ⚡ **Build, test, and deploy AI agents** with Agent Builder for no-code prompt agents, or create code-based hosted agents with debugging, streaming visualization, and MCP tool integrations.
-- ☁️ **Manage Microsoft Foundry resources** directly from VS Code: browse projects, deploy models from the catalog, and create, deploy, and test agents with the Microsoft Foundry Agent Service.
+## 🧰 Choose your tools
 
-### ✨ Core Features
+Start with the workflow that fits how you work. These tools work together, so you can move between your terminal, coding agent, and visual tools as your project grows.
 
-Features are grouped by workflow: models, agents, and the Microsoft Foundry resources that support both.
+| Tool | What you can do | Explore |
+| --- | --- | --- |
+| ⌨️ **Azure Developer CLI (`azd`)** | Use `azd` and its Foundry extensions (`azd ai`) to scaffold, deploy, evaluate, and automate AI applications and agents from the terminal. | [Repository and quick start](https://github.com/Azure/azure-dev) |
+| 🧠 **Foundry Skills** | Give your coding agent reusable guidance for Foundry development. The Microsoft Foundry Skill helps it build, deploy, and manage agents and models with `azd`. | [Skill guide](https://learn.microsoft.com/en-us/azure/foundry/how-to/develop/use-microsoft-foundry-skill) |
+| 💻 **Foundry Toolkit for VS Code** | Discover models, build and test agents, evaluate results, and manage Foundry resources without leaving VS Code. Formerly AI Toolkit. | [Toolkit documentation](https://code.visualstudio.com/docs/intelligentapps/overview?azure-portal=true) |
+| 🎨 **Foundry Canvas (preview)** | Design, configure, test, and deploy hosted agents from a guided side panel in GitHub Copilot App, with Copilot making the code changes. | [Canvas overview](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/foundry-canvas) |
 
-#### 🧠 Models
+<a id="get-started"></a>
 
-Everything you need to discover, test, customize, and optimize AI models.
+## 🚀 Get started
 
-| Feature | Description |
-|---------|-------------|
-| [Model Catalog](https://code.visualstudio.com/docs/intelligentapps/models) | Discover and access AI models from Microsoft Foundry, Foundry Local, GitHub, ONNX, Ollama, OpenAI, Anthropic, Google, and more. Compare models side-by-side and find the best fit for your use case. |
-| [Playground](https://code.visualstudio.com/docs/intelligentapps/playground) | Interactive chat environment for real-time model testing. Experiment with different prompts, parameters, and multi-modal inputs including images and attachments. |
-| [Fine-tuning](https://code.visualstudio.com/docs/intelligentapps/finetune) | Customize and adapt models for specific domains and requirements. Train models locally with GPU support or use Azure Container Apps for cloud-based fine-tuning. |
-| [Model Conversion](https://code.visualstudio.com/docs/intelligentapps/modelconversion) | Convert, quantize, and optimize machine learning models for local deployment. Transform models from Hugging Face and other sources to run efficiently on Windows with CPU, GPU, or NPU acceleration. |
-| [Profiling (Windows ML)](https://code.visualstudio.com/docs/intelligentapps/profiling) | Diagnose CPU, GPU, and NPU usage for running processes, ONNX models across execution providers, and Windows Machine Learning events. |
+Follow [Prepare your development environment](https://learn.microsoft.com/en-us/azure/foundry/how-to/develop/install-cli-sdk?tabs=windows%2Cpython%2Cazd-ai) for prerequisites and setup on Windows, macOS, or Linux. **Foundry DevPack** is the recommended way to install the developer tools together. The guide also covers installing each tool separately.
 
-#### 🤖 Agents
+DevPack adds the Toolkit and Canvas extensions only when their host apps are present. It does not install VS Code or GitHub Copilot App.
 
-Build, test, deploy, and observe AI agents end to end, from prompt agents to code-based hosted agents.
+| Your starting point | Next step |
+| --- | --- |
+| **Terminal** | [Install `azd` and the Foundry extensions](https://learn.microsoft.com/en-us/azure/foundry/how-to/develop/install-cli-sdk?tabs=windows%2Cpython%2Cazd-ai#install-developer-tools-separately). |
+| **Coding agent** | [Install the Microsoft Foundry Skill](https://learn.microsoft.com/en-us/azure/foundry/how-to/develop/use-microsoft-foundry-skill) for your coding-agent host. |
+| **VS Code** | [Install Foundry Toolkit](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio), then follow the [Toolkit setup guide](https://code.visualstudio.com/docs/intelligentapps/overview#_install-and-setup). |
+| **GitHub Copilot App** | Open **Settings > Plugins**, search for `microsoft-foundry`, and install it. Follow the [Canvas guide](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/foundry-canvas) to build your first hosted agent. |
 
-| Feature | Description |
-|---------|-------------|
-| [Create Agents](https://code.visualstudio.com/docs/intelligentapps/create-agents) | Create prompt agents with tools and vector stores, or build hosted agents with custom code. |
-| [Agent Builder](https://code.visualstudio.com/docs/intelligentapps/agentbuilder) | Design prompt agents end to end: craft prompts, integrate MCP tools, define structured outputs, and generate production-ready code. |
-| [Tool Catalog](https://code.visualstudio.com/docs/intelligentapps/tool-catalog) | Connect Microsoft Foundry tools and local MCP servers, then add those tools to agents in Agent Builder. |
-| [Agent Inspector](https://aka.ms/AIToolkit/doc/test-tool) | Debug, visualize, and iterate on local and hosted agents directly in VS Code. |
-| Deploy Hosted Agents | Deploy hosted agents from VS Code to the Microsoft Foundry Agent Service. Build and push container images to Azure Container Registry or upload a ZIP package, configure CPU and memory, set up RBAC, and manage versions for Microsoft Agent Framework and LangGraph projects written in Python, C#, or YAML. |
-| Hosted Agent Playground | Test deployed hosted agents in an interactive playground with chat sessions, thread management, streaming responses, live container logs, OpenTelemetry traces, tool-call inspection, evaluation runs, and version switching. |
-| [Evaluation](https://code.visualstudio.com/docs/intelligentapps/evaluation) | Assess models and agents using datasets and standard metrics. Measure performance with built-in evaluators (F1 score, relevance, similarity, coherence) or create custom evaluation criteria. |
-| [Tracing](https://code.visualstudio.com/docs/intelligentapps/tracing) | Monitor and analyze AI application performance. Collect and visualize trace data to understand model and agent behavior and diagnose issues. |
+<a id="source-code-and-contributions"></a>
 
-#### ☁️ Microsoft Foundry resources
+## 🛠️ Source code and contributions
 
-| Feature | Description |
-|---------|-------------|
-| Microsoft Foundry Resources | Browse Foundry projects, deploy language models from providers such as Microsoft, OpenAI, Meta, and DeepSeek, and create, deploy, and test agents with the Microsoft Foundry Agent Service. |
+The tools have different source-code homes. This repository does not contain the implementation of every tool listed above.
 
-## 🚀 Getting started
+| Tool | Source code |
+| --- | --- |
+| **azd** | Developed in [Azure/azure-dev](https://github.com/Azure/azure-dev). See its [contributing guide](https://github.com/Azure/azure-dev/blob/main/cli/azd/CONTRIBUTING.md). |
+| **Foundry Skills** | Developed in [microsoft/GitHub-Copilot-for-Azure](https://github.com/microsoft/GitHub-Copilot-for-Azure). Browse the [Microsoft Foundry Skill source](https://github.com/microsoft/GitHub-Copilot-for-Azure/tree/main/plugins/azure-skills/skills/microsoft-foundry) and [contributing guide](https://github.com/microsoft/GitHub-Copilot-for-Azure/blob/main/CONTRIBUTING.md). |
+| **Foundry Toolkit for VS Code** | **Not open source.** Its implementation is not in this repository, but we welcome Toolkit issues and feature requests here. |
+| **Foundry Canvas** | Source code is in [`microsoft-foundry/`](./microsoft-foundry) in this repository. See its [README](./microsoft-foundry/README.md) for installation and usage. |
 
-New to Microsoft Foundry Toolkit? Start with a model, then turn your prompt into an agent. You do not need an Azure subscription for these first steps.
+We welcome contributions to the source and documentation available in these repositories. Follow the contribution guidance in the repository you want to change. For contributions here, see the [Code of Conduct](./CODE_OF_CONDUCT.md). Source code in this repository is covered by its [license](./LICENSE); the closed-source Toolkit implementation is not included.
 
-1. **Try GitHub-hosted models.** Open the [Model Catalog](https://code.visualstudio.com/docs/intelligentapps/models) and choose a model from the GitHub provider. Sign in with your GitHub account to chat with models in the [Playground](https://code.visualstudio.com/docs/intelligentapps/playground) without API keys or cloud setup.
-2. **Create a local prompt agent in Agent Builder.** Open [Agent Builder](https://code.visualstudio.com/docs/intelligentapps/agentbuilder) to design a prompt agent end to end: craft your system prompt, attach MCP tools from the [Tool Catalog](https://code.visualstudio.com/docs/intelligentapps/tool-catalog), define structured outputs, and iterate on test runs inside VS Code.
+<a id="join-the-conversation"></a>
 
-When you're ready to move beyond local prototyping, connect your agent to [Microsoft Foundry](https://azure.microsoft.com/products/ai-foundry/) for managed hosting with the Foundry Agent Service, production-grade model deployments, evaluation at scale, tracing, and team collaboration from the same extension.
+## 💬 Join the conversation
 
-## 💬 Feedback and resources
+Talk with the developers building these tools. Share what you are working on, ask questions, discuss ideas, and help us improve the experience. **You do not need to contribute code to take part.** Whether you have a first experiment, a feature idea, or a bug to report, you are welcome here.
 
-We'd love to hear from you! Your feedback helps shape our roadmap.
+| Tool | Questions and ideas | Bugs and feature requests |
+| --- | --- | --- |
+| **azd** | [Discussions](https://github.com/Azure/azure-dev/discussions) | [Issues](https://github.com/Azure/azure-dev/issues) |
+| **Foundry Skills** | [Discussions](https://github.com/microsoft/GitHub-Copilot-for-Azure/discussions) | [Issues](https://github.com/microsoft/GitHub-Copilot-for-Azure/issues) |
+| **Foundry Toolkit for VS Code** | [Start or join an issue conversation](https://github.com/microsoft/foundry-dev-tools/issues) | [Issues](https://github.com/microsoft/foundry-dev-tools/issues) |
+| **Foundry Canvas** | [Start or join an issue conversation](https://github.com/microsoft/foundry-dev-tools/issues) | [Issues](https://github.com/microsoft/foundry-dev-tools/issues) |
 
-- [Developer documentation](https://aka.ms/foundrytk/docs) — explore all features in depth
-- [Tutorials](https://aka.ms/foundrytk/tutorial) — step-by-step guides to get started
-- [GitHub Issues](https://aka.ms/AIToolkit/feedback) — report bugs or suggest new features
-- [Discord community](https://aka.ms/azureaifoundry/discord) — connect with fellow developers
+Search existing discussions and issues first. When you report a bug, include the tool name, version, operating system, steps to reproduce, and expected behavior. Remove secrets and personal data from logs and screenshots.
 
-You can also send private bug reports or concerns to [vscai-support@microsoft.com](mailto:vscai-support@microsoft.com).
+For security vulnerabilities, follow our [security reporting policy](./SECURITY.md) instead of opening a public issue.
 
-Microsoft Foundry Toolkit is built with and for the developer community.
+<a id="documentation-and-updates"></a>
 
-## 📊 Data and telemetry
+## 📚 Documentation and updates
+
+- [Foundry development environment](https://learn.microsoft.com/en-us/azure/foundry/how-to/develop/install-cli-sdk?tabs=windows%2Cpython%2Cazd-ai): prerequisites and installation.
+- [Foundry Toolkit documentation](https://code.visualstudio.com/docs/intelligentapps/overview?azure-portal=true) and [tutorials](https://aka.ms/foundrytk/tutorial): detailed features and walkthroughs.
+- [Foundry Toolkit release notes](https://microsoft.github.io/foundry-dev-tools/): Toolkit features, improvements, and fixes by release.
+- [Foundry Canvas documentation](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/foundry-canvas): the guided hosted-agent workflow.
+- [Microsoft Foundry Discord community](https://aka.ms/azureaifoundry/discord): connect with other developers.
+
+For private Foundry Toolkit bug reports or support concerns, contact [vscai-support@microsoft.com](mailto:vscai-support@microsoft.com). Report security vulnerabilities through the security policy linked above.
+
+## Foundry Toolkit data and telemetry
 
 Microsoft Foundry Toolkit for Visual Studio Code collects usage data and sends it to Microsoft to help improve our products and services. Read our [privacy statement](https://go.microsoft.com/fwlink/?LinkId=521839) to learn more. This extension respects the `telemetry.enableTelemetry` setting—learn more at [disable telemetry reporting](https://code.visualstudio.com/docs/supporting/faq#_how-to-disable-telemetry-reporting).
