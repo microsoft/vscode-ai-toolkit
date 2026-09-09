@@ -1,5 +1,27 @@
 # What's New in Foundry Toolkit for VS Code
 
+## Version 1.6.12 - 9 September, 2026
+
+This release adds remote image controls and more model profiling detail, makes model search easier to access, and improves Agent Inspector connection and response reliability.
+
+### Added
+
+- **Remote image controls**: Remote images in playground conversations, Agent Builder responses, and model license content are blocked until you choose **Load Remote Images**.
+- **Model profiling**: On Windows, view TensorRT RTX GPU operator traces. Intel CPU/NPU profiling now uses OpenVINO trace data when Intel Unified Telemetry data is unavailable.
+
+### Changed
+
+- **Model Catalog**: Search and filters now appear above Popular Models, and recommendations hide during keyword searches. Featured models and recommendation ordering have also been refreshed.
+- **Agent Inspector details**: Clearer latency labels distinguish waiting between runs from total elapsed time. Details panes have improved sizing, run labels, keyboard accessibility, and consistent event-export filenames. Unsupported panels are hidden when inspecting a generic Responses endpoint (preview).
+- **Agent traces**: Removed the standalone **View Foundry Agent Trace** command from the Command Palette. Trace viewing remains available in Agent Playground.
+
+### Fixed
+
+- **Agent Inspector connections**: Windows localhost connections, initial connection messages, and recovery after disconnects are more reliable. Changing agents clears stale inspection state, while refreshing the same connected agent preserves it.
+- **Agent Inspector responses**: Completed runs retain final diagnostics without mixing diagnostic events into the displayed response. Interrupted streams preserve partial output and keep pending continuations retryable, with failure details in the run timeline.
+- **MCP tools**: Long server and tool names no longer exceed the 64-character model tool-name limit. Agent Builder continues to display the original names.
+- **Local models**: Windows-only local-model providers and management commands no longer appear on macOS and Linux.
+
 ## Version 1.6.11 - 2 September, 2026
 
 This release adds Hosted Agent best-practice validation and powerful Agent Inspector event tools, while refining model and Agent-to-Agent connection workflows and improving interactive response reliability.
