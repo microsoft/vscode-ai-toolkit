@@ -102,6 +102,14 @@ body {
     color: var(--text);
     font-size: 13px; line-height: 18px;
 }
+.copilot-status-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.copilot-status-refresh {
+    flex: 0 0 auto; width: 24px; height: 24px; padding: 0;
+    display: inline-grid; place-items: center;
+    border: 0; border-radius: 4px; background: transparent;
+    color: var(--muted); cursor: pointer;
+}
+.copilot-status-refresh:hover { background: var(--bg); color: var(--text); }
 
 /* ---------------- Project picker panel ---------------- */
 .project-actions { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; }
@@ -124,7 +132,6 @@ body {
 }
 .pm-id-text { display: flex; flex-direction: column; min-width: 0; }
 .pm-id-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pm-id-sub { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pm-auth-btn {
     flex: 0 0 auto; border: 1px solid var(--border); background: var(--bg); color: var(--accent);
     font: inherit; font-weight: 600; font-size: 12px; padding: 5px 12px; border-radius: 7px; cursor: pointer;
@@ -189,6 +196,25 @@ body {
     border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text);
 }
 .pm-search:focus { outline: none; border-color: var(--accent); }
+.pm-directory-link { align-self: flex-start; border: 0; background: transparent; color: var(--muted); padding: 0; font: inherit; font-size: 12px; line-height: 20px; cursor: pointer; text-align: left; }
+.pm-directory-link:hover { color: var(--text); text-decoration: underline; }
+.pm-directory-link:disabled { opacity: .5; cursor: default; }
+.directory-dialog.fui-DialogSurface { width: min(440px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); }
+.directory-dialog .fui-DialogTitle { font-size: 20px; line-height: 28px; letter-spacing: 0; }
+.directory-content { display: grid; gap: 16px; min-width: 0; }
+.directory-current { display: grid; gap: 4px; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.directory-current strong { font-size: 13px; color: var(--text); font-weight: 600; }
+.directory-fields { display: grid; gap: 6px; min-width: 0; font-size: 13px; }
+.directory-fields select, .directory-fields input { width: 100%; min-width: 0; height: 34px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); font: inherit; text-overflow: ellipsis; }
+.directory-fields :is(select, input):focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.directory-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.directory-note { margin: 0; font-size: 12px; line-height: 18px; color: var(--muted); }
+.directory-dialog .btn { min-width: 76px; border-radius: 4px; font-size: 13px; }
+.directory-dialog .fui-DialogActions { flex-direction: row; justify-self: end; }
+.directory-dialog .directory-submit { min-width: 104px; background: var(--text); color: var(--bg); }
+.directory-dialog .btn:disabled { opacity: .5; cursor: default; }
+.directory-dialog .pm-device { margin: 0; }
+.directory-dialog .pm-device-row { padding: 0; border: 0; background: transparent; }
 .pm-list { max-height: 240px; overflow: auto; display: flex; flex-direction: column; gap: 1px; }
 .pm-row {
     display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; cursor: pointer;
@@ -626,9 +652,6 @@ body {
     font-size: 13px;
     line-height: 18px;
     font-weight: 600;
-}
-.pm-id-sub {
-    display: none;
 }
 .pm-auth-btn {
     border: 0;
