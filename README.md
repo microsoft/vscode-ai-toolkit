@@ -1,6 +1,6 @@
 # Microsoft Foundry DevTools
 
-https://github.com/user-attachments/assets/86eb98d6-d108-4c39-928c-0d3f15c9c92c
+https://github.com/user-attachments/assets/66a5dd71-5bc6-4c6b-a4db-5676e364c74f
 
 [Watch on YouTube](https://www.youtube.com/watch?v=aQFSDGAk9DA) | [Download the video](./doc/foundry-toolkit-demo.mp4?raw=true)
 
