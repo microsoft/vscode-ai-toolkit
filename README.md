@@ -2,8 +2,6 @@
 
 https://github.com/user-attachments/assets/66a5dd71-5bc6-4c6b-a4db-5676e364c74f
 
-[Watch on YouTube](https://www.youtube.com/watch?v=aQFSDGAk9DA) | [Download the video](./doc/foundry-toolkit-demo.mp4?raw=true)
-
 [![Get started with Foundry](https://img.shields.io/badge/Foundry-Get_started-0078D4?style=flat-square)](https://learn.microsoft.com/en-us/azure/foundry/how-to/develop/install-cli-sdk?tabs=windows%2Cpython%2Cazd-ai)
 [![Install Foundry Toolkit for VS Code](https://img.shields.io/badge/VS_Code-Install_Toolkit-0098FF?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)
 [![Join the Foundry community on Discord](https://img.shields.io/badge/Discord-Join_the_community-5865F2?style=flat-square&logo=discord&logoColor=white)](https://aka.ms/azureaifoundry/discord)
