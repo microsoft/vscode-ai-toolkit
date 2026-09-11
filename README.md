@@ -1,6 +1,8 @@
 # Microsoft Foundry DevTools
 
-[![Watch the Microsoft Foundry video on YouTube](https://img.youtube.com/vi/abc123XYZ/maxresdefault.jpg)](https://www.youtube.com/watch?v=abc123XYZ)
+[![Watch Your Entire Agentic AI Workflow Now Inside VS Code](./doc/foundry-toolkit-video-thumbnail.jpg)](./doc/foundry-toolkit-demo.mp4)
+
+[Watch on YouTube](https://www.youtube.com/watch?v=aQFSDGAk9DA) | [Download the video](./doc/foundry-toolkit-demo.mp4?raw=true)
 
 [![Get started with Foundry](https://img.shields.io/badge/Foundry-Get_started-0078D4?style=flat-square)](https://learn.microsoft.com/en-us/azure/foundry/how-to/develop/install-cli-sdk?tabs=windows%2Cpython%2Cazd-ai)
 [![Install Foundry Toolkit for VS Code](https://img.shields.io/badge/VS_Code-Install_Toolkit-0098FF?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=ms-windows-ai-studio.windows-ai-studio)
