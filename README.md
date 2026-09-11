@@ -1,6 +1,6 @@
 # Microsoft Foundry DevTools
 
-[![Watch Your Entire Agentic AI Workflow Now Inside VS Code](./doc/foundry-toolkit-video-thumbnail.jpg)](./doc/foundry-toolkit-demo.mp4)
+https://github.com/user-attachments/assets/86eb98d6-d108-4c39-928c-0d3f15c9c92c
 
 [Watch on YouTube](https://www.youtube.com/watch?v=aQFSDGAk9DA) | [Download the video](./doc/foundry-toolkit-demo.mp4?raw=true)
 
